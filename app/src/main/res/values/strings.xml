@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">HTTP Toolkit</string>
+    <string name="vpn_active_notification_content">HTTP Toolkit is currently intercepting this device</string>
+    <string name="vpn_active_notification_action">Stop intercepting</string>
 </resources>

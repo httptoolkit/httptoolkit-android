@@ -22,7 +22,7 @@
             android:text="Start Intercepting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:onClick="toggleVPN"
+            android:onClick="toggleVpn"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginEnd="8dp"
             app:layout_constraintStart_toStartOf="parent"
