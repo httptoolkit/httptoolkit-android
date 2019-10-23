@@ -6,8 +6,13 @@ import android.app.*
 import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.app.ServiceCompat.stopForeground
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.lipisoft.toyshark.socket.IProtectSocket
+import com.lipisoft.toyshark.socket.SocketProtector
 import java.io.*
+import java.net.DatagramSocket
+import java.net.Socket
 
 private const val ALL_ROUTES = "0.0.0.0"
 private const val PROXY_ROUTE = "10.0.0.110"
@@ -21,12 +26,14 @@ const val STOP_VPN_ACTION = "tech.httptoolkit.android.STOP_VPN_ACTION"
 const val VPN_STARTED_BROADCAST = "tech.httptoolkit.android.VPN_STARTED_BROADCAST"
 const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAST"
 
-class ProxyVpnService : VpnService() {
+class ProxyVpnService : VpnService(), IProtectSocket {
 
     private val TAG = ProxyVpnService::class.simpleName
 
     private var localBroadcastManager: LocalBroadcastManager? = null
+
     private var vpnInterface: ParcelFileDescriptor? = null
+    private var vpnRunnable: ProxyVpnRunnable? = null
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.i(TAG, "onStartCommand called")
@@ -87,20 +94,29 @@ class ProxyVpnService : VpnService() {
 
     private fun startVpn() {
         if (vpnInterface == null) {
-            val builder = Builder()
-            builder.addAddress(PROXY_ROUTE, 32)
-            builder.addRoute(ALL_ROUTES, 0)
-
-            vpnInterface = builder
+            vpnInterface = Builder()
+                .addAddress(PROXY_ROUTE, 32)
+                .addRoute(ALL_ROUTES, 0)
+                .addDnsServer("8.8.8.8")
                 .setSession(getString(R.string.app_name))
                 .establish()
 
             showServiceNotification()
             localBroadcastManager!!.sendBroadcast(Intent(VPN_STARTED_BROADCAST))
+
+            SocketProtector.getInstance().setProtector(this)
+
+            vpnRunnable = ProxyVpnRunnable(vpnInterface!!)
+            Thread(vpnRunnable, "Vpn thread").start()
         }
     }
 
     private fun stopVpn() {
+        if (vpnRunnable != null) {
+            vpnRunnable!!.stop()
+            vpnRunnable = null
+        }
+
         try {
             vpnInterface?.close()
             vpnInterface = null
