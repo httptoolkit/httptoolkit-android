@@ -19,6 +19,7 @@ package com.lipisoft.toyshark;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.util.Log;
+import android.util.SparseArray;
 
 import com.lipisoft.toyshark.socket.DataConst;
 import com.lipisoft.toyshark.socket.SocketNIODataService;
@@ -248,7 +249,7 @@ public enum SessionManager {
 	public Session createNewSession(int ip, int port, int srcIp, int srcPort){
 		String key = createKey(ip, port, srcIp, srcPort);
 		if (table.containsKey(key)) {
-			Log.e(TAG, "Session was already created.");
+			Log.e(TAG, "Session " + key + " was already created.");
 			return null;
 		}
 
@@ -277,8 +278,13 @@ public enum SessionManager {
 		Log.d(TAG,"Protected new SocketChannel");
 
 		//initiate connection to reduce latency
-		SocketAddress socketAddress = new InetSocketAddress(ips, port);
-		Log.d(TAG,"initiate connecting to remote tcp server: " + ips + ":" + port);
+		// Use the real address, unless tcpPortRedirection defines a different
+		// target address for traffic on this port.
+		SocketAddress socketAddress = tcpPortRedirection.get(port) != null
+			? tcpPortRedirection.get(port)
+			: new InetSocketAddress(ips, port);
+
+		Log.d(TAG,"initiate connecting to remote tcp server: " + socketAddress.toString());
 		boolean connected;
 		try{
 			connected = channel.connect(socketAddress);
@@ -332,5 +338,11 @@ public enum SessionManager {
 	public String createKey(int ip, int port, int srcIp, int srcPort){
 		return PacketUtil.intToIPAddress(srcIp) + ":" + srcPort + "-" +
 				PacketUtil.intToIPAddress(ip) + ":" + port;
+	}
+
+	private SparseArray<InetSocketAddress> tcpPortRedirection = new SparseArray<>();
+
+	public void setTcpPortRedirections(SparseArray<InetSocketAddress> tcpPortRedirection) {
+		this.tcpPortRedirection = tcpPortRedirection;
 	}
 }

@@ -106,7 +106,12 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
             SocketProtector.getInstance().setProtector(this)
 
-            vpnRunnable = ProxyVpnRunnable(vpnInterface!!)
+            vpnRunnable = ProxyVpnRunnable(
+                vpnInterface!!,
+                "192.168.30.208",
+                8000,
+                intArrayOf(80, 443)
+            )
             Thread(vpnRunnable, "Vpn thread").start()
         }
     }
