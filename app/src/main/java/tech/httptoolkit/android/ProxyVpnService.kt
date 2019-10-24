@@ -63,7 +63,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     private fun showServiceNotification() {
         val pendingActivityIntent: PendingIntent =
-            Intent(this, ProxyVpnService::class.java).let { notificationIntent ->
+            Intent(this, MainActivity::class.java).let { notificationIntent ->
                 PendingIntent.getActivity(this, 0, notificationIntent, 0)
             }
 
