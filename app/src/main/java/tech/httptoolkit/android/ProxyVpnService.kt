@@ -100,7 +100,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             vpnInterface = Builder()
                 .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
-                .addDnsServer("8.8.8.8")
                 .setSession(getString(R.string.app_name))
                 .establish()
 
