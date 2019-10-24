@@ -16,9 +16,9 @@ public class UDPPacketFactory {
 		if ((stream.remaining()) < 8){
 			throw new PacketHeaderException("Minimum UDP header is 8 bytes.");
 		}
-		final int srcPort = stream.getShort();
-		final int destPort = stream.getShort();
-		final int length = stream.getShort();
+		final int srcPort = stream.getShort() & 0xffff;
+		final int destPort = stream.getShort() & 0xffff;
+		final int length = stream.getShort() & 0xffff;
 		final int checksum = stream.getShort();
 
 		return new UDPHeader(srcPort, destPort, length, checksum);
