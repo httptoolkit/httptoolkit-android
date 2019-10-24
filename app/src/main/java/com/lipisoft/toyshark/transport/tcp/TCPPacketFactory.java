@@ -134,8 +134,6 @@ public class TCPPacketFactory {
 		tcp.setIsURG(false);
 		
 		//remove any option field
-//		byte[] options = new byte[0];
-//		tcp.setOptions(options);
 		tcp.setOptions(null);
 
 		//window size should be zero
@@ -195,8 +193,6 @@ public class TCPPacketFactory {
 		tcp.setIsURG(false);
 		
 		//remove any option field
-//		byte[] options = new byte[0];
-//		tcp.setOptions(options);
 		tcp.setOptions(null);
 
 		//window size should be zero

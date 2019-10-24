@@ -117,19 +117,6 @@ public enum SessionManager {
 		return null;
 	}
 
-//	public void removeSessionByChannel(SocketChannel channel){
-//		synchronized (syncTable) {
-//			Set<String> keys = table.keySet();
-//			for (String key: keys) {
-//				Session session = table.get(key);
-//				if(session != null && session.getSocketChannel() == channel) {
-//					table.remove(key);
-//					Log.d(TAG, "closed session -> " + key);
-//				}
-//			}
-//		}
-//	}
-
 	/**
 	 * remove session from memory, then close socket connection.
 	 * @param ip Destination IP Address

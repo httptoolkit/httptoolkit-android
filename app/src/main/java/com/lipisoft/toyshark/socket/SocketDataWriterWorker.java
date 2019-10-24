@@ -119,7 +119,6 @@ public class SocketDataWriterWorker implements Runnable {
 		try {
 			Log.d(TAG,"writing TCP data to: " + name);
 			channel.write(buffer);
-			//Log.d(TAG,"finished writing data to: "+name);
 		} catch (NotYetConnectedException ex) {
 			Log.e(TAG,"failed to write to unconnected socket: " + ex.getMessage());
 		} catch (IOException e) {

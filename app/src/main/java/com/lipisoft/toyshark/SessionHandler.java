@@ -79,7 +79,6 @@ public class SessionHandler {
 	}
 
 	private void handleTCPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader, TCPHeader tcpheader){
-//		int length = clientPacketData.length;
 		int dataLength = clientPacketData.limit() - clientPacketData.position();
 		int sourceIP = ipHeader.getSourceIP();
 		int destinationIP = ipHeader.getDestinationIP();
@@ -333,8 +332,7 @@ public class SessionHandler {
 		if(tcpHeader.getAckNumber() > session.getSendUnack() ||
 				tcpHeader.getAckNumber() == session.getSendNext()){
 			session.setAcked(true);
-			//Log.d(TAG,"Accepted ack from client, ack# "+tcpheader.getAckNumber());
-			
+
 			if(tcpHeader.getWindowSize() > 0){
 				session.setSendWindowSizeAndScale(tcpHeader.getWindowSize(), session.getSendWindowScale());
 			}
@@ -378,7 +376,6 @@ public class SessionHandler {
 			return;
 		
 		int windowScaleFactor = (int) Math.pow(2, tcpheader.getWindowScale());
-		//Log.d(TAG,"window scale: Math.power(2,"+tcpheader.getWindowScale()+") is "+windowScaleFactor);
 		session.setSendWindowSizeAndScale(tcpheader.getWindowSize(), windowScaleFactor);
 		Log.d(TAG,"send-window size: " + session.getSendWindow());
 		session.setMaxSegmentSize(tcpheader.getMaxSegmentSize());

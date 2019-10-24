@@ -100,8 +100,6 @@ public class Session {
 	
 	//indicate that vpn client has sent FIN flag and it has been acked
 	private boolean ackedToFin = false;
-	//timestamp when FIN as been acked, this is used to removed session after n minute
-//	private long ackedToFinTime = 0;
 	
 	//indicate that this session is currently being worked on by some SocketDataWorker already
 	private volatile boolean isBusyRead = false;
@@ -122,16 +120,6 @@ public class Session {
 		this.destIp = destinationIp;
 		this.destPort = destinationPort;
 	}
-
-	/*
-	 * track how many byte sent to client since last ACK to avoid overloading
-	 * @param amount Amount
-	 */
-//	public void trackAmountSentSinceLastAck(int amount){
-//		synchronized(syncSendAmount){
-//			sendAmountSinceLastAck += amount;
-//		}
-//	}
 
 	/**
 	 * decrease value of sendAmountSinceLastAck so that client's window is not full
@@ -166,12 +154,6 @@ public class Session {
 		}
 	}
 
-//	public void resetReceivingData(){
-//		synchronized(syncReceive){
-//			receivingStream.reset();
-//		}
-//	}
-
 	/**
 	 * get all data received in the buffer and empty it.
 	 * @return byte[]
@@ -196,12 +178,6 @@ public class Session {
 	public boolean hasReceivedData(){
 		return receivingStream.size() > 0;
 	}
-
-//	public int getReceivedDataSize(){
-//		synchronized(syncReceive){
-//			return receivingStream.size();
-//		}
-//	}
 
 	/**
 	 * set data to be sent to destination server
@@ -279,14 +255,6 @@ public class Session {
 		this.isConnected = isConnected;
 	}
 
-//	public ByteArrayOutputStream getReceivingStream() {
-//		return receivingStream;
-//	}
-
-//	public ByteArrayOutputStream getSendingStream() {
-//		return sendingStream;
-//	}
-
 	public int getSourceIp() {
 		return sourceIp;
 	}
@@ -294,10 +262,6 @@ public class Session {
 	public int getSourcePort() {
 		return sourcePort;
 	}
-
-//	public int getSendWindowSize() {
-//		return sendWindowSize;
-//	}
 
 	void setSendWindowSizeAndScale(int sendWindowSize, int sendWindowScale) {
 		this.sendWindowSize = sendWindowSize;
@@ -308,10 +272,6 @@ public class Session {
 	int getSendWindowScale() {
 		return sendWindowScale;
 	}
-
-//	public boolean isAcked() {
-//		return isacked;
-//	}
 
 	void setAcked(boolean isacked) {
 		this.isacked = isacked;
@@ -324,21 +284,6 @@ public class Session {
 	void setRecSequence(long recSequence) {
 		this.recSequence = recSequence;
 	}
-
-//	public SocketChannel getSocketChannel() {
-//		return socketchannel;
-//	}
-
-//	void setSocketChannel(SocketChannel socketchannel) {
-//		this.socketchannel = socketchannel;
-//	}
-	
-//	public DatagramChannel getUdpChannel() {
-//		return udpChannel;
-//	}
-//	public void setUdpChannel(DatagramChannel udpChannel) {
-//		this.udpChannel = udpChannel;
-//	}
 
 	public AbstractSelectableChannel getChannel() {
 		return channel;
@@ -385,22 +330,13 @@ public class Session {
 	void setDataForSendingReady(boolean isDataForSendingReady) {
 		this.isDataForSendingReady = isDataForSendingReady;
 	}
-//	public byte[] getUnackData() {
-//		return unackData;
-//	}
 	public void setUnackData(byte[] unackData) {
 		this.unackData = unackData;
 	}
 	
-//	public boolean isPacketCorrupted() {
-//		return packetCorrupted;
-//	}
 	void setPacketCorrupted(boolean packetCorrupted) {
 		this.packetCorrupted = packetCorrupted;
 	}
-//	public int getResendPacketCounter() {
-//		return resendPacketCounter;
-//	}
 	public void setResendPacketCounter(int resendPacketCounter) {
 		this.resendPacketCounter = resendPacketCounter;
 	}
@@ -419,16 +355,7 @@ public class Session {
 	boolean isAckedToFin() {
 		return ackedToFin;
 	}
-//	public void setAckedToFin(boolean ackedToFin) {
-//		this.ackedToFin = ackedToFin;
-//	}
-//	public long getAckedToFinTime() {
-//		return ackedToFinTime;
-//	}
-//	public void setAckedToFinTime(long ackedToFinTime) {
-//		this.ackedToFinTime = ackedToFinTime;
-//	}
-	
+
 	public boolean isBusyRead() {
 		return isBusyRead;
 	}

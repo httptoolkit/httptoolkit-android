@@ -102,7 +102,6 @@ class SocketDataReaderWorker implements Runnable {
 				if(!session.isClientWindowFull()) {
 					len = channel.read(buffer);
 					if(len > 0) { //-1 mean it reach the end of stream
-						//Log.d(TAG,"SocketDataService received "+len+" from remote server: "+name);
 						sendToRequester(buffer, len, session);
 						buffer.clear();
 					} else if(len == -1) {
@@ -120,10 +119,8 @@ class SocketDataReaderWorker implements Runnable {
 			Log.e(TAG,"socket not connected");
 		}catch(ClosedByInterruptException e){
 			Log.e(TAG,"ClosedByInterruptException reading SocketChannel: "+ e.getMessage());
-			//session.setAbortingConnection(true);
 		}catch(ClosedChannelException e){
 			Log.e(TAG,"ClosedChannelException reading SocketChannel: "+ e.getMessage());
-			//session.setAbortingConnection(true);
 		} catch (IOException e) {
 			Log.e(TAG,"Error reading data from SocketChannel: "+ e.getMessage());
 			session.setAbortingConnection(true);
@@ -143,7 +140,6 @@ class SocketDataReaderWorker implements Runnable {
 		byte[] data = new byte[dataSize];
 		System.arraycopy(buffer.array(), 0, data, 0, dataSize);
 		session.addReceivedData(data);
-		//Log.d(TAG,"DataService added "+data.length+" to session. session.getReceivedDataSize(): "+session.getReceivedDataSize());
 		//pushing all data to vpn client
 		while(session.hasReceivedData()){
 			pushDataToClient(session);
@@ -168,16 +164,10 @@ class SocketDataReaderWorker implements Runnable {
 			max = 1024;
 		}
 
-		// TODO: Could remove this, but is it useful elsewhere?
-//		else if (max > PCapFileWriter.MAX_PACKET_SIZE - 60) {
-//			max = PCapFileWriter.MAX_PACKET_SIZE - 60;
-//		}
-
 		byte[] packetBody = session.getReceivedData(max);
 		if(packetBody != null && packetBody.length > 0) {
 			long unAck = session.getSendNext();
 			long nextUnAck = session.getSendNext() + packetBody.length;
-			//Log.d(TAG,"sending vpn client body len: "+packetBody.length+", current seq: "+unAck+", next seq: "+nextUnAck);
 			session.setSendNext(nextUnAck);
 			//we need this data later on for retransmission
 			session.setUnackData(packetBody);

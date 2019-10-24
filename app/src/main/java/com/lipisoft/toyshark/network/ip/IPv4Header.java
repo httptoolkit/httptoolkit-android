@@ -201,15 +201,6 @@ public class IPv4Header {
 		}
 	}
 
-//	public void setLastFragment(boolean lastFragment) {
-//		this.lastFragment = lastFragment;
-//		if(lastFragment){
-//			this.flag |= 0x20;
-//		}else{
-//			this.flag &= 0xDF;
-//		}
-//	}
-//
 	public void setSourceIP(int sourceIP) {
 		this.sourceIP = sourceIP;
 	}
