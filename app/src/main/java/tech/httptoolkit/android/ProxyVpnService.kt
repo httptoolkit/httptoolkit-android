@@ -15,7 +15,10 @@ import java.net.DatagramSocket
 import java.net.Socket
 
 private const val ALL_ROUTES = "0.0.0.0"
-private const val PROXY_ROUTE = "10.0.0.110"
+private const val VPN_IP_ADDRESS = "169.254.61.43" // Random link-local IP, this will be the tunnel's IP
+
+private const val PROXY_ADDRESS = "10.0.0.110"
+private const val PROXY_PORT = 8000
 
 private const val NOTIFICATION_ID = 45456
 private const val NOTIFICATION_CHANNEL_ID = "vpn-notifications"
@@ -95,7 +98,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     private fun startVpn() {
         if (vpnInterface == null) {
             vpnInterface = Builder()
-                .addAddress(PROXY_ROUTE, 32)
+                .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
                 .addDnsServer("8.8.8.8")
                 .setSession(getString(R.string.app_name))
@@ -108,8 +111,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
             vpnRunnable = ProxyVpnRunnable(
                 vpnInterface!!,
-                "192.168.30.208",
-                8000,
+                PROXY_ADDRESS,
+                PROXY_PORT,
                 intArrayOf(80, 443)
             )
             Thread(vpnRunnable, "Vpn thread").start()
