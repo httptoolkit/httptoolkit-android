@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.NotYetConnectedException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
 import java.util.Date;
@@ -50,7 +51,7 @@ public class SocketDataWriterWorker implements Runnable {
 
 		if(session.isAbortingConnection()){
 			Log.d(TAG,"removing aborted connection -> " + sessionKey);
-			session.getSelectionKey().cancel();
+			session.cancelKey();
 
 			if(channel instanceof SocketChannel) {
 				try {
@@ -75,24 +76,13 @@ public class SocketDataWriterWorker implements Runnable {
 		}
 	}
 
-	private void writeUDP(Session session){
-		if(!session.hasDataToSend()){
-			return;
-		}
-		DatagramChannel channel = (DatagramChannel) session.getChannel();
+	private void writeUDP(Session session) {
 		String name = PacketUtil.intToIPAddress(session.getDestIp())+":"+session.getDestPort()+
 				"-"+PacketUtil.intToIPAddress(session.getSourceIp())+":"+session.getSourcePort();
-		byte[] data = session.getSendingData();
-		ByteBuffer buffer = ByteBuffer.allocate(data.length);
-		buffer.put(data);
-		buffer.flip();
+
 		try {
-			String str = new String(data);
-			Log.d(TAG,"****** data write to server ********");
-			Log.d(TAG,str);
-			Log.d(TAG,"***** end writing to server *******");
 			Log.d(TAG,"writing data to remote UDP: "+name);
-			channel.write(buffer);
+			writePendingData(session);
 			Date dt = new Date();
 			session.connectionStartTime = dt.getTime();
 		}catch(NotYetConnectedException ex2){
@@ -105,20 +95,13 @@ public class SocketDataWriterWorker implements Runnable {
 		}
 	}
 	
-	private void writeTCP(Session session){
-		SocketChannel channel = (SocketChannel) session.getChannel();
-
+	private void writeTCP(Session session) {
 		String name = PacketUtil.intToIPAddress(session.getDestIp())+":"+session.getDestPort()+
 				"-"+PacketUtil.intToIPAddress(session.getSourceIp())+":"+session.getSourcePort();
-		
-		byte[] data = session.getSendingData();
-		ByteBuffer buffer = ByteBuffer.allocate(data.length);
-		buffer.put(data);
-		buffer.flip();
-		
+
 		try {
 			Log.d(TAG,"writing TCP data to: " + name);
-			channel.write(buffer);
+			writePendingData(session);
 		} catch (NotYetConnectedException ex) {
 			Log.e(TAG,"failed to write to unconnected socket: " + ex.getMessage());
 		} catch (IOException e) {
@@ -137,6 +120,42 @@ public class SocketDataWriterWorker implements Runnable {
 			//remove session
 			Log.e(TAG,"failed to write to remote socket, aborting connection");
 			session.setAbortingConnection(true);
+		}
+	}
+
+	private void writePendingData(Session session) throws IOException {
+		if (!session.hasDataToSend()) return;
+		AbstractSelectableChannel channel = session.getChannel();
+
+		byte[] data = session.getSendingData();
+		ByteBuffer buffer = ByteBuffer.allocate(data.length);
+		buffer.put(data);
+		buffer.flip();
+
+		while (buffer.hasRemaining()) {
+			int bytesWritten = channel instanceof SocketChannel
+				? ((SocketChannel) channel).write(buffer)
+				: ((DatagramChannel) channel).write(buffer);
+
+			if (bytesWritten == 0) {
+				break;
+			}
+		}
+
+		if (buffer.hasRemaining()) {
+			// The channel's own buffer is full, so we have to save this for later.
+
+			// Put the remaining data from the buffer back into the session
+			session.setSendingData(buffer);
+
+			// Subscribe to WRITE events, so we know when this is ready to resume
+			session.subscribeKey(SelectionKey.OP_WRITE);
+		} else {
+			// All done, all good -> wait until the next TCP PSH / UDP packet
+			session.setDataForSendingReady(false);
+
+			// If we were interested in WRITE events, we're definitely not now
+			session.unsubscribeKey(SelectionKey.OP_WRITE);
 		}
 	}
 }

@@ -21,6 +21,7 @@ import android.util.Log;
 import com.lipisoft.toyshark.network.ip.IPv4Header;
 import com.lipisoft.toyshark.transport.tcp.TCPHeader;
 import com.lipisoft.toyshark.transport.udp.UDPHeader;
+import com.lipisoft.toyshark.util.PacketUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -184,7 +185,7 @@ public class Session {
 	 * @param data Data to be sent
 	 * @return boolean Success or not
 	 */
-	synchronized int setSendingData(ByteBuffer data) {
+	public synchronized int setSendingData(ByteBuffer data) {
 		final int remaining = data.remaining();
 		sendingStream.write(data.array(), data.position(), data.remaining());
 		return remaining;
@@ -327,7 +328,7 @@ public class Session {
 	public boolean isDataForSendingReady() {
 		return isDataForSendingReady;
 	}
-	void setDataForSendingReady(boolean isDataForSendingReady) {
+	public void setDataForSendingReady(boolean isDataForSendingReady) {
 		this.isDataForSendingReady = isDataForSendingReady;
 	}
 	public void setUnackData(byte[] unackData) {
@@ -379,5 +380,35 @@ public class Session {
 	}
 	void setSelectionKey(SelectionKey selectionkey) {
 		this.selectionkey = selectionkey;
+	}
+
+	public void cancelKey() {
+		synchronized (this.selectionkey) {
+			if (!this.selectionkey.isValid()) return;
+			this.selectionkey.cancel();
+		}
+	}
+
+	public void subscribeKey(int OP) {
+		synchronized (this.selectionkey) {
+			if (!this.selectionkey.isValid()) return;
+			this.selectionkey.interestOps(this.selectionkey.interestOps() | OP);
+		}
+	}
+
+	public void unsubscribeKey(int OP) {
+		synchronized (this.selectionkey) {
+			if (!this.selectionkey.isValid()) return;
+			this.selectionkey.interestOps(this.selectionkey.interestOps() & ~OP);
+		}
+	}
+
+	public String getSessionKey() {
+		return Session.getSessionKey(this.destIp, this.destPort, this.sourceIp, this.sourcePort);
+	}
+
+	public static String getSessionKey(int destIp, int destPort, int sourceIp, int sourcePort) {
+		return PacketUtil.intToIPAddress(sourceIp) + ":" + sourcePort + "-" +
+				PacketUtil.intToIPAddress(destIp) + ":" + destPort;
 	}
 }

@@ -44,7 +44,7 @@ class ProxyVpnRunnable(
 
     // Background service & task for non-blocking socket
     private val dataService = SocketNIODataService(clientPacketWriter)
-    private val dataServiceThread = Thread(dataService)
+    private val dataServiceThread = Thread(dataService, "Socket NIO thread")
 
     // Our redirect rules, defining which traffic should be forwarded to what proxy address
     private val portRedirections = SparseArray<InetSocketAddress>().apply {

@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.lipisoft.toyshark.IClientPacketWriter;
 import com.lipisoft.toyshark.Session;
+import com.lipisoft.toyshark.SessionHandler;
 import com.lipisoft.toyshark.SessionManager;
 import com.lipisoft.toyshark.util.PacketUtil;
 
@@ -24,9 +25,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-
+/**
+ * A service that processes the events around our session connections. It uses a Selector that
+ * fires on outgoing socket events (connected, readable, writable), and follows the queue of
+ * sessions waiting to write data, from SessionHandler.
+ *
+ * The actual reading & writing is pushed to Reader/WriterWorkers which run in a thread pool.
+ */
 public class SocketNIODataService implements Runnable {
-	private static final String TAG = "SocketNIODataService";
+
+	private static final String TAG = SocketNIODataService.class.getSimpleName();
 	public static final Object syncSelector = new Object();
 	public static final Object syncSelector2 = new Object();
 
@@ -75,25 +83,43 @@ public class SocketNIODataService implements Runnable {
 				continue;
 			}
 
-			if(shutdown){
+			if (shutdown) {
 				break;
 			}
-			synchronized(syncSelector2){
+
+			synchronized (syncSelector2) {
 				Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-				while(iterator.hasNext()){
+
+				while (iterator.hasNext()) {
 					SelectionKey key = iterator.next();
 					SelectableChannel selectableChannel = key.channel();
-					if(selectableChannel instanceof SocketChannel) {
+
+					if (selectableChannel instanceof SocketChannel) {
 						try {
 							processTCPSelectionKey(key);
 						} catch (IOException e) {
-							key.cancel();
+							synchronized (key) {
+								key.cancel();
+							}
 						}
 					} else if (selectableChannel instanceof DatagramChannel) {
 						processUDPSelectionKey(key);
 					}
+
 					iterator.remove();
-					if(shutdown){
+					if (shutdown) {
+						break;
+					}
+				}
+
+				while (SessionHandler.getInstance().getWritableSessions().size() != 0) {
+					Session session = SessionHandler.getInstance().getWritableSessions().remove();
+
+					if (session.isConnected()) {
+						processPendingWrite(session);
+					}
+
+					if (shutdown) {
 						break;
 					}
 				}
@@ -127,7 +153,8 @@ public class SocketNIODataService implements Runnable {
 			}
 		}
 		if(channel.isConnected()){
-			processSelector(key, session);
+			processSelectorRead(key, session);
+			processPendingWrite(session);
 		}
 	}
 
@@ -173,30 +200,26 @@ public class SocketNIODataService implements Runnable {
 			}
 		}
 		if(channel.isConnected()){
-			processSelector(key, session);
+			// Once connected, we no longer want connect events; we want read events instead.
+			session.unsubscribeKey(SelectionKey.OP_CONNECT);
+			session.subscribeKey(SelectionKey.OP_READ);
+			processSelectorRead(key, session);
+			processPendingWrite(session);
 		}
 	}
 
-	private void processSelector(SelectionKey selectionKey, Session session){
-		String sessionKey = SessionManager.INSTANCE.createKey(session.getDestIp(),
-				session.getDestPort(), session.getSourceIp(),
-				session.getSourcePort());
-		//tcp has PSH flag when data is ready for sending, UDP does not have this
-		if(selectionKey.isValid() && selectionKey.isWritable()
-				&& !session.isBusywrite() && session.hasDataToSend()
-				&& session.isDataForSendingReady())
-		{
-			session.setBusywrite(true);
-			final SocketDataWriterWorker worker =
-					new SocketDataWriterWorker(writer, sessionKey);
+	private void processSelectorRead(SelectionKey selectionKey, Session session) {
+		if(selectionKey.isValid() && selectionKey.isReadable() && !session.isBusyRead()) {
+			session.setBusyread(true);
+			final SocketDataReaderWorker worker = new SocketDataReaderWorker(writer, session.getSessionKey());
 			workerPool.execute(worker);
 		}
-		if(selectionKey.isValid() && selectionKey.isReadable()
-				&& !session.isBusyRead())
-		{
-			session.setBusyread(true);
-			final SocketDataReaderWorker worker =
-					new SocketDataReaderWorker(writer, sessionKey);
+	}
+
+	private void processPendingWrite(Session session) {
+		if (!session.isBusywrite() && session.hasDataToSend() && session.isDataForSendingReady()) {
+			session.setBusywrite(true);
+			final SocketDataWriterWorker worker = new SocketDataWriterWorker(writer, session.getSessionKey());
 			workerPool.execute(worker);
 		}
 	}

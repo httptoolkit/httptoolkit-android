@@ -72,7 +72,7 @@ public enum SessionManager {
 	 */
 	public void keepSessionAlive(Session session) {
 		if(session != null){
-			String key = createKey(session.getDestIp(), session.getDestPort(),
+			String key = Session.getSessionKey(session.getDestIp(), session.getDestPort(),
 					session.getSourceIp(), session.getSourcePort());
 			table.put(key, session);
 		}
@@ -91,7 +91,7 @@ public enum SessionManager {
 	}
 
 	public Session getSession(int ip, int port, int srcIp, int srcPort) {
-		String key = createKey(ip, port, srcIp, srcPort);
+		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
 
 		return getSessionByKey(key);
 	}
@@ -125,7 +125,7 @@ public enum SessionManager {
 	 * @param srcPort Source Port
 	 */
 	public void closeSession(int ip, int port, int srcIp, int srcPort){
-		String key = createKey(ip, port, srcIp, srcPort);
+		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
 		Session session = table.remove(key);
 
 		if(session != null){
@@ -142,7 +142,7 @@ public enum SessionManager {
 	}
 
 	public void closeSession(@NonNull Session session){
-		String key = createKey(session.getDestIp(),
+		String key = Session.getSessionKey(session.getDestIp(),
 				session.getDestPort(), session.getSourceIp(),
 				session.getSourcePort());
 		table.remove(key);
@@ -160,7 +160,7 @@ public enum SessionManager {
 
 	@Nullable
 	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort){
-		String keys = createKey(ip, port, srcIp, srcPort);
+		String keys = Session.getSessionKey(ip, port, srcIp, srcPort);
 
 		if (table.containsKey(keys))
 			return table.get(keys);
@@ -199,13 +199,11 @@ public enum SessionManager {
 			synchronized(SocketNIODataService.syncSelector2) {
 				selector.wakeup();
 				synchronized(SocketNIODataService.syncSelector) {
-					SelectionKey selectionKey;
-					if (channel.isConnected()) {
-						selectionKey = channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-					} else {
-						selectionKey = channel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_READ |
-								SelectionKey.OP_WRITE);
-					}
+					SelectionKey selectionKey = channel.register(selector,
+						channel.isConnected()
+							? SelectionKey.OP_READ | SelectionKey.OP_WRITE
+							: SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE
+					);
 					session.setSelectionKey(selectionKey);
 					Log.d(TAG,"Registered udp selector successfully");
 				}
@@ -234,7 +232,7 @@ public enum SessionManager {
 
 	@Nullable
 	public Session createNewSession(int ip, int port, int srcIp, int srcPort){
-		String key = createKey(ip, port, srcIp, srcPort);
+		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
 		if (table.containsKey(key)) {
 			Log.e(TAG, "Session " + key + " was already created.");
 			return null;
@@ -288,8 +286,10 @@ public enum SessionManager {
 				selector.wakeup();
 				synchronized(SocketNIODataService.syncSelector){
 					SelectionKey selectionKey = channel.register(selector,
-							SelectionKey.OP_CONNECT | SelectionKey.OP_READ |
-									SelectionKey.OP_WRITE);
+						channel.isConnected()
+							? SelectionKey.OP_READ | SelectionKey.OP_WRITE
+							: SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE
+					);
 					session.setSelectionKey(selectionKey);
 					Log.d(TAG,"Registered tcp selector successfully");
 				}
@@ -313,18 +313,6 @@ public enum SessionManager {
 			table.put(key, session);
 		}
 		return session;
-	}
-	/**
-	 * create session key based on destination ip+port and source ip+port
-	 * @param ip Destination IP Address
-	 * @param port Destination Port
-	 * @param srcIp Source IP Address
-	 * @param srcPort Source Port
-	 * @return String
-	 */
-	public String createKey(int ip, int port, int srcIp, int srcPort){
-		return PacketUtil.intToIPAddress(srcIp) + ":" + srcPort + "-" +
-				PacketUtil.intToIPAddress(ip) + ":" + port;
 	}
 
 	private SparseArray<InetSocketAddress> tcpPortRedirection = new SparseArray<>();

@@ -18,6 +18,8 @@ package com.lipisoft.toyshark;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.Queue;
 
 import com.lipisoft.toyshark.network.ip.IPPacketFactory;
 import com.lipisoft.toyshark.network.ip.IPv4Header;
@@ -42,6 +44,8 @@ public class SessionHandler {
 	private static final String TAG = "SessionHandler";
 
 	private static final SessionHandler handler = new SessionHandler();
+
+	private Queue<Session> writableSessionsQueue = new LinkedList<>();
 	private IClientPacketWriter writer;
 	private SocketData packetData;
 
@@ -51,6 +55,10 @@ public class SessionHandler {
 
 	private SessionHandler(){
 		packetData = SocketData.getInstance();
+	}
+
+	public Queue<Session> getWritableSessions() {
+		return this.writableSessionsQueue;
 	}
 
 	public void setWriter(IClientPacketWriter writer){
@@ -74,7 +82,12 @@ public class SessionHandler {
 		session.setLastUdpHeader(udpheader);
 		int len = SessionManager.INSTANCE.addClientData(clientPacketData, session);
 		session.setDataForSendingReady(true);
+
+		// Put this on the queue and nudge the socket NIO thread to write it
+		this.writableSessionsQueue.add(session);
+		session.getSelectionKey().selector().wakeup();
 		Log.d(TAG,"added UDP data for bg worker to send: "+len);
+
 		SessionManager.INSTANCE.keepSessionAlive(session);
 	}
 
@@ -90,7 +103,7 @@ public class SessionHandler {
 			//set windows size and scale, set reply time in options
 			replySynAck(ipHeader,tcpheader);
 		} else if(tcpheader.isACK()) {
-			String key = SessionManager.INSTANCE.createKey(destinationIP, destinationPort, sourceIP, sourcePort);
+			String key = Session.getSessionKey(destinationIP, destinationPort, sourceIP, sourcePort);
 			Session session = SessionManager.INSTANCE.getSessionByKey(key);
 
 			if(session == null) {
@@ -229,7 +242,7 @@ public class SessionHandler {
 			writer.write(data);
 			packetData.addData(data);
 			if(session != null){
-				session.getSelectionKey().cancel();
+				session.cancelKey();
 				SessionManager.INSTANCE.closeSession(session);
 				Log.d(TAG,"ACK to client's FIN and close session => "+PacketUtil.intToIPAddress(ip.getDestinationIP())+":"+tcp.getDestinationPort()
 						+"-"+PacketUtil.intToIPAddress(ip.getSourceIP())+":"+tcp.getSourcePort());
@@ -280,6 +293,10 @@ public class SessionHandler {
 		session.setDataForSendingReady(true);
 		session.setTimestampReplyto(tcp.getTimeStampSender());
 		session.setTimestampSender((int)System.currentTimeMillis());
+
+		// Put this on the queue and nudge the socket NIO thread to write it
+		this.writableSessionsQueue.add(session);
+		session.getSelectionKey().selector().wakeup();
 
 		Log.d(TAG,"set data ready for sending to dest, bg will do it. data size: "
                 + session.getSendingDataSize());

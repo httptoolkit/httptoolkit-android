@@ -62,7 +62,7 @@ class SocketDataReaderWorker implements Runnable {
 
 		if(session.isAbortingConnection()) {
 			Log.d(TAG,"removing aborted connection -> "+ sessionKey);
-			session.getSelectionKey().cancel();
+			session.cancelKey();
 			if (channel instanceof SocketChannel){
 				try {
 					SocketChannel socketChannel = (SocketChannel) channel;
