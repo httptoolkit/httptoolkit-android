@@ -99,6 +99,7 @@ class ProxyVpnRunnable(
     fun stop() {
         if (running) {
             running = false
+            dataService.setShutdown(true)
             dataServiceThread.interrupt()
         } else {
             Log.w(TAG, "Vpn runnable stopped, but it's not running")
