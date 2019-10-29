@@ -209,7 +209,13 @@ public class SocketNIODataService implements Runnable {
 	}
 
 	private void processSelectorRead(SelectionKey selectionKey, Session session) {
-		if(selectionKey.isValid() && selectionKey.isReadable() && !session.isBusyRead()) {
+		boolean canRead;
+		synchronized (selectionKey) {
+			// There's a race here that requires a lock, as isReadable requires isValid
+			canRead = selectionKey.isValid() && selectionKey.isReadable() && !session.isBusyRead();
+		}
+
+		if (canRead) {
 			session.setBusyread(true);
 			final SocketDataReaderWorker worker = new SocketDataReaderWorker(writer, session.getSessionKey());
 			workerPool.execute(worker);
