@@ -245,10 +245,10 @@ public class PacketUtil {
 
 	public static String intToIPAddress(int addressInt)
 	{
-		return String.valueOf((addressInt >>> 24) & 0x000000FF) + "." +
-				String.valueOf((addressInt >>> 16) & 0x000000FF) + "." +
-				String.valueOf((addressInt >>> 8) & 0x000000FF) + "." +
-				String.valueOf(addressInt & 0x000000FF);
+		return ((addressInt >>> 24) & 0x000000FF) + "." +
+			((addressInt >>> 16) & 0x000000FF) + "." +
+			((addressInt >>> 8) & 0x000000FF) + "." +
+			(addressInt & 0x000000FF);
 	}
 
 	/**
