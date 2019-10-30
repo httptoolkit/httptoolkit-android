@@ -83,6 +83,10 @@ class MainActivity : AppCompatActivity() {
         toggleButton.text = if (vpnEnabled) "Stop Intercepting" else "Start Intercepting"
     }
 
+    fun scanCode(@Suppress("UNUSED_PARAMETER") view: View) {
+        startActivity(Intent(this, ScanActivity::class.java))
+    }
+
     fun toggleVpn(@Suppress("UNUSED_PARAMETER") view: View) {
         Log.i(TAG, "Toggle VPN")
         vpnEnabled = !vpnEnabled
