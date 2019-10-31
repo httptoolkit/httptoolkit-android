@@ -1,0 +1,5 @@
+<search-engine xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Disallow indexing of all Android deep linking URLs -->
+    <noindex uriPrefix="http://android.httptoolkit.tech" />
+    <noindex uriPrefix="https://android.httptoolkit.tech" />
+</search-engine>
