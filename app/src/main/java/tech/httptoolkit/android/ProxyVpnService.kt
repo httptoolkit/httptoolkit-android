@@ -10,6 +10,8 @@ import androidx.core.app.ServiceCompat.stopForeground
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.lipisoft.toyshark.socket.IProtectSocket
 import com.lipisoft.toyshark.socket.SocketProtector
+import io.sentry.Sentry
+import io.sentry.android.AndroidSentryClientFactory
 import java.io.*
 import java.net.DatagramSocket
 import java.net.Socket
