@@ -13,7 +13,7 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", "SENTRY_DSN", ""
+        buildConfigField "String", "SENTRY_DSN", "null"
     }
     buildTypes {
         release {

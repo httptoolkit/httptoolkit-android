@@ -10,7 +10,7 @@ class HttpToolkitApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        if (BuildConfig.SENTRY_DSN.isNotEmpty()) {
+        if (BuildConfig.SENTRY_DSN != null) {
             Sentry.init(BuildConfig.SENTRY_DSN, AndroidSentryClientFactory(this))
         }
     }
