@@ -14,8 +14,6 @@ import android.util.Log
 import android.view.View
 import android.widget.TextView
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import io.sentry.Sentry
-import io.sentry.android.AndroidSentryClientFactory
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.KeyStore
@@ -65,9 +63,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (BuildConfig.SENTRY_DSN.isNotEmpty()) {
-            Sentry.init(BuildConfig.SENTRY_DSN, AndroidSentryClientFactory(this));
-        }
 
         setContentView(R.layout.activity_main)
 
