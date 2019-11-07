@@ -13,6 +13,7 @@ import me.dm7.barcodescanner.zxing.ZXingScannerView
 class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
 
     private val TAG = ScanActivity::class.simpleName
+    private var app: HttpToolkitApplication? = null
 
     private var scannerView: ZXingScannerView? = null
 
@@ -28,17 +29,21 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
         scannerView = ZXingScannerView(this)
         scannerView!!.setFormats(listOf(BarcodeFormat.QR_CODE))
         setContentView(scannerView)
+        app = this.application as HttpToolkitApplication
     }
 
     public override fun onResume() {
         super.onResume()
 
+        app!!.trackScreen("Scan")
         scannerView!!.setResultHandler(this)
         scannerView!!.startCamera()
     }
 
     public override fun onPause() {
         super.onPause()
+
+        app!!.clearScreen()
         scannerView!!.stopCamera()
     }
 
@@ -54,5 +59,6 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
     override fun handleResult(rawResult: Result) {
         val url = rawResult.text
         Log.v(TAG, "Scanned $url")
+        app!!.trackEvent("Setup", "tag-scanned")
     }
 }

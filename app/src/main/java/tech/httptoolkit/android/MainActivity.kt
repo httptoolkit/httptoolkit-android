@@ -45,6 +45,7 @@ bYI=
 class MainActivity : AppCompatActivity() {
 
     private val TAG = MainActivity::class.simpleName
+    private var app: HttpToolkitApplication? = null
 
     private var localBroadcastManager: LocalBroadcastManager? = null
     private val broadcastReceiver = object : BroadcastReceiver() {
@@ -71,6 +72,17 @@ class MainActivity : AppCompatActivity() {
             addAction(VPN_STARTED_BROADCAST)
             addAction(VPN_STOPPED_BROADCAST)
         })
+        app = this.application as HttpToolkitApplication
+    }
+
+    override fun onResume() {
+        super.onResume()
+        app!!.trackScreen("Main")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        app!!.clearScreen()
     }
 
     override fun onDestroy() {
@@ -84,6 +96,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun scanCode(@Suppress("UNUSED_PARAMETER") view: View) {
+        app!!.trackEvent("Button", "scan-code")
         startActivity(Intent(this, ScanActivity::class.java))
     }
 
@@ -92,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         vpnEnabled = !vpnEnabled
 
         if (vpnEnabled) {
+            app!!.trackEvent("Button", "start-vpn")
             val vpnIntent = VpnService.prepare(this)
             Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
 
@@ -101,6 +115,7 @@ class MainActivity : AppCompatActivity() {
                 onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
             }
         } else {
+            app!!.trackEvent("Button", "stop-vpn")
             startService(Intent(this, ProxyVpnService::class.java).apply {
                 action = STOP_VPN_ACTION
             })
@@ -142,12 +157,14 @@ class MainActivity : AppCompatActivity() {
         val certificateAlias = keyStore.getCertificateAlias(cert)
 
         if (certificateAlias == null) {
+            app!!.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
             val certInstallIntent = KeyChain.createInstallIntent()
             certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
             certInstallIntent.putExtra(EXTRA_CERTIFICATE, cert.encoded)
             startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
         } else {
+            app!!.trackEvent("Setup", "existing-cert")
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
         }

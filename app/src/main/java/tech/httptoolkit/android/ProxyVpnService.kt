@@ -34,6 +34,7 @@ const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAS
 class ProxyVpnService : VpnService(), IProtectSocket {
 
     private val TAG = ProxyVpnService::class.simpleName
+    private var app: HttpToolkitApplication? = null
 
     private var localBroadcastManager: LocalBroadcastManager? = null
 
@@ -47,6 +48,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         if (localBroadcastManager == null) {
             localBroadcastManager = LocalBroadcastManager.getInstance(this)
         }
+        app = this.application as HttpToolkitApplication
 
         if (intent.action == START_VPN_ACTION) {
             startVpn()
@@ -59,6 +61,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     override fun onRevoke() {
         super.onRevoke()
+        app!!.trackEvent("VPN", "vpn-revoked")
         Log.i(TAG, "onRevoke called")
         stopVpn()
     }
@@ -99,6 +102,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     private fun startVpn() {
         if (vpnInterface == null) {
+            app!!.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
+            app!!.trackEvent("VPN", "vpn-started")
             vpnInterface = Builder()
                 .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
@@ -122,6 +127,9 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     private fun stopVpn() {
         if (vpnRunnable != null) {
+            app!!.trackEvent("VPN", "vpn-stopped")
+            app!!.resumeEvents()
+
             vpnRunnable!!.stop()
             vpnRunnable = null
         }

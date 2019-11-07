@@ -14,12 +14,14 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "SENTRY_DSN", "null"
+        buildConfigField "String", "GA_ID", "null"
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField "String", "SENTRY_DSN", "\"https://6943ce7476d54485a5998ad45289a9bc@sentry.io/1809979\""
+            buildConfigField "String", "GA_ID", "\"UA-117670723-3\""
         }
     }
 }
@@ -39,6 +41,7 @@ dependencies {
     implementation 'me.dm7.barcodescanner:zxing:1.9.13'
     implementation 'io.sentry:sentry-android:1.7.27'
     implementation 'org.slf4j:slf4j-nop:1.7.25'
+    compile 'com.google.android.gms:play-services-analytics:10.2.4'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
