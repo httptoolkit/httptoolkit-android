@@ -60,12 +60,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private var vpnEnabled: Boolean = false
+    private var vpnEnabled: Boolean = isVpnActive()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
+        updateVpnUiState()
 
         localBroadcastManager = LocalBroadcastManager.getInstance(this)
         localBroadcastManager!!.registerReceiver(broadcastReceiver, IntentFilter().apply {

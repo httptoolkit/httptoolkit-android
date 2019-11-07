@@ -31,6 +31,14 @@ const val STOP_VPN_ACTION = "tech.httptoolkit.android.STOP_VPN_ACTION"
 const val VPN_STARTED_BROADCAST = "tech.httptoolkit.android.VPN_STARTED_BROADCAST"
 const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAST"
 
+private var currentService: ProxyVpnService? = null
+fun isVpnActive(): Boolean {
+    return if (currentService == null)
+        false
+    else
+        currentService?.isActive() ?: false
+}
+
 class ProxyVpnService : VpnService(), IProtectSocket {
 
     private val TAG = ProxyVpnService::class.simpleName
@@ -42,6 +50,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     private var vpnRunnable: ProxyVpnRunnable? = null
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        currentService = this
         Log.i(TAG, "onStartCommand called")
         Log.i(TAG, if (intent.action != null) intent.action else "no action")
 
@@ -141,6 +150,10 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         stopForeground(true)
         localBroadcastManager!!.sendBroadcast(Intent(VPN_STOPPED_BROADCAST))
+    }
+
+    fun isActive(): Boolean {
+        return this.vpnInterface != null
     }
 
 }
