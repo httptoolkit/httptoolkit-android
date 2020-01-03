@@ -24,6 +24,9 @@ android {
             buildConfigField "String", "GA_ID", "\"UA-117670723-3\""
         }
     }
+    lintOptions {
+        lintConfig file("./lint.xml")
+    }
 }
 
 repositories {
