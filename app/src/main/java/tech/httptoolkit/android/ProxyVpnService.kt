@@ -19,9 +19,6 @@ import java.net.Socket
 private const val ALL_ROUTES = "0.0.0.0"
 private const val VPN_IP_ADDRESS = "169.254.61.43" // Random link-local IP, this will be the tunnel's IP
 
-private const val PROXY_ADDRESS = "10.0.0.110"
-private const val PROXY_PORT = 8000
-
 private const val NOTIFICATION_ID = 45456
 private const val NOTIFICATION_CHANNEL_ID = "vpn-notifications"
 
@@ -30,6 +27,8 @@ const val STOP_VPN_ACTION = "tech.httptoolkit.android.STOP_VPN_ACTION"
 
 const val VPN_STARTED_BROADCAST = "tech.httptoolkit.android.VPN_STARTED_BROADCAST"
 const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAST"
+
+const val PROXY_CONFIG_EXTRA = "tech.httptoolkit.android.PROXY_CONFIG"
 
 private var currentService: ProxyVpnService? = null
 fun isVpnActive(): Boolean {
@@ -60,7 +59,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         app = this.application as HttpToolkitApplication
 
         if (intent.action == START_VPN_ACTION) {
-            startVpn()
+            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
+            startVpn(proxyConfig)
         } else if (intent.action == STOP_VPN_ACTION) {
             stopVpn()
         }
@@ -109,7 +109,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     }
 
-    private fun startVpn() {
+    private fun startVpn(proxyConfig: ProxyConfig) {
         if (vpnInterface == null) {
             app!!.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
             app!!.trackEvent("VPN", "vpn-started")
@@ -120,14 +120,18 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 .establish()
 
             showServiceNotification()
-            localBroadcastManager!!.sendBroadcast(Intent(VPN_STARTED_BROADCAST))
+            localBroadcastManager!!.sendBroadcast(
+                Intent(VPN_STARTED_BROADCAST).apply {
+                    putExtra(PROXY_CONFIG_EXTRA, proxyConfig)
+                }
+            )
 
             SocketProtector.getInstance().setProtector(this)
 
             vpnRunnable = ProxyVpnRunnable(
                 vpnInterface!!,
-                PROXY_ADDRESS,
-                PROXY_PORT,
+                proxyConfig.ip,
+                proxyConfig.port,
                 intArrayOf(80, 443)
             )
             Thread(vpnRunnable, "Vpn thread").start()

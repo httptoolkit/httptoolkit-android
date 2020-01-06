@@ -4,45 +4,55 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.net.VpnService
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
 import android.security.KeyChain.EXTRA_NAME
+import android.util.Base64
 import android.util.Log
 import android.view.View
-import android.widget.TextView
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.beust.klaxon.Klaxon
+import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.ByteArrayInputStream
+import java.lang.IllegalArgumentException
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.security.cert.CertificateFactory
 import java.security.KeyStore
+import java.net.ConnectException
+import java.security.MessageDigest
+import java.security.cert.Certificate
+import java.security.cert.X509Certificate
 
 
 const val START_VPN_REQUEST = 123
 const val INSTALL_CERT_REQUEST = 456
+const val SCAN_REQUEST = 789
 
-const val PROXY_CERTIFICATE = """-----BEGIN CERTIFICATE-----
-MIICzjCCAbagAwIBAgIQLNggwsgpTyi+8AyfhjeGujANBgkqhkiG9w0BAQsFADAa
-MRgwFgYDVQQDEw9IVFRQIFRvb2xraXQgQ0EwHhcNMTkwOTI0MTkyNzA0WhcNMjAw
-OTI1MTkyNzA0WjAaMRgwFgYDVQQDEw9IVFRQIFRvb2xraXQgQ0EwggEiMA0GCSqG
-SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCxPhKSGpISlTTQFu8fut2A0wxfABIt6uor
-tC/G0EGtj0WY6+9XCgj9zdPiPPTj99yOZ0PcdDFWhCLKb3bCxiKsHsmk5r/envuR
-co1Y+AIfUGLicmkYWOlMzJTYoZ5DHKnmLRk4sRhfO5uYO1D/IqRBUNIiEWw+G+3i
-q0ApPQhWs3Aa6OzEfsVK54FgYdN7go2VmTqmlET7xQz1GC9HOCX/WRbQp22DmLp8
-9YLqGj9ktTxCJ31wWlPtBZSKTsGmD5pzxZrq3uHzNmhU9HjxZBBT/KgjnAVg5ydw
-ayr1nwm7FNZN2O6w5Ap11vKKG12uMiW66hLzEX9qOWxMBH+X4m9FAgMBAAGjEDAO
-MAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAG8VVWMNu0LhlT1sJYhF
-5UU+JIl+oPXNQf+xq+94t1m1gnQXdb54gVKPzT83gtWVKJkyqcL6/q6EnBjj5S0m
-Gg3yA88FLq/tKtnYh9PxQvC2tsZ9mbBRj3fHxAaNy8SnUZcpKRAioDYbcf8PUOn9
-vuNeLE+GM6JjP1p6MDkSWpuDLU5EywVHwx8hNdl9ECrRtCwhEtjGgY/k9hf59lyo
-xj1gUGoS3wxJQo6xV619wRxPvUyJtR8P/OvbYk8l95V2u3JfvS8E5lLng58C40nu
-Z8qaoUyskFJl/MlBoAgIgM9HB+6Uc9M+dvgPl91G3xWegjr0YDEf2Y8pz2X7bmCc
-bYI=
------END CERTIFICATE-----
-"""
+enum class MainState {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED,
+    DISCONNECTING
+}
 
-class MainActivity : AppCompatActivity() {
+private fun getCerticateFingerprint(cert: X509Certificate): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    md.update(cert.publicKey.encoded)
+    val fingerprint = md.digest()
+    return Base64.encodeToString(
+        fingerprint,
+        Base64.URL_SAFE or Base64.NO_WRAP // We use -_ rather than +/ for URLs
+    )
+}
+
+class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private val TAG = MainActivity::class.simpleName
     private var app: HttpToolkitApplication? = null
@@ -51,16 +61,20 @@ class MainActivity : AppCompatActivity() {
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == VPN_STARTED_BROADCAST) {
-                vpnEnabled = true
+                mainState = MainState.CONNECTED
+                currentProxyConfig = intent.getParcelableExtra(PROXY_CONFIG_EXTRA)
                 updateVpnUiState()
             } else if (intent.action == VPN_STOPPED_BROADCAST) {
-                vpnEnabled = false
+                mainState = MainState.DISCONNECTED
+                currentProxyConfig = null
                 updateVpnUiState()
             }
         }
     }
 
-    private var vpnEnabled: Boolean = isVpnActive()
+    private var mainState: MainState = if (isVpnActive()) MainState.CONNECTED else MainState.DISCONNECTED
+    // If connected/connecting, the proxy we're connected/trying to connect to. Otherwise null.
+    private var currentProxyConfig: ProxyConfig? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,37 +106,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateVpnUiState() {
-        val toggleButton = findViewById<TextView>(R.id.toggleButton)
-        toggleButton.text = if (vpnEnabled) "Stop Intercepting" else "Start Intercepting"
     }
 
     fun scanCode(@Suppress("UNUSED_PARAMETER") view: View) {
         app!!.trackEvent("Button", "scan-code")
-        startActivity(Intent(this, ScanActivity::class.java))
+        startActivityForResult(Intent(this, ScanActivity::class.java), SCAN_REQUEST)
     }
 
-    fun toggleVpn(@Suppress("UNUSED_PARAMETER") view: View) {
-        Log.i(TAG, "Toggle VPN")
-        vpnEnabled = !vpnEnabled
+    fun connectToVpn(config: ProxyConfig) {
+        Log.i(TAG, "Connect to VPN")
 
-        if (vpnEnabled) {
-            app!!.trackEvent("Button", "start-vpn")
-            val vpnIntent = VpnService.prepare(this)
-            Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
+        this.mainState = MainState.CONNECTING
+        this.currentProxyConfig = config
+        updateVpnUiState()
 
-            if (vpnIntent != null) {
-                startActivityForResult(vpnIntent, START_VPN_REQUEST)
-            } else {
-                onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
-            }
+        app!!.trackEvent("Button", "start-vpn")
+        val vpnIntent = VpnService.prepare(this)
+        Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
+
+        if (vpnIntent != null) {
+            startActivityForResult(vpnIntent, START_VPN_REQUEST)
         } else {
-            app!!.trackEvent("Button", "stop-vpn")
-            startService(Intent(this, ProxyVpnService::class.java).apply {
-                action = STOP_VPN_ACTION
-            })
+            onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
         }
 
+    }
+
+    fun disconnect() {
+        this.mainState = MainState.DISCONNECTING
+        this.currentProxyConfig = null
         updateVpnUiState()
+
+        app!!.trackEvent("Button", "stop-vpn")
+        startService(Intent(this, ProxyVpnService::class.java).apply {
+            action = STOP_VPN_ACTION
+        })
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -132,37 +150,112 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, when (requestCode) {
             START_VPN_REQUEST -> "start-vpn"
             INSTALL_CERT_REQUEST -> "install-cert"
+            SCAN_REQUEST -> "scan-request"
             else -> requestCode.toString()
         })
         Log.i(TAG, if (resultCode == RESULT_OK) "ok" else resultCode.toString())
 
-        if (requestCode == START_VPN_REQUEST && resultCode == RESULT_OK) {
+        if (resultCode != RESULT_OK) return
+
+        if (requestCode == START_VPN_REQUEST && currentProxyConfig != null) {
             Log.i(TAG, "Installing cert")
-            ensureCertificateTrusted()
-        } else if (requestCode == INSTALL_CERT_REQUEST && resultCode == RESULT_OK) {
+            ensureCertificateTrusted(currentProxyConfig!!)
+        } else if (requestCode == INSTALL_CERT_REQUEST) {
             Log.i(TAG, "Starting VPN")
             startService(Intent(this, ProxyVpnService::class.java).apply {
                 action = START_VPN_ACTION
+                putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
             })
+        } else if (requestCode == SCAN_REQUEST && data != null) {
+            val url = data.getStringExtra(SCANNED_URL_EXTRA)
+            launch { connectToVpnFromUrl(Uri.parse(url)) }
         }
     }
 
-    private fun ensureCertificateTrusted() {
+    private suspend fun connectToVpnFromUrl(uri: Uri) {
+        withContext(Dispatchers.IO) {
+            val data = uri.getQueryParameter("data")
+            val proxyInfo = Klaxon().parse<ProxyInfo>(data)
+                // TODO: Wrap this all in a try, and properly handle failures
+                ?: throw IllegalArgumentException("Invalid proxy JSON: $data")
+
+            val config = getProxyConfig(proxyInfo)
+            connectToVpn(config)
+        }
+    }
+
+    private suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
+        return withContext(Dispatchers.IO) {
+            Log.v(TAG, "Validating proxy info $proxyInfo")
+
+            val request = Request.Builder()
+                .url("http://android.httptoolkit.tech/certificate")
+                .build()
+
+            val certFactory = CertificateFactory.getInstance("X.509")
+
+            var validatedIp: String? = null
+            var validatedCertificate: Certificate? = null
+
+            for (possibleIp in proxyInfo.ips) {
+                val httpClient = OkHttpClient.Builder()
+                    .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(possibleIp, proxyInfo.port)))
+                    .build()
+
+                try {
+                    val certString = httpClient.newCall(request).execute().use { response ->
+                        if (response.code != 200) {
+                            throw ConnectException("Proxy responded with non-200: ${response.code}")
+                        }
+                        response.body!!.string()
+                    }
+                    val foundCert = certFactory.generateCertificate(
+                        ByteArrayInputStream(certString.toByteArray(Charsets.UTF_8))
+                    ) as X509Certificate
+                    val foundCertHash = getCerticateFingerprint(foundCert)
+
+                    if (proxyInfo.certificateHash == foundCertHash) {
+                        validatedCertificate = foundCert
+                        validatedIp = possibleIp
+                        break
+                    } else {
+                        Log.w(TAG, "Proxy returned mismatched certificate: '${
+                            proxyInfo.certificateHash
+                        }' != '$foundCertHash' ($possibleIp) ${
+                            proxyInfo.certificateHash == foundCertHash
+                        } ${
+                            proxyInfo.certificateHash.equals(foundCertHash)
+                        }")
+                    }
+                } catch (e: Exception) {
+                    Log.v(TAG, "Error for ip $possibleIp: $e")
+                }
+            }
+
+            if (validatedIp != null && validatedCertificate != null) {
+                ProxyConfig(
+                    validatedIp,
+                    proxyInfo.port,
+                    validatedCertificate
+                )
+            } else {
+                throw ConnectException("Could not connect to proxy")
+            }
+        }
+    }
+
+    private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
         val keyStore = KeyStore.getInstance("AndroidCAStore")
         keyStore.load(null, null)
 
-        val certFactory = CertificateFactory.getInstance("X.509")
-        val cert = certFactory.generateCertificate(
-            ByteArrayInputStream(PROXY_CERTIFICATE.toByteArray(Charsets.UTF_8))
-        )
-        val certificateAlias = keyStore.getCertificateAlias(cert)
+        val certificateAlias = keyStore.getCertificateAlias(proxyConfig.certificate)
 
         if (certificateAlias == null) {
             app!!.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
             val certInstallIntent = KeyChain.createInstallIntent()
             certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
-            certInstallIntent.putExtra(EXTRA_CERTIFICATE, cert.encoded)
+            certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
             startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
         } else {
             app!!.trackEvent("Setup", "existing-cert")

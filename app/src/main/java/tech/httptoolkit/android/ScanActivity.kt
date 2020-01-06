@@ -1,6 +1,7 @@
 package tech.httptoolkit.android
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -9,6 +10,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.Result
 import me.dm7.barcodescanner.zxing.ZXingScannerView
 
+const val SCANNED_URL_EXTRA = "tech.httptoolkit.android.SCANNED_URL"
 
 class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
 
@@ -58,7 +60,19 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
 
     override fun handleResult(rawResult: Result) {
         val url = rawResult.text
+
+        if (!url.startsWith("https://android.httptoolkit.tech/connect/")) {
+            Log.v(TAG, "Scanned unrecognized QR code: $url")
+            scannerView?.resumeCameraPreview(this)
+            return
+        }
+
         Log.v(TAG, "Scanned $url")
         app!!.trackEvent("Setup", "tag-scanned")
+
+        setResult(RESULT_OK, Intent().let { intent ->
+            intent.putExtra(SCANNED_URL_EXTRA, url)
+        })
+        finish()
     }
 }
