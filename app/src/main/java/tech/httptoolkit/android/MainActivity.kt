@@ -1,9 +1,7 @@
 package tech.httptoolkit.android
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.app.AlertDialog
+import android.content.*
 import android.net.Uri
 import android.net.VpnService
 import androidx.appcompat.app.AppCompatActivity
@@ -42,7 +40,7 @@ enum class MainState {
     DISCONNECTING
 }
 
-private fun getCerticateFingerprint(cert: X509Certificate): String {
+private fun getCertificateFingerprint(cert: X509Certificate): String {
     val md = MessageDigest.getInstance("SHA-256")
     md.update(cert.publicKey.encoded)
     val fingerprint = md.digest()
@@ -88,6 +86,38 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             addAction(VPN_STOPPED_BROADCAST)
         })
         app = this.application as HttpToolkitApplication
+
+        // TODO: Listen for referrer data from app installs too
+
+        // Check if first run
+        // Check if packageManager.getPackageInfo(packageName, 0).firstInstallTime is recent
+        // ^ TODO: Test if this is reset on reinstall
+        // If it's recent (1 hour), get the referrer
+        // If set & valid (android...), use it.
+
+        if (intent != null && intent.action == Intent.ACTION_VIEW) {
+
+            // TODO: Save global state, remembering the last proxy we connected to.
+            // Only show this message if there has been at least one.
+
+            // If we were started from an intent (e.g. another barcode scanner/link), confirm
+            // interception, then start the VPN.
+            AlertDialog.Builder(this)
+                .setTitle("Enable Interception")
+                .setMessage(
+                    "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
+                    "\n\n" +
+                    "Only accept this if you trust the source."
+                )
+                // Specifying a listener allows you to take an action before dismissing the dialog.
+                // The dialog is automatically dismissed when a dialog button is clicked.
+                .setPositiveButton("Enable"){ _, _ ->
+                    launch { connectToVpnFromUrl(intent.data!!) }
+                 }
+                .setNegativeButton("Cancel", null)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show()
+        }
     }
 
     override fun onResume() {
@@ -212,7 +242,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     val foundCert = certFactory.generateCertificate(
                         ByteArrayInputStream(certString.toByteArray(Charsets.UTF_8))
                     ) as X509Certificate
-                    val foundCertHash = getCerticateFingerprint(foundCert)
+                    val foundCertHash = getCertificateFingerprint(foundCert)
 
                     if (proxyInfo.certificateHash == foundCertHash) {
                         validatedCertificate = foundCert
@@ -244,13 +274,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
-    private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
+    private fun isVpnConfigured(): Boolean {
+        return VpnService.prepare(this) == null
+    }
+
+    private fun isCertTrusted(proxyConfig: ProxyConfig): Boolean {
         val keyStore = KeyStore.getInstance("AndroidCAStore")
         keyStore.load(null, null)
 
         val certificateAlias = keyStore.getCertificateAlias(proxyConfig.certificate)
+        return certificateAlias != null
+    }
 
-        if (certificateAlias == null) {
+    private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
+        if (isCertTrusted(proxyConfig)) {
             app!!.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
             val certInstallIntent = KeyChain.createInstallIntent()
