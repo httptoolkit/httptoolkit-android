@@ -230,18 +230,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 .build()
 
             val request = Request.Builder()
-                .url("http://android.httptoolkit.tech/certificate")
+                .url("http://android.httptoolkit.tech/config")
                 .build()
 
             try {
-                val certString = httpClient.newCall(request).execute().use { response ->
+                val configString = httpClient.newCall(request).execute().use { response ->
                     if (response.code != 200) {
                         throw ConnectException("Proxy responded with non-200: ${response.code}")
                     }
                     response.body!!.string()
                 }
+                val config = Klaxon().parse<ReceivedProxyConfig>(configString)!!
+
                 val foundCert = certFactory.generateCertificate(
-                    ByteArrayInputStream(certString.toByteArray(Charsets.UTF_8))
+                    ByteArrayInputStream(config.certificate.toByteArray(Charsets.UTF_8))
                 ) as X509Certificate
                 val foundCertFingerprint = getCerticateFingerprint(foundCert)
 

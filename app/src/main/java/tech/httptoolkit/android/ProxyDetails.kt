@@ -29,6 +29,17 @@ data class ProxyInfo(
 ) : Parcelable
 
 /**
+ * The raw proxy config we receive when making a request to
+ * android.httptoolkit.tech/config via a proxy.
+ * Just a certificate for now, but wrapped in JSON so that we
+ * can easily extend it with more fields later on.
+ */
+@Parcelize
+data class ReceivedProxyConfig(
+    val certificate: String
+) : Parcelable
+
+/**
  * ProxyConfig represents full & recently validated proxy configuration,
  * which can be immediately used to start a VPN connection.
  */
