@@ -13,15 +13,18 @@ suspend fun <T>Collection<Deferred<T>>.awaitFirst(): T {
     // If all items fail, we reject the deferred with the final error.
     this.forEach { item ->
         item.invokeOnCompletion { error ->
-            if (!result.isActive) return@invokeOnCompletion
+            synchronized(result) {
+                if (!result.isActive) return@invokeOnCompletion
 
-            if (error == null) {
-                result.complete(item.getCompleted())
-            } else {
-                val remaining = stillRunningCount.decrementAndGet()
-                if (remaining == 0) {
-                    result.completeExceptionally(error)
+                if (error == null) {
+                    result.complete(item.getCompleted())
+                } else {
+                    val remaining = stillRunningCount.decrementAndGet()
+                    if (remaining == 0) {
+                        result.completeExceptionally(error)
+                    }
                 }
+                return@synchronized // Avoid issues with implicit return of above
             }
         }
     }
