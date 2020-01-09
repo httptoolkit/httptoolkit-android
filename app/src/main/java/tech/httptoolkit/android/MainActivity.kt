@@ -193,58 +193,66 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         return withContext(Dispatchers.IO) {
             Log.v(TAG, "Validating proxy info $proxyInfo")
 
+            val proxyTests = proxyInfo.addresses.map { address ->
+                async {
+                    testProxyAddress(
+                        address,
+                        proxyInfo.port,
+                        proxyInfo.certFingerprint
+                    )
+                }
+            }
+
+            // Returns with the first working proxy config (cert & address),
+            // or throws if all possible addresses are unreachable/invalid
+            proxyTests.awaitFirst()
+        }
+    }
+
+    private suspend fun testProxyAddress(
+        address: String,
+        port: Int,
+        expectedFingerprint: String
+    ): ProxyConfig {
+        return withContext(Dispatchers.IO) {
+            val certFactory = CertificateFactory.getInstance("X.509")
+
+            val httpClient = OkHttpClient.Builder()
+                .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(address, port)))
+                .build()
+
             val request = Request.Builder()
                 .url("http://android.httptoolkit.tech/certificate")
                 .build()
 
-            val certFactory = CertificateFactory.getInstance("X.509")
-
-            var validatedIp: String? = null
-            var validatedCertificate: Certificate? = null
-
-            for (possibleIp in proxyInfo.ips) {
-                val httpClient = OkHttpClient.Builder()
-                    .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(possibleIp, proxyInfo.port)))
-                    .build()
-
-                try {
-                    val certString = httpClient.newCall(request).execute().use { response ->
-                        if (response.code != 200) {
-                            throw ConnectException("Proxy responded with non-200: ${response.code}")
-                        }
-                        response.body!!.string()
+            try {
+                val certString = httpClient.newCall(request).execute().use { response ->
+                    if (response.code != 200) {
+                        throw ConnectException("Proxy responded with non-200: ${response.code}")
                     }
-                    val foundCert = certFactory.generateCertificate(
-                        ByteArrayInputStream(certString.toByteArray(Charsets.UTF_8))
-                    ) as X509Certificate
-                    val foundCertHash = getCerticateFingerprint(foundCert)
-
-                    if (proxyInfo.certificateHash == foundCertHash) {
-                        validatedCertificate = foundCert
-                        validatedIp = possibleIp
-                        break
-                    } else {
-                        Log.w(TAG, "Proxy returned mismatched certificate: '${
-                            proxyInfo.certificateHash
-                        }' != '$foundCertHash' ($possibleIp) ${
-                            proxyInfo.certificateHash == foundCertHash
-                        } ${
-                            proxyInfo.certificateHash.equals(foundCertHash)
-                        }")
-                    }
-                } catch (e: Exception) {
-                    Log.v(TAG, "Error for ip $possibleIp: $e")
+                    response.body!!.string()
                 }
-            }
+                val foundCert = certFactory.generateCertificate(
+                    ByteArrayInputStream(certString.toByteArray(Charsets.UTF_8))
+                ) as X509Certificate
+                val foundCertFingerprint = getCerticateFingerprint(foundCert)
 
-            if (validatedIp != null && validatedCertificate != null) {
-                ProxyConfig(
-                    validatedIp,
-                    proxyInfo.port,
-                    validatedCertificate
-                )
-            } else {
-                throw ConnectException("Could not connect to proxy")
+                if (foundCertFingerprint == expectedFingerprint) {
+                    ProxyConfig(
+                        address,
+                        port,
+                        foundCert
+                    )
+                } else {
+                    throw CertificateException(
+                        "Proxy returned mismatched certificate: '${
+                            expectedFingerprint
+                        }' != '$foundCertFingerprint' ($address)"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.i(TAG, "Error testing proxy address $address: $e")
+                throw e
             }
         }
     }
