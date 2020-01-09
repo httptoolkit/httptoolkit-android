@@ -26,8 +26,9 @@ import java.net.Proxy
 import java.security.cert.CertificateFactory
 import java.security.KeyStore
 import java.net.ConnectException
+import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import java.security.cert.Certificate
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 
 
@@ -46,10 +47,7 @@ private fun getCerticateFingerprint(cert: X509Certificate): String {
     val md = MessageDigest.getInstance("SHA-256")
     md.update(cert.publicKey.encoded)
     val fingerprint = md.digest()
-    return Base64.encodeToString(
-        fingerprint,
-        Base64.URL_SAFE or Base64.NO_WRAP // We use -_ rather than +/ for URLs
-    )
+    return Base64.encodeToString(fingerprint, Base64.NO_WRAP)
 }
 
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
@@ -174,7 +172,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private suspend fun connectToVpnFromUrl(uri: Uri) {
         withContext(Dispatchers.IO) {
-            val data = uri.getQueryParameter("data")
+            val dataBase64 = uri.getQueryParameter("data")
+
+            // Data is a JSON string, encoded as base64, to solve escaping & ensure that the
+            // most popular standard barcode apps treat it as a single URL (some get confused by
+            // JSON that contains ip addresses otherwise)
+            val data = String(Base64.decode(dataBase64, Base64.URL_SAFE), StandardCharsets.UTF_8)
+            Log.v(TAG, "URL data is $data")
+
             val proxyInfo = Klaxon().parse<ProxyInfo>(data)
                 // TODO: Wrap this all in a try, and properly handle failures
                 ?: throw IllegalArgumentException("Invalid proxy JSON: $data")

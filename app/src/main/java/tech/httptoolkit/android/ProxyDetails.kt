@@ -13,7 +13,7 @@ data class ProxyInfo(
     /**
      * The known ips of the proxy, in priority order.
      */
-    val ips: List<String>,
+    val addresses: List<String>,
 
     /**
      * The port of the proxy
@@ -21,11 +21,11 @@ data class ProxyInfo(
     val port: Int,
 
     /**
-     * The expected hash of the proxy certificate. The certificate itself is obtained from the
+     * The expected PK hash of the proxy certificate. The certificate itself is obtained from the
      * proxy, as part of validating the connection. This hash is included in QR codes to
      * protect against MitM of our MitM during setup.
      */
-    val certificateHash: String
+    val certFingerprint: String
 ) : Parcelable
 
 /**
