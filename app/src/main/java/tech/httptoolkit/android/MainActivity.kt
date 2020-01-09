@@ -44,7 +44,7 @@ enum class MainState {
     DISCONNECTING
 }
 
-private fun getCerticateFingerprint(cert: X509Certificate): String {
+private fun getCertificateFingerprint(cert: X509Certificate): String {
     val md = MessageDigest.getInstance("SHA-256")
     md.update(cert.publicKey.encoded)
     val fingerprint = md.digest()
@@ -195,12 +195,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             Log.v(TAG, "Validating proxy info $proxyInfo")
 
             val proxyTests = proxyInfo.addresses.map { address ->
-                async {
-                    testProxyAddress(
-                        address,
-                        proxyInfo.port,
-                        proxyInfo.certFingerprint
-                    )
+                supervisorScope {
+                    async {
+                        testProxyAddress(
+                            address,
+                            proxyInfo.port,
+                            proxyInfo.certFingerprint
+                        )
+                    }
                 }
             }
 
@@ -245,7 +247,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 val foundCert = certFactory.generateCertificate(
                     ByteArrayInputStream(config.certificate.toByteArray(Charsets.UTF_8))
                 ) as X509Certificate
-                val foundCertFingerprint = getCerticateFingerprint(foundCert)
+                val foundCertFingerprint = getCertificateFingerprint(foundCert)
 
                 if (foundCertFingerprint == expectedFingerprint) {
                     ProxyConfig(
