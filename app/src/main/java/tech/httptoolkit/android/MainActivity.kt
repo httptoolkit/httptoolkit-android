@@ -205,7 +205,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
             // Returns with the first working proxy config (cert & address),
             // or throws if all possible addresses are unreachable/invalid
-            proxyTests.awaitFirst()
+            // Once the first test succeeds, we cancel any others
+            val result = proxyTests.awaitFirst()
+            proxyTests.forEach { test ->
+                test.cancel()
+            }
+            return@withContext result
         }
     }
 
