@@ -47,7 +47,8 @@ enum class MainState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
-    DISCONNECTING
+    DISCONNECTING,
+    FAILED
 }
 
 private fun getCertificateFingerprint(cert: X509Certificate): String {
@@ -155,6 +156,15 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 detailText.visibility = View.GONE
                 buttonContainer.visibility = View.GONE
             }
+            MainState.FAILED -> {
+                statusText.setText(R.string.failed_status)
+
+                detailText.visibility = View.VISIBLE
+                detailText.setText(R.string.failed_details)
+
+                buttonContainer.visibility = View.VISIBLE
+                buttonContainer.addView(primaryButton(R.string.try_again_button, ::resetAfterFailure))
+            }
         }
 
         if (buttonContainer.visibility == View.VISIBLE) {
@@ -209,6 +219,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = STOP_VPN_ACTION
         })
+    }
+
+    private fun resetAfterFailure() {
+        currentProxyConfig = null
+        mainState = MainState.DISCONNECTED
+        updateUi()
     }
 
     private fun openDocs() {
@@ -266,8 +282,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 // TODO: Wrap this all in a try, and properly handle failures
                 ?: throw IllegalArgumentException("Invalid proxy JSON: $data")
 
-            val config = getProxyConfig(proxyInfo)
-            connectToVpn(config)
+            try {
+                val config = getProxyConfig(proxyInfo)
+                connectToVpn(config)
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    app!!.trackEvent("Setup", "connect-failed")
+                    mainState = MainState.FAILED
+                    updateUi()
+                }
+            }
         }
     }
 

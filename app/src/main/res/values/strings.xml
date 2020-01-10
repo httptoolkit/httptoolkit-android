@@ -8,6 +8,7 @@
     <string name="disconnecting_status">Disconnecting...</string>
     <string name="connecting_status">Connecting...</string>
     <string name="connected_status">Connected</string>
+    <string name="failed_status">Oh no!</string>
 
     <string name="disconnected_details">
         To intercept this device, start HTTP Toolkit on your computer, click the Android
@@ -16,9 +17,15 @@
     <string name="connected_details">
         to %s:%d
     </string>
+    <string name="failed_details">
+        We couldn\'t connect to HTTP Toolkit.
+        \n\n
+        Is it running, and connected to the same network as this device?
+    </string>
 
     <string name="scan_button">Scan Code</string>
     <string name="manual_button">Connect Manually</string>
     <string name="disconnect_button">Disconnect</string>
     <string name="docs_button">Read the Docs</string>
+    <string name="try_again_button">Try Again</string>
 </resources>
