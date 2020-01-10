@@ -56,26 +56,13 @@
             style="@style/ButtonsCard"
             >
         <LinearLayout
+                android:id="@+id/buttonLayoutContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="16dp"
                 android:paddingTop="12dp"
                 android:paddingBottom="10dp">
-
-            <com.google.android.material.button.MaterialButton
-                    android:id="@+id/primaryButton"
-                    style="@style/PrimaryButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Scan Code" />
-
-            <com.google.android.material.button.MaterialButton
-                    android:id="@+id/docsButton"
-                    style="@style/SecondaryButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Read the Docs" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

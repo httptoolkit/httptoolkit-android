@@ -14,8 +14,14 @@ import android.security.KeyChain.EXTRA_NAME
 import android.util.Base64
 import android.util.Log
 import android.view.View
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.annotation.LayoutRes
+import androidx.annotation.StringRes
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.beust.klaxon.Klaxon
+import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -62,24 +68,24 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             if (intent.action == VPN_STARTED_BROADCAST) {
                 mainState = MainState.CONNECTED
                 currentProxyConfig = intent.getParcelableExtra(PROXY_CONFIG_EXTRA)
-                updateVpnUiState()
+                updateUi()
             } else if (intent.action == VPN_STOPPED_BROADCAST) {
                 mainState = MainState.DISCONNECTED
                 currentProxyConfig = null
-                updateVpnUiState()
+                updateUi()
             }
         }
     }
 
     private var mainState: MainState = if (isVpnActive()) MainState.CONNECTED else MainState.DISCONNECTED
-    // If connected/connecting, the proxy we're connected/trying to connect to. Otherwise null.
+    // If connected/late-stage connecting, the proxy we're connected/trying to connect to. Otherwise null.
     private var currentProxyConfig: ProxyConfig? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
-        updateVpnUiState()
+        updateUi()
 
         localBroadcastManager = LocalBroadcastManager.getInstance(this)
         localBroadcastManager!!.registerReceiver(broadcastReceiver, IntentFilter().apply {
@@ -87,6 +93,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             addAction(VPN_STOPPED_BROADCAST)
         })
         app = this.application as HttpToolkitApplication
+
+        updateUi()
     }
 
     override fun onResume() {
@@ -104,20 +112,81 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         localBroadcastManager!!.unregisterReceiver(broadcastReceiver)
     }
 
-    private fun updateVpnUiState() {
+    private fun updateUi() {
+        val statusText = findViewById<TextView>(R.id.statusText)
+        val detailText = findViewById<TextView>(R.id.detailText)
+
+        val buttonContainer = findViewById<LinearLayout>(R.id.buttonLayoutContainer)
+        buttonContainer.removeAllViews()
+
+        when (mainState) {
+            MainState.DISCONNECTED -> {
+                statusText.setText(R.string.disconnected_status)
+
+                detailText.visibility = View.VISIBLE
+                detailText.setText(R.string.disconnected_details)
+
+                buttonContainer.visibility = View.VISIBLE
+                buttonContainer.addView(primaryButton(R.string.scan_button, ::scanCode))
+                buttonContainer.addView(secondaryButton(R.string.manual_button, { }))
+            }
+            MainState.CONNECTING -> {
+                statusText.setText(R.string.connecting_status)
+
+                detailText.visibility = View.GONE
+                buttonContainer.visibility = View.GONE
+            }
+            MainState.CONNECTED -> {
+                statusText.setText(R.string.connected_status)
+
+                detailText.visibility = View.VISIBLE
+                detailText.text = getString(
+                    R.string.connected_details,
+                    currentProxyConfig!!.ip,
+                    currentProxyConfig!!.port
+                )
+
+                buttonContainer.visibility = View.VISIBLE
+                buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
+            }
+            MainState.DISCONNECTING -> {
+                statusText.setText(R.string.disconnecting_status)
+
+                detailText.visibility = View.GONE
+                buttonContainer.visibility = View.GONE
+            }
+        }
+
+        if (buttonContainer.visibility == View.VISIBLE) {
+            buttonContainer.addView(secondaryButton(R.string.docs_button, ::openDocs))
+        }
     }
 
-    fun scanCode(@Suppress("UNUSED_PARAMETER") view: View) {
+    private fun primaryButton(@StringRes contentId: Int, clickHandler: () -> Unit): Button {
+        val button = layoutInflater.inflate(R.layout.primary_button, null) as Button
+        button.setText(contentId)
+        button.setOnClickListener { clickHandler() }
+        return button
+    }
+
+    private fun secondaryButton(@StringRes contentId: Int, clickHandler: () -> Unit): Button {
+        val button = layoutInflater.inflate(R.layout.secondary_button, null) as Button
+        button.setText(contentId)
+        button.setOnClickListener { clickHandler() }
+        return button
+    }
+
+    private fun scanCode() {
         app!!.trackEvent("Button", "scan-code")
         startActivityForResult(Intent(this, ScanActivity::class.java), SCAN_REQUEST)
     }
 
-    fun connectToVpn(config: ProxyConfig) {
+    private fun connectToVpn(config: ProxyConfig) {
         Log.i(TAG, "Connect to VPN")
 
-        this.mainState = MainState.CONNECTING
         this.currentProxyConfig = config
-        updateVpnUiState()
+        this.mainState = MainState.CONNECTING
+        updateUi()
 
         app!!.trackEvent("Button", "start-vpn")
         val vpnIntent = VpnService.prepare(this)
@@ -131,15 +200,22 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     }
 
-    fun disconnect() {
-        this.mainState = MainState.DISCONNECTING
-        this.currentProxyConfig = null
-        updateVpnUiState()
+    private fun disconnect() {
+        currentProxyConfig = null
+        mainState = MainState.DISCONNECTING
+        updateUi()
 
         app!!.trackEvent("Button", "stop-vpn")
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = STOP_VPN_ACTION
         })
+    }
+
+    private fun openDocs() {
+        val browserIntent = Intent(Intent.ACTION_VIEW,
+            Uri.parse("https://httptoolkit.tech/docs/guides/android")
+        )
+        startActivity(browserIntent)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -172,6 +248,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private suspend fun connectToVpnFromUrl(uri: Uri) {
+        withContext(Dispatchers.Main) {
+            mainState = MainState.CONNECTING
+            updateUi()
+        }
+
         withContext(Dispatchers.IO) {
             val dataBase64 = uri.getQueryParameter("data")
 

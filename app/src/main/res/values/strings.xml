@@ -1,5 +1,24 @@
 <resources>
     <string name="app_name">HTTP Toolkit</string>
+
     <string name="vpn_active_notification_content">HTTP Toolkit is currently intercepting this device</string>
     <string name="vpn_active_notification_action">Stop intercepting</string>
+
+    <string name="disconnected_status">Disconnected</string>
+    <string name="disconnecting_status">Disconnecting...</string>
+    <string name="connecting_status">Connecting...</string>
+    <string name="connected_status">Connected</string>
+
+    <string name="disconnected_details">
+        To intercept this device, start HTTP Toolkit on your computer, click the Android
+        interception option, and scan the QR code shown.
+    </string>
+    <string name="connected_details">
+        to %s:%d
+    </string>
+
+    <string name="scan_button">Scan Code</string>
+    <string name="manual_button">Connect Manually</string>
+    <string name="disconnect_button">Disconnect</string>
+    <string name="docs_button">Read the Docs</string>
 </resources>
