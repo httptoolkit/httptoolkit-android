@@ -332,8 +332,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
             val httpClient = OkHttpClient.Builder()
                 .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(address, port)))
-                .connectTimeout(2000, TimeUnit.SECONDS)
-                .readTimeout(2000, TimeUnit.SECONDS)
+                .connectTimeout(2, TimeUnit.SECONDS)
+                .readTimeout(2, TimeUnit.SECONDS)
                 .build()
 
             val request = Request.Builder()
