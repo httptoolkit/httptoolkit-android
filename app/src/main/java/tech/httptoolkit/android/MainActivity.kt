@@ -191,12 +191,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         startActivityForResult(Intent(this, ScanActivity::class.java), SCAN_REQUEST)
     }
 
-    private fun connectToVpn(config: ProxyConfig) {
+    private suspend fun connectToVpn(config: ProxyConfig) {
         Log.i(TAG, "Connect to VPN")
 
         this.currentProxyConfig = config
         this.mainState = MainState.CONNECTING
-        updateUi()
+
+        withContext(Dispatchers.Main) { updateUi() }
 
         app!!.trackEvent("Button", "start-vpn")
         val vpnIntent = VpnService.prepare(this)
@@ -286,6 +287,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 val config = getProxyConfig(proxyInfo)
                 connectToVpn(config)
             } catch (e: Exception) {
+                Log.e(TAG, e.toString())
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     app!!.trackEvent("Setup", "connect-failed")
                     mainState = MainState.FAILED
