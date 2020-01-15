@@ -23,14 +23,21 @@
         <item name="android:gravity">center</item>
     </style>
 
-    <style name="ButtonsCard" parent="@style/Widget.MaterialComponents.CardView">
+    <style name="BaseButtonsCard" parent="@style/Widget.MaterialComponents.CardView">
         <item name="android:textSize">20dp</item>
         <item name="cardBackgroundColor">@color/mainBackground</item>
         <item name="cardElevation">4dp</item>
-        <item name="shapeAppearance">@style/ButtonsCardCorners</item>
     </style>
 
-    <style name="ButtonsCardCorners">
+    <style name="PortraitButtonsCard" parent="@style/BaseButtonsCard">
+        <item name="shapeAppearance">@style/PortraitButtonsCardCorners</item>
+    </style>
+
+    <style name="LandscapeButtonsCard" parent="@style/BaseButtonsCard">
+        <item name="cardCornerRadius">5dp</item>
+    </style>
+
+    <style name="PortraitButtonsCardCorners">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSizeTopRight">5dp</item>
         <item name="cornerSizeTopLeft">5dp</item>

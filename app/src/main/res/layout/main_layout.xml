@@ -55,7 +55,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            style="@style/ButtonsCard"
+            style="@style/PortraitButtonsCard"
             >
         <LinearLayout
                 android:id="@+id/buttonLayoutContainer"
