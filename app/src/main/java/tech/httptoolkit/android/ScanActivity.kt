@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.Result
 import me.dm7.barcodescanner.zxing.ZXingScannerView
@@ -22,9 +24,9 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
     public override fun onCreate(state: Bundle?) {
         super.onCreate(state)
 
-        val canUseCamera = checkSelfPermission(Manifest.permission.CAMERA)
+        val canUseCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
         if (canUseCamera != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), 0)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 0)
             // Until confirmed, the activity will show as empty, switching to the
             // camera as soon as permission is accepted.
         }

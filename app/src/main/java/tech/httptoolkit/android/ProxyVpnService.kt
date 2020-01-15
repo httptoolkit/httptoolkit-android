@@ -4,8 +4,10 @@ import android.net.VpnService
 import android.content.Intent
 import android.app.*
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat.stopForeground
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.lipisoft.toyshark.socket.IProtectSocket
@@ -87,16 +89,17 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 PendingIntent.getService(this, 1, notificationIntent, 0)
             }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            val notificationChannel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "VPN Status",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            notificationManager.createNotificationChannel(notificationChannel)
+        }
 
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val notificationChannel = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            "VPN Status",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
-        notificationManager.createNotificationChannel(notificationChannel)
-
-        val notification: Notification = Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
+        val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentIntent(pendingActivityIntent)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.vpn_active_notification_content))
