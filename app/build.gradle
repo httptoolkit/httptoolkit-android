@@ -10,7 +10,8 @@ android {
         minSdkVersion 28
         targetSdkVersion 28
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0-alpha1"
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "SENTRY_DSN", "null"
