@@ -5,7 +5,6 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.util.concurrent.atomic.AtomicInteger
 
-@ExperimentalCoroutinesApi
 suspend fun <T>Collection<Deferred<T>>.awaitFirst(): T {
     // Create a custom deferred to return later
     val result = CompletableDeferred<T>()
@@ -19,6 +18,7 @@ suspend fun <T>Collection<Deferred<T>>.awaitFirst(): T {
                 if (!result.isActive) return@invokeOnCompletion
 
                 if (error == null) {
+                    @Suppress("EXPERIMENTAL_API_USAGE")
                     result.complete(item.getCompleted())
                 } else {
                     val remaining = stillRunningCount.decrementAndGet()
