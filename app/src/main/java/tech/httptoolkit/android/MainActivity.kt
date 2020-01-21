@@ -154,7 +154,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // Without this any QR code you scan could instantly MitM you.
             MaterialAlertDialogBuilder(this)
                 .setTitle("Enable Interception")
-                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setIcon(R.drawable.ic_exclamation_triangle)
                 .setMessage(
                     "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
                     "\n\n" +
@@ -268,7 +268,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             withContext(Dispatchers.Main) {
                 MaterialAlertDialogBuilder(this@MainActivity)
                     .setTitle("Enable interception")
-                    .setIcon(android.R.drawable.ic_dialog_info)
+                    .setIcon(R.drawable.ic_info_circle)
                     .setMessage(
                         "To intercept traffic from this device, you need to activate HTTP Toolkit's " +
                         "VPN and trust its HTTPS certificate. " +
