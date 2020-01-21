@@ -53,6 +53,7 @@ dependencies {
     implementation 'io.sentry:sentry-android:1.7.27'
     implementation 'org.slf4j:slf4j-nop:1.7.25'
     implementation 'com.google.android.gms:play-services-analytics:10.2.4'
+    implementation 'com.android.installreferrer:installreferrer:1.1'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
