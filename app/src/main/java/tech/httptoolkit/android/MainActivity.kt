@@ -338,19 +338,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
 
         withContext(Dispatchers.IO) {
-            val dataBase64 = uri.getQueryParameter("data")
-
-            // Data is a JSON string, encoded as base64, to solve escaping & ensure that the
-            // most popular standard barcode apps treat it as a single URL (some get confused by
-            // JSON that contains ip addresses otherwise)
-            val data = String(Base64.decode(dataBase64, Base64.URL_SAFE), StandardCharsets.UTF_8)
-            Log.v(TAG, "URL data is $data")
-
-            val proxyInfo = Klaxon().parse<ProxyInfo>(data)
-                // TODO: Wrap this all in a try, and properly handle failures
-                ?: throw IllegalArgumentException("Invalid proxy JSON: $data")
-
             try {
+                val dataBase64 = uri.getQueryParameter("data")
+
+                // Data is a JSON string, encoded as base64, to solve escaping & ensure that the
+                // most popular standard barcode apps treat it as a single URL (some get confused by
+                // JSON that contains ip addresses otherwise)
+                val data = String(Base64.decode(dataBase64, Base64.URL_SAFE), StandardCharsets.UTF_8)
+                Log.d(TAG, "URL data is $data")
+
+                val proxyInfo = Klaxon().parse<ProxyInfo>(data)
+                    ?: throw IllegalArgumentException("Invalid proxy JSON: $data")
+
                 val config = getProxyConfig(proxyInfo)
                 connectToVpn(config)
             } catch (e: Exception) {
