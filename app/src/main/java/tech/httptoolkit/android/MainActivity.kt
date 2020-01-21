@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.net.VpnService
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
@@ -18,21 +17,22 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.StringRes
+import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.beust.klaxon.Klaxon
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayInputStream
-import java.lang.IllegalArgumentException
+import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.Proxy
-import java.security.cert.CertificateFactory
-import java.security.KeyStore
-import java.net.ConnectException
 import java.nio.charset.StandardCharsets
+import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 
@@ -91,24 +91,74 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             addAction(VPN_STARTED_BROADCAST)
             addAction(VPN_STOPPED_BROADCAST)
         })
-        app = this.application as HttpToolkitApplication
 
+        app = this.application as HttpToolkitApplication
         updateUi()
+
+        Log.i(TAG, "Main activity created")
+
+        // Are we being opened by a VIEW intent? I.e. a barcode scan/URL elsewhere on the device
+        if (intent != null && intent.action == Intent.ACTION_VIEW) {
+            onNewIntent(intent)
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        Log.d(TAG, "onResume")
         app!!.trackScreen("Main")
     }
 
     override fun onPause() {
         super.onPause()
+        Log.d(TAG, "onPause")
         app!!.clearScreen()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "onDestroy")
         localBroadcastManager!!.unregisterReceiver(broadcastReceiver)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+
+        if (intent.action != Intent.ACTION_VIEW) {
+            Log.w(TAG, "Unknown intent. Action ${intent.action}, data: ${intent.data}")
+            return
+        }
+
+        app!!.trackEvent("Setup", "action-view")
+
+        if (app!!.lastProxy != null && isVpnConfigured()) {
+            Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
+
+            // If we were started from an intent (e.g. another barcode scanner/link), and we
+            // had a proxy before (so no prompts required) then confirm before starting the VPN.
+            // Without this any QR code you scan could instantly MitM you.
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Enable Interception")
+                .setMessage(
+                    "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
+                    "\n\n" +
+                    "Only accept this if you trust the source."
+                )
+                // Specifying a listener allows you to take an action before dismissing the dialog.
+                // The dialog is automatically dismissed when a dialog button is clicked.
+                .setPositiveButton("Enable") { _, _ ->
+                    Log.i(TAG, "Prompt confirmed")
+                    launch { connectToVpnFromUrl(intent.data!!) }
+                }
+                .setNegativeButton("Cancel") { _, _ ->
+                    Log.i(TAG, "Prompt cancelled")
+                }
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show()
+        } else {
+            Log.i(TAG, "Launching from ACTION_VIEW intent")
+            launch { connectToVpnFromUrl(intent.data!!) }
+        }
     }
 
     private fun updateUi() {
@@ -258,11 +308,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             })
         } else if (requestCode == SCAN_REQUEST && data != null) {
             val url = data.getStringExtra(SCANNED_URL_EXTRA)
-            launch { connectToVpnFromUrl(Uri.parse(url)) }
+            launch { connectToVpnFromUrl(url) }
         }
     }
 
+    private suspend fun connectToVpnFromUrl(url: String) {
+        connectToVpnFromUrl(Uri.parse(url))
+    }
+
     private suspend fun connectToVpnFromUrl(uri: Uri) {
+        Log.i(TAG, "Connecting to VPN from URL: $uri")
+        if (mainState != MainState.DISCONNECTED) return
+
         withContext(Dispatchers.Main) {
             mainState = MainState.CONNECTING
             updateUi()
@@ -375,13 +432,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
-    private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
+    private fun isVpnConfigured(): Boolean {
+        return VpnService.prepare(this) == null
+    }
+
+    private fun isCertTrusted(proxyConfig: ProxyConfig): Boolean {
         val keyStore = KeyStore.getInstance("AndroidCAStore")
         keyStore.load(null, null)
 
         val certificateAlias = keyStore.getCertificateAlias(proxyConfig.certificate)
+        return certificateAlias != null
+    }
 
-        if (certificateAlias == null) {
+    private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
+        if (isCertTrusted(proxyConfig)) {
             app!!.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
             val certInstallIntent = KeyChain.createInstallIntent()

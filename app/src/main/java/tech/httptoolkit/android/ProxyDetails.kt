@@ -1,8 +1,15 @@
 package tech.httptoolkit.android
 
 import android.os.Parcelable
+import android.util.Base64
+import android.util.Log
+import com.beust.klaxon.Converter
+import com.beust.klaxon.JsonValue
 import kotlinx.android.parcel.Parcelize
+import java.io.ByteArrayInputStream
 import java.security.cert.Certificate
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 
 /**
  * ProxyInfo represents user/QR-inputted proxy details. It's an outline of the config for a proxy,
@@ -60,3 +67,19 @@ data class ProxyConfig(
      */
     val certificate: Certificate
 ) : Parcelable
+
+val CertificateConverter = object: Converter {
+    override fun canConvert(cls: Class<*>): Boolean {
+        return cls.isAssignableFrom(Certificate::class.java)
+    }
+
+    override fun toJson(value: Any): String
+            = "\"${Base64.encodeToString((value as X509Certificate).encoded, Base64.NO_WRAP)}\""
+
+    override fun fromJson(jv: JsonValue): X509Certificate {
+        val certBytes = Base64.decode(jv.string!!, Base64.DEFAULT)
+        val certFactory = CertificateFactory.getInstance("X.509")
+        return certFactory.generateCertificate(ByteArrayInputStream(certBytes)) as X509Certificate
+    }
+
+}

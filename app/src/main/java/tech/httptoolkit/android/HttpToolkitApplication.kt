@@ -1,14 +1,18 @@
 package tech.httptoolkit.android
 
 import android.app.Application
+import android.content.SharedPreferences
+import android.util.Log
+import com.beust.klaxon.Klaxon
 import com.google.android.gms.analytics.GoogleAnalytics
 import com.google.android.gms.analytics.HitBuilders
 import com.google.android.gms.analytics.Tracker
 import io.sentry.Sentry
 import io.sentry.android.AndroidSentryClientFactory
 
-@Suppress("unused")
 class HttpToolkitApplication : Application() {
+
+    private val TAG = HttpToolkitApplication::class.simpleName
 
     private var analytics: GoogleAnalytics? = null
     private var ga: Tracker? = null
@@ -25,7 +29,34 @@ class HttpToolkitApplication : Application() {
             ga = analytics!!.newTracker(BuildConfig.GA_ID)
             resumeEvents() // Resume events on app startup, in case they were paused and we crashed
         }
+
+        Log.i(TAG, "App created")
     }
+
+    var lastProxy: ProxyConfig?
+        get() {
+            Log.i(TAG, "Loading last proxy config")
+            val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+            val serialized = prefs.getString("last-proxy-config", null)
+
+            return when {
+                serialized != null -> {
+                    Klaxon().converter(CertificateConverter).parse<ProxyConfig>(serialized)
+                }
+                else -> null
+            }
+        }
+        set(proxyConfig) {
+            Log.i(TAG, if (proxyConfig == null) "Clearing proxy config" else "Saving proxy config")
+            val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+
+            if (proxyConfig != null) {
+                val serialized = Klaxon().converter(CertificateConverter).toJsonString(proxyConfig)
+                prefs.edit().putString("last-proxy-config", serialized).apply()
+            } else {
+                prefs.edit().remove("last-proxy-config")
+            }
+        }
 
     fun trackScreen(name: String) {
         ga?.setScreenName(name)

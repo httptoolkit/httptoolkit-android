@@ -122,6 +122,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 .setSession(getString(R.string.app_name))
                 .establish()
 
+            (this.application as HttpToolkitApplication).lastProxy = proxyConfig
             showServiceNotification()
             localBroadcastManager!!.sendBroadcast(
                 Intent(VPN_STARTED_BROADCAST).apply {
