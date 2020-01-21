@@ -307,6 +307,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private suspend fun reconnect(lastProxy: ProxyConfig) {
+        app.trackEvent("Button", "reconnect")
         try {
             // Revalidates the config, to ensure the server is available (and drop retries if not)
             val config = getProxyConfig(
@@ -332,12 +333,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun resetAfterFailure() {
+        app.trackEvent("Button", "try-again")
         currentProxyConfig = null
         mainState = MainState.DISCONNECTED
         updateUi()
     }
 
     private fun openDocs() {
+        app.trackEvent("Button", "open-docs")
         val browserIntent = Intent(Intent.ACTION_VIEW,
             Uri.parse("https://httptoolkit.tech/docs/guides/android")
         )
