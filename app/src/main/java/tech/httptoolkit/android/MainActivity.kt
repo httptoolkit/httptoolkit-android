@@ -1,11 +1,13 @@
 package tech.httptoolkit.android
 
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
@@ -152,13 +154,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // Without this any QR code you scan could instantly MitM you.
             MaterialAlertDialogBuilder(this)
                 .setTitle("Enable Interception")
+                .setIcon(android.R.drawable.ic_dialog_alert)
                 .setMessage(
                     "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
                     "\n\n" +
                     "Only accept this if you trust the source."
                 )
-                // Specifying a listener allows you to take an action before dismissing the dialog.
-                // The dialog is automatically dismissed when a dialog button is clicked.
                 .setPositiveButton("Enable") { _, _ ->
                     Log.i(TAG, "Prompt confirmed")
                     launch { connectToVpnFromUrl(intent.data!!) }
@@ -166,7 +167,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 .setNegativeButton("Cancel") { _, _ ->
                     Log.i(TAG, "Prompt cancelled")
                 }
-                .setIcon(android.R.drawable.ic_dialog_alert)
                 .show()
         } else {
             Log.i(TAG, "Launching from ACTION_VIEW intent")
@@ -265,7 +265,26 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
 
         if (vpnIntent != null) {
-            startActivityForResult(vpnIntent, START_VPN_REQUEST)
+            withContext(Dispatchers.Main) {
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("Enable interception")
+                    .setIcon(android.R.drawable.ic_dialog_info)
+                    .setMessage(
+                        "To intercept traffic from this device, you need to activate HTTP Toolkit's " +
+                        "VPN and trust its HTTPS certificate. " +
+                        "\n\n" +
+                        "Please accept the following prompts to allow this." +
+                        if (!isDeviceSecured())
+                            "\n\n" +
+                            "Due to Android security requirements, trusting the certificate will " +
+                            "require you to set a PIN, password or pattern for this device."
+                        else " To trust the certificate, your device PIN will be required."
+                    )
+                    .setPositiveButton("Ok") { _, _ ->
+                        startActivityForResult(vpnIntent, START_VPN_REQUEST)
+                    }
+                    .show()
+            }
         } else {
             onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
         }
@@ -442,6 +461,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 Log.i(TAG, "Error testing proxy address $address: $e")
                 throw e
             }
+        }
+    }
+
+    /**
+     * Does the device have a PIN/pattern/password set? Relevant because if not, the cert
+     * setup will require the user to add one.
+     */
+    private fun isDeviceSecured(): Boolean {
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            keyguardManager.isDeviceSecure
+        } else {
+            // Imperfect but close though: also returns true if the device has a locked SIM card.
+            keyguardManager.isKeyguardSecure
         }
     }
 
