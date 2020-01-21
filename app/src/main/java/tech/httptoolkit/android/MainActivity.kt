@@ -327,20 +327,24 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         })
         Log.i(TAG, if (resultCode == RESULT_OK) "ok" else resultCode.toString())
 
-        if (resultCode != RESULT_OK) return
-
-        if (requestCode == START_VPN_REQUEST && currentProxyConfig != null) {
-            Log.i(TAG, "Installing cert")
-            ensureCertificateTrusted(currentProxyConfig!!)
-        } else if (requestCode == INSTALL_CERT_REQUEST) {
-            Log.i(TAG, "Starting VPN")
-            startService(Intent(this, ProxyVpnService::class.java).apply {
-                action = START_VPN_ACTION
-                putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
-            })
-        } else if (requestCode == SCAN_REQUEST && data != null) {
-            val url = data.getStringExtra(SCANNED_URL_EXTRA)
-            launch { connectToVpnFromUrl(url) }
+        if (resultCode == RESULT_OK) {
+            if (requestCode == START_VPN_REQUEST && currentProxyConfig != null) {
+                Log.i(TAG, "Installing cert")
+                ensureCertificateTrusted(currentProxyConfig!!)
+            } else if (requestCode == INSTALL_CERT_REQUEST) {
+                Log.i(TAG, "Starting VPN")
+                startService(Intent(this, ProxyVpnService::class.java).apply {
+                    action = START_VPN_ACTION
+                    putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
+                })
+            } else if (requestCode == SCAN_REQUEST && data != null) {
+                val url = data.getStringExtra(SCANNED_URL_EXTRA)
+                launch { connectToVpnFromUrl(url) }
+            }
+        } else {
+            Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
+            mainState = MainState.FAILED
+            updateUi()
         }
     }
 
