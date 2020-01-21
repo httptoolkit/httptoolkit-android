@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.beust.klaxon.Klaxon
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import io.sentry.Sentry
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -355,6 +356,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             } catch (e: Exception) {
                 Log.e(TAG, e.toString())
                 e.printStackTrace()
+                Sentry.capture(e)
                 withContext(Dispatchers.Main) {
                     app!!.trackEvent("Setup", "connect-failed")
                     mainState = MainState.FAILED

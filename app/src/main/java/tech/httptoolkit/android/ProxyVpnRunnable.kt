@@ -8,6 +8,7 @@ import com.lipisoft.toyshark.SessionHandler
 import com.lipisoft.toyshark.SessionManager
 import com.lipisoft.toyshark.socket.SocketNIODataService
 import com.lipisoft.toyshark.transport.tcp.PacketHeaderException
+import io.sentry.Sentry
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.InetSocketAddress
@@ -78,6 +79,7 @@ class ProxyVpnRunnable(
                     packet.limit(length)
                     handler.handlePacket(packet)
                 } catch (e: PacketHeaderException) {
+                    Sentry.capture(e)
                     Log.e(TAG, e.message)
                 }
 

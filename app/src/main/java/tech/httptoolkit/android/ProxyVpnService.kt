@@ -154,7 +154,9 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         try {
             vpnInterface?.close()
             vpnInterface = null
-        } catch (e: IOException) { }
+        } catch (e: IOException) {
+            Sentry.capture(e)
+        }
 
         stopForeground(true)
         localBroadcastManager!!.sendBroadcast(Intent(VPN_STOPPED_BROADCAST))
