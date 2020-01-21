@@ -495,7 +495,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
-        if (isCertTrusted(proxyConfig)) {
+        if (!isCertTrusted(proxyConfig)) {
             app!!.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
             val certInstallIntent = KeyChain.createInstallIntent()
