@@ -6,18 +6,32 @@
         android:layout_height="match_parent"
         tools:context=".MainActivity">
 
+
+    <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/logoGuideline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.2" />
+
     <ImageView
             android:id="@+id/logoImage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="96dp"
-            android:layout_marginBottom="96dp"
             android:contentDescription="The HTTP Toolkit Logo"
-            app:layout_constraintBottom_toTopOf="@+id/statusText"
+            app:layout_constraintBottom_toBottomOf="@+id/logoGuideline"
+            app:layout_constraintTop_toTopOf="@+id/logoGuideline"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
             app:srcCompat="@drawable/ic_transparent_icon" />
+
+
+    <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/statusGuideline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.4" />
 
     <TextView
             android:id="@+id/statusText"
@@ -28,10 +42,10 @@
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
             android:text="Not Connected"
-            app:layout_constraintBottom_toTopOf="@+id/detailText"
+            app:layout_constraintBottom_toBottomOf="@+id/statusGuideline"
+            app:layout_constraintTop_toTopOf="@+id/statusGuideline"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/logoImage" />
+            app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
             android:id="@+id/detailText"
