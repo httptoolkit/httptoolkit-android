@@ -62,7 +62,7 @@ private fun getCertificateFingerprint(cert: X509Certificate): String {
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private val TAG = MainActivity::class.simpleName
-    private var app: HttpToolkitApplication? = null
+    private lateinit var app: HttpToolkitApplication
 
     private var localBroadcastManager: LocalBroadcastManager? = null
     private val broadcastReceiver = object : BroadcastReceiver() {
@@ -86,9 +86,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.main_layout)
-        updateUi()
-
         localBroadcastManager = LocalBroadcastManager.getInstance(this)
         localBroadcastManager!!.registerReceiver(broadcastReceiver, IntentFilter().apply {
             addAction(VPN_STARTED_BROADCAST)
@@ -96,6 +93,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         })
 
         app = this.application as HttpToolkitApplication
+        setContentView(R.layout.main_layout)
         updateUi()
 
         Log.i(TAG, "Main activity created")
@@ -107,7 +105,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // If not, check if this is a post-install run, and if so configure automatically
             // using the install referrer
             launch {
-                val firstRunParams = app!!.popFirstRunParams()
+                val firstRunParams = app.popFirstRunParams()
                 if (
                     firstRunParams != null &&
                     firstRunParams.startsWith("https://android.httptoolkit.tech/connect/")
@@ -121,13 +119,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume")
-        app!!.trackScreen("Main")
+        app.trackScreen("Main")
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "onPause")
-        app!!.clearScreen()
+        app.clearScreen()
     }
 
     override fun onDestroy() {
@@ -144,9 +142,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             return
         }
 
-        app!!.trackEvent("Setup", "action-view")
+        app.trackEvent("Setup", "action-view")
 
-        if (app!!.lastProxy != null && isVpnConfigured()) {
+        if (app.lastProxy != null && isVpnConfigured()) {
             Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
 
             // If we were started from an intent (e.g. another barcode scanner/link), and we
@@ -190,7 +188,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.scan_button, ::scanCode))
-                buttonContainer.addView(secondaryButton(R.string.manual_button, { }))
+
+                val lastProxy = app.lastProxy
+                if (lastProxy != null) {
+                    buttonContainer.addView(secondaryButton(R.string.reconnect_button) {
+                        launch { reconnect(lastProxy) }
+                    })
+                }
             }
             MainState.CONNECTING -> {
                 statusText.setText(R.string.connecting_status)
@@ -248,7 +252,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun scanCode() {
-        app!!.trackEvent("Button", "scan-code")
+        app.trackEvent("Button", "scan-code")
         startActivityForResult(Intent(this, ScanActivity::class.java), SCAN_REQUEST)
     }
 
@@ -260,7 +264,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         withContext(Dispatchers.Main) { updateUi() }
 
-        app!!.trackEvent("Button", "start-vpn")
+        app.trackEvent("Button", "start-vpn")
         val vpnIntent = VpnService.prepare(this)
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
 
@@ -296,10 +300,35 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         mainState = MainState.DISCONNECTING
         updateUi()
 
-        app!!.trackEvent("Button", "stop-vpn")
+        app.trackEvent("Button", "stop-vpn")
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = STOP_VPN_ACTION
         })
+    }
+
+    private suspend fun reconnect(lastProxy: ProxyConfig) {
+        try {
+            // Revalidates the config, to ensure the server is available (and drop retries if not)
+            val config = getProxyConfig(
+                ProxyInfo(
+                    listOf(lastProxy.ip),
+                    lastProxy.port,
+                    getCertificateFingerprint(lastProxy.certificate as X509Certificate)
+                )
+            )
+            connectToVpn(config)
+        } catch (e: Exception) {
+            app.lastProxy = null
+
+            Log.e(TAG, e.toString())
+            e.printStackTrace()
+            Sentry.capture(e)
+            withContext(Dispatchers.Main) {
+                app.trackEvent("Setup", "reconnect-failed")
+                mainState = MainState.FAILED
+                updateUi()
+            }
+        }
     }
 
     private fun resetAfterFailure() {
@@ -381,7 +410,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 e.printStackTrace()
                 Sentry.capture(e)
                 withContext(Dispatchers.Main) {
-                    app!!.trackEvent("Setup", "connect-failed")
+                    app.trackEvent("Setup", "connect-failed")
                     mainState = MainState.FAILED
                     updateUi()
                 }
@@ -496,14 +525,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
         if (!isCertTrusted(proxyConfig)) {
-            app!!.trackEvent("Setup", "installing-cert")
+            app.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
             val certInstallIntent = KeyChain.createInstallIntent()
             certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
             certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
             startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
         } else {
-            app!!.trackEvent("Setup", "existing-cert")
+            app.trackEvent("Setup", "existing-cert")
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
         }

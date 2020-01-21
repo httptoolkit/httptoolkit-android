@@ -24,6 +24,7 @@
     </string>
 
     <string name="scan_button">Scan Code</string>
+    <string name="reconnect_button">Reconnect</string>
     <string name="manual_button">Connect Manually</string>
     <string name="disconnect_button">Disconnect</string>
     <string name="docs_button">Read the Docs</string>
