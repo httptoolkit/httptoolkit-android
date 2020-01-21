@@ -1,8 +1,9 @@
 package tech.httptoolkit.android
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -25,7 +26,7 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
         super.onCreate(state)
 
         val canUseCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-        if (canUseCamera != PackageManager.PERMISSION_GRANTED) {
+        if (canUseCamera != PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 0)
             // Until confirmed, the activity will show as empty, switching to the
             // camera as soon as permission is accepted.
@@ -57,7 +58,13 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        Log.i(TAG, requestCode.toString() + permissions.toString() + grantResults.toString())
+        if (grantResults[0] == PERMISSION_GRANTED) {
+            Log.i(TAG, "Camera permissions granted")
+        } else {
+            Log.i(TAG, "Camera permissions rejected")
+            setResult(Activity.RESULT_CANCELED)
+            finish()
+        }
     }
 
     override fun handleResult(rawResult: Result) {
