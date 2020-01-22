@@ -1,7 +1,6 @@
 package tech.httptoolkit.android
 
 import android.app.Application
-import android.content.SharedPreferences
 import android.util.Log
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerClient.InstallReferrerResponse
@@ -12,6 +11,7 @@ import com.google.android.gms.analytics.HitBuilders
 import com.google.android.gms.analytics.Tracker
 import io.sentry.Sentry
 import io.sentry.android.AndroidSentryClientFactory
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -61,6 +61,12 @@ class HttpToolkitApplication : Application() {
         // Get & return the actual referrer and return it
         Log.i(TAG, "Getting first run referrer...")
         return suspendCoroutine { cont ->
+            var wasResumed = AtomicBoolean()
+            val resume = { value: String? ->
+                if (wasResumed.getAndSet(true)) {
+                    cont.resume(value)
+                }
+            }
             val referrerClient = InstallReferrerClient.newBuilder(this).build()
             referrerClient.startConnection(object : InstallReferrerStateListener {
 
@@ -69,18 +75,18 @@ class HttpToolkitApplication : Application() {
                         InstallReferrerResponse.OK -> {
                             val referrer = referrerClient.installReferrer.installReferrer
                             Log.i(TAG, "Returning first run referrer: $referrer")
-                            cont.resume(referrer)
+                            resume(referrer)
                         }
                         else -> {
                             Log.w(TAG, "Couldn't get install referrer, skipping: $responseCode")
-                            cont.resume(null)
+                            resume(null)
                         }
                     }
                 }
 
                 override fun onInstallReferrerServiceDisconnected() {
                     Log.w(TAG, "Couldn't get install referrer due to disconnection")
-                    cont.resume(null)
+                    resume(null)
                 }
             })
         }
