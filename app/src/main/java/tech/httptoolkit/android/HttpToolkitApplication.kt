@@ -108,7 +108,7 @@ class HttpToolkitApplication : Application() {
                 val serialized = Klaxon().converter(CertificateConverter).toJsonString(proxyConfig)
                 prefs.edit().putString("last-proxy-config", serialized).apply()
             } else {
-                prefs.edit().remove("last-proxy-config")
+                prefs.edit().remove("last-proxy-config").apply()
             }
         }
 
