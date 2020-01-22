@@ -308,6 +308,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private suspend fun reconnect(lastProxy: ProxyConfig) {
         app.trackEvent("Button", "reconnect")
+
+        withContext(Dispatchers.Main) {
+            mainState = MainState.CONNECTING
+            updateUi()
+        }
+
         try {
             // Revalidates the config, to ensure the server is available (and drop retries if not)
             val config = getProxyConfig(
