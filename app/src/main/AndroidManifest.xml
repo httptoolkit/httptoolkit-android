@@ -24,7 +24,8 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/AppTheme"
-            tools:targetApi="m" android:usesCleartextTraffic="true">
+            tools:targetApi="m" android:usesCleartextTraffic="true"
+            android:largeHeap="true">
         <service
             android:name=".ProxyVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE">
