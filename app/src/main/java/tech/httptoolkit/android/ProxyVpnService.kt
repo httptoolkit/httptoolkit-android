@@ -50,6 +50,16 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     private var vpnInterface: ParcelFileDescriptor? = null
     private var vpnRunnable: ProxyVpnRunnable? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        currentService = this
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        currentService = null
+    }
+
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         currentService = this
         Log.i(TAG, "onStartCommand called")
@@ -63,11 +73,17 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         if (intent.action == START_VPN_ACTION) {
             val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
             startVpn(proxyConfig)
+
+            // If the system briefly kills us for some reason (memory, the user, whatever) whilst
+            // running the VPN, it should redeliver the VPN setup intent ASAP.
+            return Service.START_REDELIVER_INTENT
         } else if (intent.action == STOP_VPN_ACTION) {
             stopVpn()
         }
 
-        return Service.START_STICKY
+        // Shouldn't matter (we should've stopped already), but in general: if we're not running a
+        // VPN, then the service doesn't need to be sticky.
+        return Service.START_NOT_STICKY
     }
 
     override fun onRevoke() {
@@ -160,6 +176,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         stopForeground(true)
         localBroadcastManager!!.sendBroadcast(Intent(VPN_STOPPED_BROADCAST))
+        stopSelf()
+        currentService = null
     }
 
     fun isActive(): Boolean {
