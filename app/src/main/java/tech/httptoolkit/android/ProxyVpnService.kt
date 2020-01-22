@@ -117,8 +117,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentIntent(pendingActivityIntent)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText(getString(R.string.vpn_active_notification_content))
+            .setContentTitle(getString(R.string.vpn_active_notification_content))
             .setSmallIcon(R.drawable.ic_transparent_icon)
             .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.ic_transparent_icon))
             .addAction(R.drawable.ic_transparent_icon, getString(R.string.vpn_active_notification_action), pendingServiceIntent)
