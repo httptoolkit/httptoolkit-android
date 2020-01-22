@@ -20,6 +20,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Iterator;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -112,16 +113,16 @@ public class SocketNIODataService implements Runnable {
 					}
 				}
 
-				while (SessionHandler.getInstance().getWritableSessions().size() != 0) {
-					Session session = SessionHandler.getInstance().getWritableSessions().remove();
+				Queue<Session> sessions = SessionHandler.getInstance().getWritableSessions();
 
+				Session session = sessions.poll();
+				while (session != null) {
 					if (session.isConnected()) {
 						processPendingWrite(session);
 					}
 
-					if (shutdown) {
-						break;
-					}
+					if (shutdown) break;
+					session = sessions.poll();
 				}
 			}
 		}

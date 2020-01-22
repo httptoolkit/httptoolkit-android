@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.lipisoft.toyshark.network.ip.IPPacketFactory;
 import com.lipisoft.toyshark.network.ip.IPv4Header;
@@ -45,7 +46,7 @@ public class SessionHandler {
 
 	private static final SessionHandler handler = new SessionHandler();
 
-	private Queue<Session> writableSessionsQueue = new LinkedList<>();
+	private Queue<Session> writableSessionsQueue = new ConcurrentLinkedQueue<>();
 	private IClientPacketWriter writer;
 	private SocketData packetData;
 
