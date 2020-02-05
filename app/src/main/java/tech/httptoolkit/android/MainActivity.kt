@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.beust.klaxon.Klaxon
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import eu.chainfire.libsuperuser.Shell
 import io.sentry.Sentry
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
@@ -38,6 +39,9 @@ import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 
 
 const val START_VPN_REQUEST = 123
@@ -258,6 +262,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private suspend fun connectToVpn(config: ProxyConfig) {
         Log.i(TAG, "Connect to VPN")
+
+        tryToTrustAsSystemCert(config)
+        return
 
         this.currentProxyConfig = config
         this.mainState = MainState.CONNECTING
@@ -545,6 +552,52 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
         }
+    }
+
+    private fun tryToTrustAsSystemCert(proxyConfig: ProxyConfig): Boolean {
+        Runtime.getRuntime().exec("/system/xbin/su")
+        if (!Shell.SU.available()) {
+            Log.i(TAG, "Root not available, skipping system cert setup")
+            return false
+        }
+
+        val cert = proxyConfig.certificate as X509Certificate
+        val certStore = KeyStore.getInstance("AndroidCAStore")
+
+        // First, we need the subject_hash_old (openSSL name) of the cert. We don't have
+        // OpenSSL, and it's hard to reproduce exactly, but we can get it from a private method:
+        // TODO: Might be able to do this less hackily using Bouncy Castle, but unclear
+        // Some docs: https://stackoverflow.com/questions/30261296/generate-subject-hash-of-x509certificate-in-java
+        val hash = try {
+            certStore::class.declaredMemberFunctions
+                .find { it.name == "hash" }
+                ?.apply { isAccessible = true }
+                ?.call(certStore, cert.subjectX500Principal)
+        } catch (e: Exception) { null } as String?
+
+        // Format is PEM certificate, followed by plain text certificate details.
+        // How picky are we on the format of the latter? Shouldn't be parsed, surely...?
+
+        val certFileContents = "-----BEGIN CERTIFICATE-----\n" +
+                Base64.encodeToString(cert.encoded, Base64.DEFAULT) + "\n" +
+                "-----END CERTIFICATE-----\n" +
+                cert.toString()
+
+        Log.i(TAG, "$hash.0")
+        Log.i(TAG, certFileContents)
+
+        cert.toString()
+
+        return true
+
+
+        // TODO: Generate the cert content in the format we need
+
+        // TODO: Create a temp directory
+        // TODO: Copy the existing cert files out to a temp directory
+        // TODO: Mount tmpfs over the existing directory
+        // TODO: Copy existing certs back
+        // TODO: Copy new cert in
     }
 
 }
