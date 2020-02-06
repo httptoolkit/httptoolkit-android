@@ -392,7 +392,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private suspend fun connectToVpnFromUrl(uri: Uri) {
         Log.i(TAG, "Connecting to VPN from URL: $uri")
-        if (mainState != MainState.DISCONNECTED) return
+        if (
+            mainState != MainState.DISCONNECTED &&
+            mainState != MainState.FAILED
+        ) return
 
         withContext(Dispatchers.Main) {
             mainState = MainState.CONNECTING
