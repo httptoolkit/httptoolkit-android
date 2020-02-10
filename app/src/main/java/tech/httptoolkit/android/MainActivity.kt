@@ -59,6 +59,9 @@ private fun getCertificateFingerprint(cert: X509Certificate): String {
     return Base64.encodeToString(fingerprint, Base64.NO_WRAP)
 }
 
+private val ACTIVATE_INTENT = "tech.httptoolkit.android.ACTIVATE"
+private val DEACTIVATE_INTENT = "tech.httptoolkit.android.DEACTIVATE"
+
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private val TAG = MainActivity::class.simpleName
@@ -137,38 +140,50 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        if (intent.action != Intent.ACTION_VIEW) {
-            Log.w(TAG, "Unknown intent. Action ${intent.action}, data: ${intent.data}")
-            return
-        }
-
         app.trackEvent("Setup", "action-view")
 
-        if (app.lastProxy != null && isVpnConfigured()) {
-            Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
+        when (intent.action) {
+            // ACTION_VIEW means that somebody had the app installed, and scanned the barcode with
+            // a separate barcode app anyway (or opened the QR code URL in a browser)
+            Intent.ACTION_VIEW -> {
+                if (app.lastProxy != null && isVpnConfigured()) {
+                    Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
 
-            // If we were started from an intent (e.g. another barcode scanner/link), and we
-            // had a proxy before (so no prompts required) then confirm before starting the VPN.
-            // Without this any QR code you scan could instantly MitM you.
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Enable Interception")
-                .setIcon(R.drawable.ic_exclamation_triangle)
-                .setMessage(
-                    "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
-                    "\n\n" +
-                    "Only accept this if you trust the source."
-                )
-                .setPositiveButton("Enable") { _, _ ->
-                    Log.i(TAG, "Prompt confirmed")
+                    // If we were started from an intent (e.g. another barcode scanner/link), and we
+                    // had a proxy before (so no prompts required) then confirm before starting the VPN.
+                    // Without this any QR code you scan could instantly MitM you.
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Enable Interception")
+                        .setIcon(R.drawable.ic_exclamation_triangle)
+                        .setMessage(
+                            "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
+                                    "\n\n" +
+                                    "Only accept this if you trust the source."
+                        )
+                        .setPositiveButton("Enable") { _, _ ->
+                            Log.i(TAG, "Prompt confirmed")
+                            launch { connectToVpnFromUrl(intent.data!!) }
+                        }
+                        .setNegativeButton("Cancel") { _, _ ->
+                            Log.i(TAG, "Prompt cancelled")
+                        }
+                        .show()
+                } else {
+                    Log.i(TAG, "Launching from ACTION_VIEW intent")
                     launch { connectToVpnFromUrl(intent.data!!) }
                 }
-                .setNegativeButton("Cancel") { _, _ ->
-                    Log.i(TAG, "Prompt cancelled")
-                }
-                .show()
-        } else {
-            Log.i(TAG, "Launching from ACTION_VIEW intent")
-            launch { connectToVpnFromUrl(intent.data!!) }
+            }
+
+            // RPC setup API, used by ADB to enable/disable without prompts.
+            // Permission required, checked for via activity-alias in the manifest
+            ACTIVATE_INTENT -> {
+                launch { connectToVpnFromUrl(intent.data!!) }
+            }
+            DEACTIVATE_INTENT -> {
+                disconnect()
+            }
+
+            else -> Log.w(TAG, "Unknown intent. Action ${intent.action}, data: ${intent.data}")
         }
     }
 
