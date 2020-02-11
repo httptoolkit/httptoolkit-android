@@ -16,11 +16,6 @@
             android:name="android.permission.WRITE_EXTERNAL_STORAGE"
             tools:node="remove" />
 
-    <permission
-        android:name="tech.httptoolkit.android.REMOTE_CONTROL_INTERCEPTION"
-        android:protectionLevel="signature"
-    />
-
     <application
             android:name=".HttpToolkitApplication"
             android:allowBackup="true"
@@ -64,14 +59,15 @@
 
         <!--
             Alias that allows remote intents of ACTIVATE/DEACTIVATE from other apps, but only
-            if they have RC permissions (same signature only). In practice, this is only used
-            by debugging calls using ADB. Important to lock down or other apps could activate
-            the VPN and pass a cert, to intercept all traffic from the phone without prompts.
+            if they have INJECT_EVENTS (restricted system only permission, equivalent to complete
+            control of the app anyway). In practice this is used to limit remote control to the
+            shell user via ADB. It's important to lock this down or other apps could activate
+            the VPN and pass a cert to send all traffic from the phone anywhere without prompts.
         -->
         <activity-alias
                 android:name=".RemoteControlMainActivity"
                 android:targetActivity=".MainActivity"
-                android:permission="tech.httptoolkit.android.REMOTE_CONTROL_INTERCEPTION">
+                android:permission="android.permission.INJECT_EVENTS">
             <intent-filter>
                 <action android:name="tech.httptoolkit.android.ACTIVATE" />
                 <category android:name="android.intent.category.DEFAULT" />
