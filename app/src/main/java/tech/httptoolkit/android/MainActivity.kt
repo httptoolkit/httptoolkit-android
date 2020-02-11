@@ -142,10 +142,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         app.trackEvent("Setup", "action-view")
 
-        when (intent.action) {
+        // RC intents are intents that have passed the RC permission requirement in the manifest.
+        // Implicit intents with the matching actions will always use the RC activity, this check
+        // protects against explicit intents targeting MainActivity. RC intents are known to be
+        // trustworthy, so are allowed to silently activate/deactivate the VPN connection.
+        val isRCIntent = intent.component?.className == "tech.httptoolkit.android.RemoteControlMainActivity"
+
+        when {
             // ACTION_VIEW means that somebody had the app installed, and scanned the barcode with
             // a separate barcode app anyway (or opened the QR code URL in a browser)
-            Intent.ACTION_VIEW -> {
+            intent.action == Intent.ACTION_VIEW -> {
                 if (app.lastProxy != null && isVpnConfigured()) {
                     Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
 
@@ -174,16 +180,22 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 }
             }
 
-            // RPC setup API, used by ADB to enable/disable without prompts.
+            // RC setup API, used by ADB to enable/disable without prompts.
             // Permission required, checked for via activity-alias in the manifest
-            ACTIVATE_INTENT -> {
+            isRCIntent && intent.action == ACTIVATE_INTENT -> {
                 launch { connectToVpnFromUrl(intent.data!!) }
             }
-            DEACTIVATE_INTENT -> {
+            isRCIntent && intent.action == DEACTIVATE_INTENT -> {
                 disconnect()
             }
 
-            else -> Log.w(TAG, "Unknown intent. Action ${intent.action}, data: ${intent.data}")
+            else -> Log.w(TAG, "Unknown intent. Action ${
+                intent.action
+            }, data: ${
+                intent.data
+            }, ${
+                if (isRCIntent) "sent as RC intent" else "non-RC"
+            }")
         }
     }
 
