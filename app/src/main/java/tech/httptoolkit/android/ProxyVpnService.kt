@@ -3,20 +3,17 @@ package tech.httptoolkit.android
 import android.net.VpnService
 import android.content.Intent
 import android.app.*
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat.stopForeground
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.lipisoft.toyshark.socket.IProtectSocket
 import com.lipisoft.toyshark.socket.SocketProtector
 import io.sentry.Sentry
-import io.sentry.android.AndroidSentryClientFactory
 import java.io.*
-import java.net.DatagramSocket
-import java.net.Socket
 
 private const val ALL_ROUTES = "0.0.0.0"
 private const val VPN_IP_ADDRESS = "169.254.61.43" // Random link-local IP, this will be the tunnel's IP
@@ -128,12 +125,28 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     }
 
     private fun startVpn(proxyConfig: ProxyConfig) {
+        val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+
+        val packageNames = packages.map { pkg -> pkg.packageName }
+        val isGenymotion = packageNames.any {
+            // This check could be stricter (com.genymotion.genyd), but right now it doesn't seem to
+            // have any false positives, and it's very flexible to changes in genymotion itself.
+            name -> name.startsWith("com.genymotion")
+        }
+
         if (vpnInterface == null) {
             app!!.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
             app!!.trackEvent("VPN", "vpn-started")
             vpnInterface = Builder()
                 .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
+                .apply {
+                    // For some reason, with Genymotion the whole device crashes if we intercept
+                    // blindly, but intercepting every single application explicitly is fine.
+                    if (isGenymotion) {
+                        packageNames.forEach { name -> addAllowedApplication(name) }
+                    }
+                }
                 .setSession(getString(R.string.app_name))
                 .establish()
 
