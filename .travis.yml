@@ -1,14 +1,24 @@
 language: android
 dist: trusty
-
 android:
   components:
-    - build-tools-29.0.2
-    - android-28
-
+  - build-tools-29.0.2
+  - android-28
 before_install:
-  - >-
-    openssl aes-256-cbc -K $encrypted_410c058128c0_key -iv $encrypted_410c058128c0_iv
-    -in android-travis-cert-store.enc -out ./android-travis-cert-store -d
-
-script: ./gradlew build
+- openssl aes-256-cbc -K $encrypted_410c058128c0_key -iv $encrypted_410c058128c0_iv
+  -in android-travis-cert-store.enc -out ./android-travis-cert-store.jks -d
+script:
+- "./gradlew assembleRelease"
+- jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -storepass $CERT_STORE_PWD
+  -keypass $CERT_STORE_PWD -keystore ./android-travis-cert-store.jks app/build/outputs/apk/release/app-release-unsigned.apk
+  $CERT_ALIAS
+- ${ANDROID_HOME}/build-tools/29.0.2/zipalign -v 4 app/build/outputs/apk/release/app-release-unsigned.apk ./httptoolkit.apk
+deploy:
+  provider: releases
+  api_key:
+    secure: lV7UPfExRDViQ3nYxKfWuHktGkI4LlU3GYGAnKJTx0V1wqPcO5HJUKJNB6Ij2k+72owV+DLWAllSu0umNZZKTmQCuvFOTcJ66td+5An71mPJG6/gkfYKrNEXmweiRcmaiu+5y2KRKDcRunLF5MmelBgOUeLeV0CZlQ/2jbagHy5DY/JHcJVlFzWkyDfbUPkttnv7GClQMkQSyjMStqO6pcjRNXpuzpJCZ8jVXIBgBaOW8Ka9dKAyaHLf6sOTbUcY9emdWbkzX1WjucG4krUGZsEG6yNIwtq8nytNJaalBMjwXzFMmFHr4S2M89wo3ukhSmrXN6+PmeN03BO3fKZKucp872FB/sIDlKw7deXfqfSY2qcgq0nAQKY+kyxl9MIZr1UiEOy5C/cLUj4Oyv7clw+dfkkt0SIOL5+e77yv5kbUL0Tin8FnR+TE9y950B4MT3yn8tbatCVNM3boiaqrjMU69xuyHqCg+PsZf/lfX6k64oe1448x9nbZxUFb1/ik4Y0urF5mSzmrRcJh19Fhh0se8d8+alBHAuRkaTNTA96Uxymysvxf93S6ycykg06QuYIG9vinkmDjBX1zu4zCoIhwnMhapiX1xWxgeJn0MoYw9WFd88sdsIu8enEibIxRpJfdloBxvOBrKKHPXwQApMxGArtcEFqM/qWnB7IWhqU=
+  file: "./httptoolkit.apk"
+  skip_cleanup: true
+  on:
+    tags: true
+    repo: httptoolkit/httptoolkit-android
