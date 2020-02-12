@@ -6,4 +6,9 @@ android:
     - build-tools-29.0.2
     - android-28
 
+before_install:
+  - >-
+    openssl aes-256-cbc -K $encrypted_410c058128c0_key -iv $encrypted_410c058128c0_iv
+    -in android-travis-cert-store.enc -out ./android-travis-cert-store -d
+
 script: ./gradlew build
