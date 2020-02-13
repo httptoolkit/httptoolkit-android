@@ -101,8 +101,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         Log.i(TAG, "Main activity created")
 
-        // Are we being opened by a VIEW intent? I.e. a barcode scan/URL elsewhere on the device
-        if (intent != null && intent.action == Intent.ACTION_VIEW) {
+        // Are we being opened by an intent? I.e. a barcode scan/URL elsewhere on the device
+        if (intent != null) {
             onNewIntent(intent)
         } else {
             // If not, check if this is a post-install run, and if so configure automatically
