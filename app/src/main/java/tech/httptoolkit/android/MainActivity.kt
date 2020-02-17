@@ -294,15 +294,19 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         app.trackEvent("Button", "start-vpn")
         val vpnIntent = VpnService.prepare(this)
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
+        val vpnNotConfigured = vpnIntent != null
 
-        if (vpnIntent != null) {
+        if (!isCertTrusted(config)) {
+            // The cert isn't trusted, and the VPN may need setup, so there'll be a series of prompts
+            // here. Explain them beforehand, so users understand what's going on.
             withContext(Dispatchers.Main) {
                 MaterialAlertDialogBuilder(this@MainActivity)
                     .setTitle("Enable interception")
                     .setIcon(R.drawable.ic_info_circle)
                     .setMessage(
-                        "To intercept traffic from this device, you need to activate HTTP Toolkit's " +
-                        "VPN and trust its HTTPS certificate. " +
+                        "To intercept traffic from this device, you need to " +
+                        (if (vpnNotConfigured) "activate HTTP Toolkit's VPN and " else "") +
+                        "trust your HTTP Toolkit's certificate authority. " +
                         "\n\n" +
                         "Please accept the following prompts to allow this." +
                         if (!isDeviceSecured())
@@ -312,11 +316,21 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         else " To trust the certificate, your device PIN will be required."
                     )
                     .setPositiveButton("Ok") { _, _ ->
-                        startActivityForResult(vpnIntent, START_VPN_REQUEST)
+                        if (vpnNotConfigured) {
+                            startActivityForResult(vpnIntent, START_VPN_REQUEST)
+                        } else {
+                            onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
+                        }
                     }
                     .show()
             }
+        } else if (vpnNotConfigured) {
+            // In this case the VPN needs setup, but the cert is trusted already, so it's
+            // a single confirmation. Pretty clear, no need to explain. This happens if the
+            // VPN/app was removed from the device in the past, or when using injected system certs.
+            startActivityForResult(vpnIntent, START_VPN_REQUEST)
         } else {
+            // VPN is trusted & cert setup already, lets get to it.
             onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
         }
 
