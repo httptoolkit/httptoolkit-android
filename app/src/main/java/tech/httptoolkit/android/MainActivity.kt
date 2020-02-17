@@ -296,7 +296,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
         val vpnNotConfigured = vpnIntent != null
 
-        if (!isCertTrusted(config)) {
+        if (whereIsCertTrusted(config) == null) {
             // The cert isn't trusted, and the VPN may need setup, so there'll be a series of prompts
             // here. Explain them beforehand, so users understand what's going on.
             withContext(Dispatchers.Main) {
@@ -568,18 +568,30 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         return VpnService.prepare(this) == null
     }
 
-    private fun isCertTrusted(proxyConfig: ProxyConfig): Boolean {
+    // Returns the name of the cert store (if the cert is trusted) or null (if not)
+    private fun whereIsCertTrusted(proxyConfig: ProxyConfig): String? {
         val keyStore = KeyStore.getInstance("AndroidCAStore")
         keyStore.load(null, null)
 
         val certificateAlias = keyStore.getCertificateAlias(proxyConfig.certificate)
-        return certificateAlias != null
+        Log.i(TAG, "Cert alias $certificateAlias")
+
+        return when {
+            certificateAlias == null -> null
+            certificateAlias.startsWith("system:") -> "system"
+            certificateAlias.startsWith("user:") -> "user"
+            else -> "unknown-store"
+        }
     }
 
     private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
-        if (!isCertTrusted(proxyConfig)) {
+        if (whereIsCertTrusted(proxyConfig) == null) {
             app.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
+
+            // Install the required cert into the user CA store. Notably, if the cert is already
+            // installed as a system cert but disabled, this will get triggered, and will enable
+            // the cert, rather than adding a user cert.
             val certInstallIntent = KeyChain.createInstallIntent()
             certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
             certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
