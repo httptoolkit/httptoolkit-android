@@ -1,18 +1,15 @@
 package tech.httptoolkit.android
 
-import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.net.VpnService
-import android.os.Build
 import android.os.Bundle
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
 import android.security.KeyChain.EXTRA_NAME
-import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -21,23 +18,10 @@ import android.widget.TextView
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.beust.klaxon.Klaxon
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.sentry.Sentry
 import kotlinx.coroutines.*
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.ByteArrayInputStream
-import java.net.ConnectException
-import java.net.InetSocketAddress
-import java.net.Proxy
-import java.nio.charset.StandardCharsets
-import java.security.KeyStore
-import java.security.MessageDigest
-import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.util.concurrent.TimeUnit
 
 
 const val START_VPN_REQUEST = 123
@@ -52,15 +36,8 @@ enum class MainState {
     FAILED
 }
 
-private fun getCertificateFingerprint(cert: X509Certificate): String {
-    val md = MessageDigest.getInstance("SHA-256")
-    md.update(cert.publicKey.encoded)
-    val fingerprint = md.digest()
-    return Base64.encodeToString(fingerprint, Base64.NO_WRAP)
-}
-
-private val ACTIVATE_INTENT = "tech.httptoolkit.android.ACTIVATE"
-private val DEACTIVATE_INTENT = "tech.httptoolkit.android.DEACTIVATE"
+private const val ACTIVATE_INTENT = "tech.httptoolkit.android.ACTIVATE"
+private const val DEACTIVATE_INTENT = "tech.httptoolkit.android.DEACTIVATE"
 
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
@@ -163,8 +140,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         .setIcon(R.drawable.ic_exclamation_triangle)
                         .setMessage(
                             "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
-                                    "\n\n" +
-                                    "Only accept this if you trust the source."
+                            "\n\n" +
+                            "Only accept this if you trust the source."
                         )
                         .setPositiveButton("Enable") { _, _ ->
                             Log.i(TAG, "Prompt confirmed")
@@ -309,7 +286,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         "trust your HTTP Toolkit's certificate authority. " +
                         "\n\n" +
                         "Please accept the following prompts to allow this." +
-                        if (!isDeviceSecured())
+                        if (!isDeviceSecured(applicationContext))
                             "\n\n" +
                             "Due to Android security requirements, trusting the certificate will " +
                             "require you to set a PIN, password or pattern for this device."
@@ -445,18 +422,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         withContext(Dispatchers.IO) {
             try {
-                val dataBase64 = uri.getQueryParameter("data")
-
-                // Data is a JSON string, encoded as base64, to solve escaping & ensure that the
-                // most popular standard barcode apps treat it as a single URL (some get confused by
-                // JSON that contains ip addresses otherwise)
-                val data = String(Base64.decode(dataBase64, Base64.URL_SAFE), StandardCharsets.UTF_8)
-                Log.d(TAG, "URL data is $data")
-
-                val proxyInfo = Klaxon().parse<ProxyInfo>(data)
-                    ?: throw IllegalArgumentException("Invalid proxy JSON: $data")
-
-                val config = getProxyConfig(proxyInfo)
+                val config = getProxyConfig(parseConnectUri(uri))
                 connectToVpn(config)
             } catch (e: Exception) {
                 Log.e(TAG, e.toString())
@@ -471,117 +437,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
-    private suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
-        return withContext(Dispatchers.IO) {
-            Log.v(TAG, "Validating proxy info $proxyInfo")
-
-            val proxyTests = proxyInfo.addresses.map { address ->
-                supervisorScope {
-                    async {
-                        testProxyAddress(
-                            address,
-                            proxyInfo.port,
-                            proxyInfo.certFingerprint
-                        )
-                    }
-                }
-            }
-
-            // Returns with the first working proxy config (cert & address),
-            // or throws if all possible addresses are unreachable/invalid
-            // Once the first test succeeds, we cancel any others
-            val result = proxyTests.awaitFirst()
-            proxyTests.forEach { test ->
-                test.cancel()
-            }
-            return@withContext result
-        }
-    }
-
-    private suspend fun testProxyAddress(
-        address: String,
-        port: Int,
-        expectedFingerprint: String
-    ): ProxyConfig {
-        return withContext(Dispatchers.IO) {
-            val certFactory = CertificateFactory.getInstance("X.509")
-
-            val httpClient = OkHttpClient.Builder()
-                .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(address, port)))
-                .connectTimeout(2, TimeUnit.SECONDS)
-                .readTimeout(2, TimeUnit.SECONDS)
-                .build()
-
-            val request = Request.Builder()
-                .url("http://android.httptoolkit.tech/config")
-                .build()
-
-            try {
-                val configString = httpClient.newCall(request).execute().use { response ->
-                    if (response.code != 200) {
-                        throw ConnectException("Proxy responded with non-200: ${response.code}")
-                    }
-                    response.body!!.string()
-                }
-                val config = Klaxon().parse<ReceivedProxyConfig>(configString)!!
-
-                val foundCert = certFactory.generateCertificate(
-                    ByteArrayInputStream(config.certificate.toByteArray(Charsets.UTF_8))
-                ) as X509Certificate
-                val foundCertFingerprint = getCertificateFingerprint(foundCert)
-
-                if (foundCertFingerprint == expectedFingerprint) {
-                    ProxyConfig(
-                        address,
-                        port,
-                        foundCert
-                    )
-                } else {
-                    throw CertificateException(
-                        "Proxy returned mismatched certificate: '${
-                            expectedFingerprint
-                        }' != '$foundCertFingerprint' ($address)"
-                    )
-                }
-            } catch (e: Exception) {
-                Log.i(TAG, "Error testing proxy address $address: $e")
-                throw e
-            }
-        }
-    }
-
-    /**
-     * Does the device have a PIN/pattern/password set? Relevant because if not, the cert
-     * setup will require the user to add one.
-     */
-    private fun isDeviceSecured(): Boolean {
-        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            keyguardManager.isDeviceSecure
-        } else {
-            // Imperfect but close though: also returns true if the device has a locked SIM card.
-            keyguardManager.isKeyguardSecure
-        }
-    }
-
     private fun isVpnConfigured(): Boolean {
         return VpnService.prepare(this) == null
-    }
-
-    // Returns the name of the cert store (if the cert is trusted) or null (if not)
-    private fun whereIsCertTrusted(proxyConfig: ProxyConfig): String? {
-        val keyStore = KeyStore.getInstance("AndroidCAStore")
-        keyStore.load(null, null)
-
-        val certificateAlias = keyStore.getCertificateAlias(proxyConfig.certificate)
-        Log.i(TAG, "Cert alias $certificateAlias")
-
-        return when {
-            certificateAlias == null -> null
-            certificateAlias.startsWith("system:") -> "system"
-            certificateAlias.startsWith("user:") -> "user"
-            else -> "unknown-store"
-        }
     }
 
     private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
