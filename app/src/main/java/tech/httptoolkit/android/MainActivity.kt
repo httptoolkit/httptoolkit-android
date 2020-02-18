@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
@@ -18,6 +19,7 @@ import android.widget.TextView
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.gms.common.GooglePlayServicesUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.sentry.Sentry
 import kotlinx.coroutines.*
@@ -92,6 +94,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 ) {
                     launch { connectToVpnFromUrl(firstRunParams) }
                 }
+            }
+        }
+
+        // Async check for updates, and maybe prompt the user if necessary (if using play store)
+        launch {
+            supervisorScope {
+                if (isStoreAvailable(this@MainActivity) && app.isUpdateRequired()) promptToUpdate()
             }
         }
     }
@@ -460,4 +469,31 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
+    private suspend fun promptToUpdate() {
+        withContext(Dispatchers.Main) {
+            MaterialAlertDialogBuilder(this@MainActivity)
+                .setTitle("Updates available")
+                .setIcon(R.drawable.ic_info_circle)
+                .setMessage("An updated version of HTTP Toolkit is available")
+                .setNegativeButton("Ignore") { _, _ -> }
+                .setPositiveButton("Update now") { _, _ ->
+                    // Open the app in the market. That a release is available on github doesn't
+                    // *strictly* mean that it's available on the Android market right now, but
+                    // it is imminent, and installing from play means it'll update fully later.
+                    startActivity(
+                        Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("market://details?id=tech.httptoolkit.android.v1")
+                        }
+                    )
+                }
+                .show()
+        }
+    }
+}
+
+private fun isStoreAvailable(context: Context): Boolean = try {
+    context.packageManager.getPackageInfo(GooglePlayServicesUtil.GOOGLE_PLAY_STORE_PACKAGE, 0)
+    true
+} catch (e: PackageManager.NameNotFoundException) {
+    false
 }

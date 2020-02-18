@@ -1,6 +1,7 @@
 package tech.httptoolkit.android
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerClient.InstallReferrerResponse
@@ -11,9 +12,16 @@ import com.google.android.gms.analytics.HitBuilders
 import com.google.android.gms.analytics.Tracker
 import io.sentry.Sentry
 import io.sentry.android.AndroidSentryClientFactory
+import kotlinx.coroutines.*
+import net.swiftzer.semver.SemVer
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+
 
 class HttpToolkitApplication : Application() {
 
@@ -149,4 +157,87 @@ class HttpToolkitApplication : Application() {
         analytics?.setLocalDispatchPeriod(120) // Set dispatching back to Android default
     }
 
+    suspend fun isUpdateRequired(): Boolean {
+        return withContext(Dispatchers.IO) {
+            if (wasInstalledFromStore(this@HttpToolkitApplication)) {
+                // We only check for updates for side-loaded/ADB-loaded versions. This is useful
+                // because otherwise anything outside the play store gets no updates.
+                Log.i(TAG, "Installed from play store, no update prompting required")
+                return@withContext false
+            }
+
+            val httpClient = OkHttpClient()
+            val request = Request.Builder()
+                .url("https://api.github.com/repos/httptoolkit/httptoolkit-android/releases/latest")
+                .build()
+
+            try {
+                val response = httpClient.newCall(request).execute().use { response ->
+                    if (response.code != 200) throw RuntimeException("Failed to check for updates")
+                    response.body!!.string()
+                }
+
+                val release = Klaxon().parse<GithubRelease>(response)!!
+                val releaseVersion =
+                    tryParseSemver(release.name)
+                    ?: tryParseSemver(release.tag_name)
+                    ?: throw RuntimeException("Could not parse release version ${release.tag_name}")
+                val releaseDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(release.published_at)
+
+                val installedVersion = getInstalledVersion(this@HttpToolkitApplication)
+
+                val updateAvailable = releaseVersion > installedVersion
+                // We avoid immediately prompting for updates because a) there's a review delay
+                // before new updates go live, and b) it's annoying otherwise, if there's a rapid
+                // series of releases. Better to start chasing users only after a week stable.
+                val updateNotTooRecent = releaseDate.before(daysAgo(0))
+
+                Log.i(TAG,
+                    if (updateAvailable && updateNotTooRecent)
+                        "New version available, released > 1 week"
+                    else if (updateAvailable)
+                        "New version available, but still recent, released $releaseDate"
+                    else
+                        "App is up to date"
+                )
+                return@withContext updateAvailable && updateNotTooRecent
+            } catch (e: Exception) {
+                Log.w(TAG, e)
+                return@withContext false
+            }
+        }
+    }
+
+}
+
+private fun wasInstalledFromStore(context: Context): Boolean {
+    return context.packageManager.getInstallerPackageName(context.packageName) != null
+}
+
+private data class GithubRelease(
+    val tag_name: String?,
+    val name: String?,
+    val published_at: String
+)
+
+private fun tryParseSemver(version: String?): SemVer? = try {
+    if (version == null) null
+    else SemVer.parse(
+        // Strip leading 'v'
+        version.replace(Regex("^v"), "")
+    )
+} catch (e: IllegalArgumentException) {
+    null
+}
+
+private fun getInstalledVersion(context: Context): SemVer {
+    return SemVer.parse(
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    )
+}
+
+private fun daysAgo(days: Int): Date {
+    val calendar = Calendar.getInstance()
+    calendar.add(Calendar.DAY_OF_YEAR, -days)
+    return calendar.time
 }
