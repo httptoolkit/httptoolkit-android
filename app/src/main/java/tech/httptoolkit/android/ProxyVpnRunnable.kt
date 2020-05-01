@@ -3,11 +3,11 @@ package tech.httptoolkit.android
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.util.SparseArray
-import com.lipisoft.toyshark.ClientPacketWriterImpl
-import com.lipisoft.toyshark.SessionHandler
-import com.lipisoft.toyshark.SessionManager
-import com.lipisoft.toyshark.socket.SocketNIODataService
-import com.lipisoft.toyshark.transport.tcp.PacketHeaderException
+import tech.httptoolkit.android.vpn.ClientPacketWriterImpl
+import tech.httptoolkit.android.vpn.SessionHandler
+import tech.httptoolkit.android.vpn.SessionManager
+import tech.httptoolkit.android.vpn.socket.SocketNIODataService
+import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException
 import io.sentry.Sentry
 import java.io.FileInputStream
 import java.io.FileOutputStream

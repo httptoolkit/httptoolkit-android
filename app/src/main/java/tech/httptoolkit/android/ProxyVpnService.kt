@@ -10,8 +10,8 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.lipisoft.toyshark.socket.IProtectSocket
-import com.lipisoft.toyshark.socket.SocketProtector
+import tech.httptoolkit.android.vpn.socket.IProtectSocket
+import tech.httptoolkit.android.vpn.socket.SocketProtector
 import io.sentry.Sentry
 import java.io.*
 
