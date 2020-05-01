@@ -43,7 +43,6 @@ private const val DEACTIVATE_INTENT = "tech.httptoolkit.android.DEACTIVATE"
 
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
-    private val TAG = MainActivity::class.simpleName
     private lateinit var app: HttpToolkitApplication
 
     private var localBroadcastManager: LocalBroadcastManager? = null

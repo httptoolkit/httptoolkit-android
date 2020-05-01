@@ -39,7 +39,6 @@ fun isVpnActive(): Boolean {
 
 class ProxyVpnService : VpnService(), IProtectSocket {
 
-    private val TAG = ProxyVpnService::class.simpleName
     private var app: HttpToolkitApplication? = null
 
     private var localBroadcastManager: LocalBroadcastManager? = null

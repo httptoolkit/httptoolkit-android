@@ -26,7 +26,7 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 
-private val TAG = "ProxySetup"
+private const val TAG = "ProxySetup"
 
 // Takes an android.httptoolkit.tech/connect URI, extracts & parses the connection config
 // within, into a format ready for testing and then usage.

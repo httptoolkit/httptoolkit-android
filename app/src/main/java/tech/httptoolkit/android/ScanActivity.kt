@@ -17,7 +17,6 @@ const val SCANNED_URL_EXTRA = "tech.httptoolkit.android.SCANNED_URL"
 
 class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
 
-    private val TAG = ScanActivity::class.simpleName
     private var app: HttpToolkitApplication? = null
 
     private var scannerView: ZXingScannerView? = null

@@ -24,8 +24,6 @@ class ProxyVpnRunnable(
     redirectPorts: IntArray
 ) : Runnable {
 
-    private val TAG = ProxyVpnRunnable::class.simpleName
-
     @Volatile private var running = false
 
     // Packets from device apps downstream, heading upstream via this VPN

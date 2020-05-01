@@ -25,8 +25,6 @@ import kotlin.coroutines.suspendCoroutine
 
 class HttpToolkitApplication : Application() {
 
-    private val TAG = HttpToolkitApplication::class.simpleName
-
     private var analytics: GoogleAnalytics? = null
     private var ga: Tracker? = null
 
