@@ -8,10 +8,7 @@ import android.util.Base64
 import android.util.Log
 import androidx.core.content.ContextCompat.getSystemService
 import com.beust.klaxon.Klaxon
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.supervisorScope
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayInputStream
@@ -45,10 +42,9 @@ fun parseConnectUri(uri: Uri): ProxyInfo {
 
 suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
     return withContext(Dispatchers.IO) {
-        Log.v(TAG, "Validating proxy info $proxyInfo")
-
-        val proxyTests = proxyInfo.addresses.map { address ->
-            supervisorScope {
+        return@withContext supervisorScope {
+            Log.v(TAG, "Validating proxy info $proxyInfo")
+            val proxyTests = proxyInfo.addresses.map { address ->
                 async {
                     testProxyAddress(
                         address,
@@ -57,16 +53,13 @@ suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
                     )
                 }
             }
-        }
 
-        // Returns with the first working proxy config (cert & address),
-        // or throws if all possible addresses are unreachable/invalid
-        // Once the first test succeeds, we cancel any others
-        val result = proxyTests.awaitFirst()
-        proxyTests.forEach { test ->
-            test.cancel()
+            Log.v(TAG, "Proxy tests started")
+
+            // Return with the first working proxy config (cert & address)
+            // (or throw if all addresses are unreachable/invalid)
+            return@supervisorScope proxyTests.awaitFirst()
         }
-        return@withContext result
     }
 }
 
@@ -83,6 +76,8 @@ private suspend fun testProxyAddress(
             .connectTimeout(2, TimeUnit.SECONDS)
             .readTimeout(2, TimeUnit.SECONDS)
             .build()
+
+        Log.i(TAG, "Testing proxy $address:$port")
 
         val request = Request.Builder()
             .url("http://android.httptoolkit.tech/config")

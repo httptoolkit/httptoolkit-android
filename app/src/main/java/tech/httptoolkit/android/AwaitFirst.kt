@@ -19,6 +19,7 @@ suspend fun <T>Collection<Deferred<T>>.awaitFirst(): T {
 
                 if (error == null) {
                     @Suppress("EXPERIMENTAL_API_USAGE")
+                    this.forEach { item -> item.cancel() } // Cancel all remaining tasks
                     result.complete(item.getCompleted())
                 } else {
                     val remaining = stillRunningCount.decrementAndGet()
