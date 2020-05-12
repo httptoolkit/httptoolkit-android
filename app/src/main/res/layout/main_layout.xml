@@ -25,7 +25,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:srcCompat="@drawable/ic_transparent_icon" />
 
-
     <androidx.constraintlayout.widget.Guideline
             android:id="@+id/statusGuideline"
             android:layout_width="wrap_content"
@@ -47,9 +46,8 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
-    <TextView
-            android:id="@+id/detailText"
-            style="@style/DetailText"
+    <LinearLayout
+            android:id="@+id/statusDetailContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="32dp"
@@ -59,7 +57,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/statusText"
-            />
+            android:orientation="vertical" />
 
     <com.google.android.material.card.MaterialCardView
             android:layout_height="wrap_content"

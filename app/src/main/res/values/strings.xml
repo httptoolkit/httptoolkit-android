@@ -19,9 +19,7 @@
         to %s:%d
     </string>
     <string name="failed_details">
-        We couldn\'t connect to HTTP Toolkit.
-        \n\n
-        Is it running, and connected to the same network as this device?
+        We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?
     </string>
 
     <string name="scan_button">Scan Code</string>

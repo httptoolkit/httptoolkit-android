@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.common.GooglePlayServicesUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -186,17 +187,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun updateUi() {
         val statusText = findViewById<TextView>(R.id.statusText)
-        val detailText = findViewById<TextView>(R.id.detailText)
 
         val buttonContainer = findViewById<LinearLayout>(R.id.buttonLayoutContainer)
         buttonContainer.removeAllViews()
+
+        val detailContainer = findViewById<LinearLayout>(R.id.statusDetailContainer)
+        detailContainer.removeAllViews()
 
         when (mainState) {
             MainState.DISCONNECTED -> {
                 statusText.setText(R.string.disconnected_status)
 
-                detailText.visibility = View.VISIBLE
-                detailText.setText(R.string.disconnected_details)
+                detailContainer.addView(
+                    detailText(getString(R.string.disconnected_details))
+                )
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.scan_button, ::scanCode))
@@ -210,18 +214,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
             MainState.CONNECTING -> {
                 statusText.setText(R.string.connecting_status)
-
-                detailText.visibility = View.GONE
                 buttonContainer.visibility = View.GONE
             }
             MainState.CONNECTED -> {
                 statusText.setText(R.string.connected_status)
 
-                detailText.visibility = View.VISIBLE
-                detailText.text = getString(
-                    R.string.connected_details,
-                    currentProxyConfig!!.ip,
-                    currentProxyConfig!!.port
+                detailContainer.addView(
+                    detailText(getString(
+                        R.string.connected_details,
+                        currentProxyConfig!!.ip,
+                        currentProxyConfig!!.port
+                    ))
                 )
 
                 buttonContainer.visibility = View.VISIBLE
@@ -229,15 +232,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
             MainState.DISCONNECTING -> {
                 statusText.setText(R.string.disconnecting_status)
-
-                detailText.visibility = View.GONE
                 buttonContainer.visibility = View.GONE
             }
             MainState.FAILED -> {
                 statusText.setText(R.string.failed_status)
 
-                detailText.visibility = View.VISIBLE
-                detailText.setText(R.string.failed_details)
+                detailContainer.addView(
+                    detailText(getString(R.string.failed_details))
+                )
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.try_again_button, ::resetAfterFailure))
@@ -261,6 +263,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         button.setText(contentId)
         button.setOnClickListener { clickHandler() }
         return button
+    }
+
+    private fun detailText(content: String): TextView {
+        val text = TextView(ContextThemeWrapper(this, R.style.DetailText))
+        text.text = content
+        return text
     }
 
     private fun scanCode() {
