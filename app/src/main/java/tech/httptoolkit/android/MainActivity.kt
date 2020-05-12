@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
@@ -103,6 +104,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 if (isStoreAvailable(this@MainActivity) && app.isUpdateRequired()) promptToUpdate()
             }
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        setContentView(R.layout.main_layout)
+        updateUi()
     }
 
     override fun onResume() {
