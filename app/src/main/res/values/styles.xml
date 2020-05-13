@@ -19,6 +19,11 @@
     </style>
 
     <style name="DetailText" parent="@android:style/Widget.TextView">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingTop">16sp</item>
+        <item name="android:paddingStart">16sp</item>
+        <item name="android:paddingEnd">16sp</item>
         <item name="android:textSize">20sp</item>
         <item name="android:gravity">center</item>
     </style>
@@ -65,6 +70,39 @@
         <item name="android:textSize">20sp</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0</item>
+    </style>
+
+    <style name="ConnectionStatusCard" parent="@style/Widget.MaterialComponents.CardView">
+        <item name="cardElevation">0sp</item>
+        <item name="contentPadding">10sp</item>
+        <item name="android:layout_marginBottom">10sp</item>
+    </style>
+
+    <style name="ConnectedToText" parent="@android:style/Widget.TextView">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">16sp</item>
+        <item name="android:paddingEnd">16sp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="ConnectionStatusHeading" parent="@android:style/Widget.TextView">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:drawablePadding">10sp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/lato_bold</item>
+        <item name="android:textAlignment">textStart</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/lowLightColor</item>
+    </style>
+
+    <style name="ConnectionStatusText" parent="@android:style/Widget.TextView">
+        <item name="android:textSize">16sp</item>
+        <item name="android:layout_marginStart">34sp</item>
+        <item name="android:layout_marginTop">5sp</item>
     </style>
 
 </resources>

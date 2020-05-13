@@ -225,13 +225,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
             MainState.CONNECTED -> {
                 statusText.setText(R.string.connected_status)
+                val proxyConfig = this.currentProxyConfig!!
 
                 detailContainer.addView(
-                    detailText(getString(
-                        R.string.connected_details,
-                        currentProxyConfig!!.ip,
-                        currentProxyConfig!!.port
-                    ))
+                    ConnectionStatusView(this, proxyConfig)
                 )
 
                 buttonContainer.visibility = View.VISIBLE

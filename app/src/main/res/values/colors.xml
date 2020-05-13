@@ -2,6 +2,10 @@
 <resources>
     <color name="textColor">#222222</color>
     <color name="popColor">#e1421f</color>
+    <color name="lowLightColor">#808f8f</color>
+
+    <color name="successColor">#4caf7d</color>
+    <color name="warningColor">#f1971f</color>
 
     <color name="containerBackground">#d8e2e6</color>
     <color name="mainBackground">#fafafa</color>
