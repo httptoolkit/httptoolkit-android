@@ -16,7 +16,7 @@
         interception option, and scan the QR code shown.
     </string>
     <string name="connected_details">
-        to %s:%d
+        to %s on port %d
     </string>
     <string name="failed_details">
         We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?
