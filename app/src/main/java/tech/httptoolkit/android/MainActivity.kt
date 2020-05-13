@@ -236,6 +236,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
+                buttonContainer.addView(secondaryButton(R.string.test_button, ::testInterception))
             }
             MainState.DISCONNECTING -> {
                 statusText.setText(R.string.disconnecting_status)
@@ -394,6 +395,21 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         startActivity(browserIntent)
     }
 
+    private fun testInterception() {
+        app.trackEvent("Button", "test-interception")
+
+        val browserIntent = Intent(Intent.ACTION_VIEW,
+            Uri.parse("https://amiusing.httptoolkit.tech")
+        )
+
+        // If there's a supported browser available, make sure we use it. This prioritises
+        // the default browser, and only returns null if no known supported browser is installed.
+        val testBrowserPackage = getTestBrowserPackage(this)
+        if (testBrowserPackage != null) browserIntent.setPackage(testBrowserPackage)
+
+        startActivity(browserIntent)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -505,9 +521,42 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 }
 
-private fun isStoreAvailable(context: Context): Boolean = try {
-    context.packageManager.getPackageInfo(GooglePlayServicesUtil.GOOGLE_PLAY_STORE_PACKAGE, 0)
+private fun isPackageAvailable(context: Context, packageName: String) = try {
+    context.packageManager.getPackageInfo(packageName, 0)
     true
 } catch (e: PackageManager.NameNotFoundException) {
     false
 }
+
+private fun getDefaultBrowserPackage(context: Context): String {
+    val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://example.com"))
+    val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
+    return resolveInfo.activityInfo.packageName
+}
+
+private fun getTestBrowserPackage(context: Context): String? {
+    // A list of browsers that trust the user store by default, and so
+    // will work OOTB even if only the user cert is trusted.
+    val supportedBrowsers = listOf(
+        "com.android.chrome", // Modern Android
+        "com.android.browser", // <= Android 2.3
+        "com.google.android.browser", // > 2.3, < 4.0.2
+        "com.brave.browser", // Brave
+        "com.microsoft.emmx" // Edge
+        // FF, Opera & others don't trust user CAs by default, so we avoid them for testing
+    )
+
+    // If the default browser is supported, just use that, easy
+    val defaultBrowser = getDefaultBrowserPackage(context)
+    Log.i("tech.httptoolkit", "Default browser is $defaultBrowser")
+    if (supportedBrowsers.contains(defaultBrowser)) {
+        return defaultBrowser
+    }
+
+    return supportedBrowsers.firstOrNull { packageName ->
+        isPackageAvailable(context, packageName)
+    }
+}
+
+private fun isStoreAvailable(context: Context): Boolean =
+    isPackageAvailable(context, GooglePlayServicesUtil.GOOGLE_PLAY_STORE_PACKAGE)

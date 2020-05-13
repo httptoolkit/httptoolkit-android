@@ -22,10 +22,11 @@
         We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?
     </string>
 
-    <string name="scan_button">Scan Code</string>
+    <string name="scan_button">Scan code</string>
     <string name="reconnect_button">Reconnect</string>
-    <string name="manual_button">Connect Manually</string>
+    <string name="manual_button">Connect manually</string>
     <string name="disconnect_button">Disconnect</string>
-    <string name="docs_button">Read the Docs</string>
-    <string name="try_again_button">Try Again</string>
+    <string name="docs_button">Read the docs</string>
+    <string name="try_again_button">Try again</string>
+    <string name="test_button">Test interception</string>
 </resources>
