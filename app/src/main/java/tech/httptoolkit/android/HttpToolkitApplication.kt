@@ -157,6 +157,11 @@ class HttpToolkitApplication : Application() {
 
     suspend fun isUpdateRequired(): Boolean {
         return withContext(Dispatchers.IO) {
+            if (isVpnActive()) {
+                Log.i(TAG, "VPN currently active, so not checking for updates for now")
+                return@withContext false
+            }
+
             if (wasInstalledFromStore(this@HttpToolkitApplication)) {
                 // We only check for updates for side-loaded/ADB-loaded versions. This is useful
                 // because otherwise anything outside the play store gets no updates.
