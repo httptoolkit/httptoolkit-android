@@ -12,7 +12,7 @@
     <TextView
             android:id="@+id/connectedTo"
             style="@style/ConnectedToText"
-            android:text="to ?.?.?.?"
+            android:text=""
             android:layout_marginBottom="24sp" />
 
     <com.google.android.material.card.MaterialCardView
@@ -23,7 +23,7 @@
         <TextView
                 style="@style/ConnectionStatusHeading"
                 android:drawableStart="@drawable/ic_exclamation_triangle"
-                android:text="HTTPS interception disabled" />
+                android:text="@string/disabled_connection_status_heading" />
 
     </com.google.android.material.card.MaterialCardView>
 

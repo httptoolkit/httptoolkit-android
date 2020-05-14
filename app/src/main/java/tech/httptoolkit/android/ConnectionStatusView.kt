@@ -13,7 +13,7 @@ class ConnectionStatusView(
     init {
         LayoutInflater.from(context).inflate(
             when (whereIsCertTrusted(proxyConfig)) {
-                "user" -> R.layout.connection_status_basic
+                "user" -> R.layout.connection_status_user
                 "system" -> R.layout.connection_status_system
                 else -> R.layout.connection_status_none
             },

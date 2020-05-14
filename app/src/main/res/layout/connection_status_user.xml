@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.widget.LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
@@ -12,7 +11,7 @@
     <TextView
             android:id="@+id/connectedTo"
             style="@style/ConnectedToText"
-            android:text="to ?.?.?.?"
+            android:text=""
             android:layout_marginBottom="24sp" />
 
     <com.google.android.material.card.MaterialCardView
@@ -28,13 +27,13 @@
             <TextView
                     style="@style/ConnectionStatusHeading"
                     android:drawableStart="@drawable/ic_check_circle"
-                    android:text="Basic interception enabled" />
+                    android:text="@string/user_connection_status_enabled_heading" />
 
             <TextView
                     style="@style/ConnectionStatusText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="All plain HTTP traffic will be intercepted. HTTPS traffic will only be intercepted from apps with user certificate trust enabled." />
+                    android:text="@string/user_connection_status_details" />
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
@@ -47,7 +46,7 @@
         <TextView
                 style="@style/ConnectionStatusHeading"
                 android:drawableStart="@drawable/ic_exclamation_triangle"
-                android:text="System interception disabled" />
+                android:text="@string/system_connection_status_disabled_heading" />
     </com.google.android.material.card.MaterialCardView>
 
 </android.widget.LinearLayout>

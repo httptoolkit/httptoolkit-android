@@ -12,7 +12,7 @@
     <TextView
             android:id="@+id/connectedTo"
             style="@style/ConnectedToText"
-            android:text="to ?.?.?.?"
+            android:text=""
             android:layout_marginBottom="24sp" />
 
     <com.google.android.material.card.MaterialCardView
@@ -23,7 +23,7 @@
         <TextView
                 style="@style/ConnectionStatusHeading"
                 android:drawableStart="@drawable/ic_check_circle"
-                android:text="Basic interception enabled" />
+                android:text="@string/user_connection_status_enabled_heading" />
 
     </com.google.android.material.card.MaterialCardView>
 
@@ -40,13 +40,13 @@
             <TextView
                     style="@style/ConnectionStatusHeading"
                     android:drawableStart="@drawable/ic_check_circle"
-                    android:text="System interception enabled" />
+                    android:text="@string/system_connection_status_enabled_heading" />
 
             <TextView
                     style="@style/ConnectionStatusText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Traffic will be intercepted from all installed applications, except those using explicit certificate pinning." />
+                    android:text="@string/system_connection_status_details" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

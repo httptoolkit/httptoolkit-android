@@ -22,6 +22,26 @@
         We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?
     </string>
 
+    <string name="disabled_connection_status_heading">
+        HTTPS interception disabled
+    </string>
+    <string name="user_connection_status_enabled_heading">
+        User interception enabled
+    </string>
+    <string name="system_connection_status_disabled_heading">
+        System interception disabled
+    </string>
+    <string name="system_connection_status_enabled_heading">
+        System interception enabled
+    </string>
+
+    <string name="user_connection_status_details">
+        HTTPS traffic may not be intercepted from all apps, unless they are configured to trust user-installed certificates.
+    </string>
+    <string name="system_connection_status_details">
+        Traffic will be intercepted from all installed applications, except those using explicit certificate pinning.
+    </string>
+
     <string name="scan_button">Scan code</string>
     <string name="reconnect_button">Reconnect</string>
     <string name="manual_button">Connect manually</string>
