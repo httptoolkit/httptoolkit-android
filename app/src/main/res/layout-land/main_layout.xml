@@ -25,10 +25,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
                 android:contentDescription="The HTTP Toolkit Logo"
-                app:layout_constraintBottom_toTopOf="@+id/statusText"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="@+id/guideline"
+                app:layout_constraintBottom_toTopOf="@+id/statusText"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:srcCompat="@drawable/ic_transparent_icon" />
 
         <TextView
@@ -41,21 +41,18 @@
                 android:layout_marginBottom="8dp"
                 android:text="Not Connected"
                 app:layout_constraintBottom_toTopOf="@+id/statusDetailContainer"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/logoImage"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/logoImage" />
+                app:layout_constraintEnd_toEndOf="parent" />
 
         <LinearLayout
                 android:id="@+id/statusDetailContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginEnd="32dp"
                 app:layout_constrainedWidth="true"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/statusText"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 android:orientation="vertical" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
