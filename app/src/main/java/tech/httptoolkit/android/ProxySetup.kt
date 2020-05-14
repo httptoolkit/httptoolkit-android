@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit
 
 private val TAG = formatTag("tech.httptoolkit.android.ProxySetup")
 
+class ResponseException(message: String) : ConnectException(message)
+
 // Takes an android.httptoolkit.tech/connect URI, extracts & parses the connection config
 // within, into a format ready for testing and then usage.
 fun parseConnectUri(uri: Uri): ProxyInfo {
@@ -80,18 +82,16 @@ private suspend fun testProxyAddress(
 
         Log.i(TAG, "Testing proxy $address:$port")
 
-        val request = Request.Builder()
-            .url("http://android.httptoolkit.tech/config")
-            .build()
-
         try {
-            val configString = httpClient.newCall(request).execute().use { response ->
-                if (response.code != 200) {
-                    throw ConnectException("Proxy responded with non-200: ${response.code}")
-                }
-                response.body!!.string()
+            val config = try {
+                val configString = request(httpClient, "http://android.httptoolkit.tech/config")
+                Klaxon().parse<ReceivedProxyConfig>(configString)!!
+            } catch (e: ResponseException) {
+                // If we connected but the response was bad, maybe we're reconnecting to an app
+                // that isn't explicitly expecting an Android client. Retry requesting just the cert.
+                val certString = request(httpClient, "http://amiusing.httptoolkit.tech/certificate")
+                ReceivedProxyConfig(certString)
             }
-            val config = Klaxon().parse<ReceivedProxyConfig>(configString)!!
 
             val foundCert = certFactory.generateCertificate(
                 ByteArrayInputStream(config.certificate.toByteArray(Charsets.UTF_8))
@@ -114,6 +114,17 @@ private suspend fun testProxyAddress(
         } catch (e: Exception) {
             Log.i(TAG, "Error testing proxy address $address: $e")
             throw e
+        }
+    }
+}
+
+suspend fun request(httpClient: OkHttpClient, url: String): String {
+    return withContext(Dispatchers.IO) {
+        httpClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            if (response.code != 200) {
+                throw ResponseException("Proxy responded with non-200: ${response.code}")
+            }
+            response.body!!.string()
         }
     }
 }
