@@ -75,6 +75,7 @@ private suspend fun testProxyAddress(
             .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(address, port)))
             .connectTimeout(2, TimeUnit.SECONDS)
             .readTimeout(2, TimeUnit.SECONDS)
+            .followRedirects(false)
             .build()
 
         Log.i(TAG, "Testing proxy $address:$port")
