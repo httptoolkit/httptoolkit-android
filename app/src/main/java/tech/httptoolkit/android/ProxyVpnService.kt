@@ -37,11 +37,18 @@ fun isVpnActive(): Boolean {
         currentService?.isActive() ?: false
 }
 
+fun activeVpnConfig(): ProxyConfig? {
+    return currentService?.proxyConfig
+}
+
 class ProxyVpnService : VpnService(), IProtectSocket {
 
     private var app: HttpToolkitApplication? = null
 
     private var localBroadcastManager: LocalBroadcastManager? = null
+
+    var proxyConfig: ProxyConfig? = null
+        private set
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private var vpnRunnable: ProxyVpnRunnable? = null
@@ -125,6 +132,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     }
 
     private fun startVpn(proxyConfig: ProxyConfig) {
+        this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
         val packageNames = packages.map { pkg -> pkg.packageName }
@@ -189,7 +197,9 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         stopForeground(true)
         localBroadcastManager!!.sendBroadcast(Intent(VPN_STOPPED_BROADCAST))
         stopSelf()
+
         currentService = null
+        this.proxyConfig = null
     }
 
     fun isActive(): Boolean {

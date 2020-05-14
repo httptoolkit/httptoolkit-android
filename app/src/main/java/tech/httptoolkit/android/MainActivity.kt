@@ -63,8 +63,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private var mainState: MainState = if (isVpnActive()) MainState.CONNECTED else MainState.DISCONNECTED
+
     // If connected/late-stage connecting, the proxy we're connected/trying to connect to. Otherwise null.
-    private var currentProxyConfig: ProxyConfig? = null
+    private var currentProxyConfig: ProxyConfig? = activeVpnConfig()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,12 +105,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 if (isStoreAvailable(this@MainActivity) && app.isUpdateRequired()) promptToUpdate()
             }
         }
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        setContentView(R.layout.main_layout)
-        updateUi()
     }
 
     override fun onResume() {
@@ -182,12 +177,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 disconnect()
             }
 
-            else -> Log.w(TAG, "Unknown intent. Action ${
+            intent.action == "android.intent.action.MAIN" -> {
+                // The app is being opened - nothing to do here
+            }
+
+            else -> Log.w(TAG, "Ignoring unknown intent. Action ${
                 intent.action
             }, data: ${
                 intent.data
-            }, ${
-                if (isRCIntent) "sent as RC intent" else "non-RC"
+            }${
+                if (isRCIntent) " (RC)" else ""
             }")
         }
     }
