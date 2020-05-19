@@ -172,7 +172,11 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 vpnInterface!!,
                 proxyConfig.ip,
                 proxyConfig.port,
-                intArrayOf(80, 443)
+                intArrayOf(
+                    80, // HTTP
+                    443, // HTTPS
+                    8000, 8001, 8080, 8888, 9000 // Common local dev ports
+                )
             )
             Thread(vpnRunnable, "Vpn thread").start()
         }
