@@ -203,7 +203,7 @@ public enum SessionManager {
 					SelectionKey selectionKey = channel.register(selector,
 						channel.isConnected()
 							? SelectionKey.OP_READ | SelectionKey.OP_WRITE
-							: SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE
+							: SelectionKey.OP_CONNECT
 					);
 					session.setSelectionKey(selectionKey);
 					Log.d(TAG,"Registered udp selector successfully");
@@ -289,7 +289,7 @@ public enum SessionManager {
 					SelectionKey selectionKey = channel.register(selector,
 						channel.isConnected()
 							? SelectionKey.OP_READ | SelectionKey.OP_WRITE
-							: SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE
+							: SelectionKey.OP_CONNECT
 					);
 					session.setSelectionKey(selectionKey);
 					Log.d(TAG,"Registered tcp selector successfully");

@@ -195,14 +195,14 @@ public class SocketNIODataService implements Runnable {
 				session.setConnected(connected);
 				Log.d(TAG,"connected immediately to remote tcp server: "+ips+":"+port);
 			} else {
-				if(channel.isConnectionPending()){
+				if (channel.isConnectionPending()) {
 					connected = channel.finishConnect();
 					session.setConnected(connected);
 					Log.d(TAG,"connected to remote tcp server: "+ips+":"+port);
 				}
 			}
 		}
-		if(channel.isConnected()){
+		if (channel.isConnected()) {
 			// Once connected, we no longer want connect events; we want read events instead.
 			session.unsubscribeKey(SelectionKey.OP_CONNECT);
 			session.subscribeKey(SelectionKey.OP_READ);
