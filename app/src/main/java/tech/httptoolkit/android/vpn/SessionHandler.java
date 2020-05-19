@@ -18,13 +18,11 @@ package tech.httptoolkit.android.vpn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
-import tech.httptoolkit.android.vpn.socket.SocketData;
 import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPPacketFactory;
@@ -50,15 +48,12 @@ public class SessionHandler {
 
 	private Queue<Session> writableSessionsQueue = new ConcurrentLinkedQueue<>();
 	private IClientPacketWriter writer;
-	private SocketData packetData;
 
 	public static SessionHandler getInstance(){
 		return handler;
 	}
 
-	private SessionHandler(){
-		packetData = SocketData.getInstance();
-	}
+	private SessionHandler() { }
 
 	public Queue<Session> getWritableSessions() {
 		return this.writableSessionsQueue;
@@ -189,7 +184,6 @@ public class SessionHandler {
 	public void handlePacket(@NonNull ByteBuffer stream) throws PacketHeaderException {
 		final byte[] rawPacket = new byte[stream.limit()];
 		stream.get(rawPacket, 0, stream.limit());
-		packetData.addData(rawPacket);
 		stream.rewind();
 
 		final IPv4Header ipHeader = IPPacketFactory.createIPv4Header(stream);
@@ -215,7 +209,6 @@ public class SessionHandler {
 		byte[] data = TCPPacketFactory.createRstData(ip, tcp, dataLength);
 		try {
 			writer.write(data);
-			packetData.addData(data);
 			Log.d(TAG,"Sent RST Packet to client with dest => " +
 					PacketUtil.intToIPAddress(ip.getDestinationIP()) + ":" +
 					tcp.getDestinationPort());
@@ -228,7 +221,6 @@ public class SessionHandler {
 		byte[] data = TCPPacketFactory.createResponseAckData(ip, tcp, tcp.getSequenceNumber()+1);
 		try {
 			writer.write(data);
-			packetData.addData(data);
 			Log.d(TAG,"Sent last ACK Packet to client with dest => " +
 					PacketUtil.intToIPAddress(ip.getDestinationIP()) + ":" +
 					tcp.getDestinationPort());
@@ -243,7 +235,6 @@ public class SessionHandler {
 		byte[] data = TCPPacketFactory.createFinAckData(ip, tcp, ack, seq, true, true);
 		try {
 			writer.write(data);
-			packetData.addData(data);
 			if(session != null){
 				session.cancelKey();
 				SessionManager.INSTANCE.closeSession(session);
@@ -261,7 +252,6 @@ public class SessionHandler {
 		final ByteBuffer stream = ByteBuffer.wrap(data);
 		try {
 			writer.write(data);
-			packetData.addData(data);
 			Log.d(TAG,"00000000000 FIN-ACK packet data to vpn client 000000000000");
 			IPv4Header vpnip = null;
 			try {
@@ -319,7 +309,6 @@ public class SessionHandler {
 		byte[] data = TCPPacketFactory.createResponseAckData(ipheader, tcpheader, acknumber);
 		try {
 			writer.write(data);
-			packetData.addData(data);
 		} catch (IOException e) {
 			Log.e(TAG,"Failed to send ACK packet: " + e.getMessage());
 		}
@@ -332,7 +321,6 @@ public class SessionHandler {
 		byte[] data = TCPPacketFactory.createResponseAckData(ipHeader, tcpheader, ackNumber);
 		try {
 			writer.write(data);
-			packetData.addData(data);
 		} catch (IOException e) {
 			Log.e(TAG,"Failed to send ACK packet: " + e.getMessage());
 		}
@@ -406,7 +394,6 @@ public class SessionHandler {
 
 		try {
 			writer.write(packet.getBuffer());
-			packetData.addData(packet.getBuffer());
 			Log.d(TAG,"Send SYN-ACK to client");
 		} catch (IOException e) {
 			Log.e(TAG,"Error sending data to client: "+e.getMessage());

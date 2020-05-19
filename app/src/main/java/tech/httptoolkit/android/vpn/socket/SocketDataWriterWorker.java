@@ -114,8 +114,6 @@ public class SocketDataWriterWorker implements Runnable {
 					session.getLastIpHeader(), session.getLastTcpHeader(), 0);
 			try {
 				writer.write(rstData);
-				SocketData socketData = SocketData.getInstance();
-				socketData.addData(rstData);
 			} catch (IOException ex) {
 				ex.printStackTrace();
 			}
