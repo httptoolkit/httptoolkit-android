@@ -3,7 +3,7 @@ package tech.httptoolkit.android
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.util.SparseArray
-import tech.httptoolkit.android.vpn.ClientPacketWriterImpl
+import tech.httptoolkit.android.vpn.ClientPacketWriter
 import tech.httptoolkit.android.vpn.SessionHandler
 import tech.httptoolkit.android.vpn.SessionManager
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService
@@ -27,23 +27,22 @@ class ProxyVpnRunnable(
     @Volatile private var running = false
 
     // Packets from device apps downstream, heading upstream via this VPN
-    private val clientReader = FileInputStream(vpnInterface.fileDescriptor)
+    private val vpnReadStream = FileInputStream(vpnInterface.fileDescriptor)
 
     // Packets from upstream servers, received by this VPN
-    private val clientWriter = FileOutputStream(vpnInterface.fileDescriptor)
-    private val clientPacketWriter = ClientPacketWriterImpl(clientWriter)
+    private val vpnWriteStream = FileOutputStream(vpnInterface.fileDescriptor)
+    private val vpnPacketWriter = ClientPacketWriter(vpnWriteStream)
+    private val vpnPacketWriterThread = Thread(vpnPacketWriter)
+
+    // Background service & task for non-blocking socket
+    private val nioService = SocketNIODataService(vpnPacketWriter)
+    private val dataServiceThread = Thread(nioService, "Socket NIO thread")
+
+    private val manager = SessionManager(nioService)
+    private val handler = SessionHandler(manager, nioService, vpnPacketWriter)
 
     // Allocate the buffer for a single packet.
     private val packet = ByteBuffer.allocate(MAX_PACKET_LEN)!!
-
-    // SessionHandler, which handles sessions whilst writing packets
-    private val handler = SessionHandler.getInstance().apply {
-        setWriter(clientPacketWriter)
-    }
-
-    // Background service & task for non-blocking socket
-    private val dataService = SocketNIODataService(clientPacketWriter)
-    private val dataServiceThread = Thread(dataService, "Socket NIO thread")
 
     // Our redirect rules, defining which traffic should be forwarded to what proxy address
     private val portRedirections = SparseArray<InetSocketAddress>().apply {
@@ -61,8 +60,9 @@ class ProxyVpnRunnable(
 
         Log.i(TAG, "Vpn thread starting")
 
-        SessionManager.INSTANCE.setTcpPortRedirections(portRedirections)
+        manager.setTcpPortRedirections(portRedirections)
         dataServiceThread.start()
+        vpnPacketWriterThread.start()
 
         var data: ByteArray
         var length: Int
@@ -71,7 +71,7 @@ class ProxyVpnRunnable(
         while (running) {
             data = packet.array()
 
-            length = clientReader.read(data)
+            length = vpnReadStream.read(data)
             if (length > 0) {
                 try {
                     packet.limit(length)
@@ -93,14 +93,16 @@ class ProxyVpnRunnable(
         }
 
         Log.i(TAG, "Vpn thread shutting down")
-
     }
 
     fun stop() {
         if (running) {
             running = false
-            dataService.setShutdown(true)
+            nioService.shutdown()
             dataServiceThread.interrupt()
+
+            vpnPacketWriter.shutdown()
+            vpnPacketWriterThread.interrupt()
         } else {
             Log.w(TAG, "Vpn runnable stopped, but it's not running")
         }

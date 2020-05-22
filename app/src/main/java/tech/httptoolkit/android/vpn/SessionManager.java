@@ -23,6 +23,7 @@ import android.util.SparseArray;
 
 import tech.httptoolkit.android.TagKt;
 import tech.httptoolkit.android.vpn.socket.DataConst;
+import tech.httptoolkit.android.vpn.socket.ICloseSession;
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService;
 import tech.httptoolkit.android.vpn.socket.SocketProtector;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
@@ -34,11 +35,8 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -47,24 +45,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Borey Sao
  * Date: May 20, 2014
  */
-public enum SessionManager {
-	INSTANCE;
+public class SessionManager implements ICloseSession {
 
 	private final String TAG = TagKt.getTAG(this);
 	private final Map<String, Session> table = new ConcurrentHashMap<>();
 	private SocketProtector protector = SocketProtector.getInstance();
-	private Selector selector;
 
-	SessionManager() {
-		try {
-			selector = Selector.open();
-		} catch (IOException e) {
-			Log.e(TAG,"Failed to create Socket Selector");
-		}
-	}
+	private SocketNIODataService nioService;
 
-	public Selector getSelector(){
-		return selector;
+	public SessionManager(SocketNIODataService nioService) {
+		this.nioService = nioService;
 	}
 
 	/**
@@ -106,18 +96,6 @@ public enum SessionManager {
 		return null;
 	}
 
-	public Session getSessionByChannel(AbstractSelectableChannel channel) {
-		Collection<Session> sessions = table.values();
-
-		for (Session session: sessions) {
-			if (channel == session.getChannel()) {
-				return session;
-			}
-		}
-
-		return null;
-	}
-
 	/**
 	 * remove session from memory, then close socket connection.
 	 * @param ip Destination IP Address
@@ -143,30 +121,19 @@ public enum SessionManager {
 	}
 
 	public void closeSession(@NonNull Session session){
-		String key = Session.getSessionKey(session.getDestIp(),
+		closeSession(session.getDestIp(),
 				session.getDestPort(), session.getSourceIp(),
 				session.getSourcePort());
-		table.remove(key);
-
-		try {
-			AbstractSelectableChannel channel = session.getChannel();
-			if(channel != null) {
-				channel.close();
-			}
-		} catch (IOException e) {
-			Log.e(TAG, e.toString());
-		}
-		Log.d(TAG,"closed session -> " + key);
 	}
 
 	@Nullable
-	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort){
+	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort) {
 		String keys = Session.getSessionKey(ip, port, srcIp, srcPort);
 
 		if (table.containsKey(keys))
 			return table.get(keys);
 
-		Session session = new Session(srcIp, srcPort, ip, port);
+		Session session = new Session(srcIp, srcPort, ip, port, this);
 
 		DatagramChannel channel;
 
@@ -174,12 +141,13 @@ public enum SessionManager {
 			channel = DatagramChannel.open();
 			channel.socket().setSoTimeout(0);
 			channel.configureBlocking(false);
-
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;
 		}
 		protector.protect(channel.socket());
+
+		session.setChannel(channel);
 
 		//initiate connection to reduce latency
 		String ips = PacketUtil.intToIPAddress(ip);
@@ -197,25 +165,12 @@ public enum SessionManager {
 		}
 
 		try {
-			synchronized(SocketNIODataService.syncSelector2) {
-				selector.wakeup();
-				synchronized(SocketNIODataService.syncSelector) {
-					SelectionKey selectionKey = channel.register(selector,
-						channel.isConnected()
-							? SelectionKey.OP_READ | SelectionKey.OP_WRITE
-							: SelectionKey.OP_CONNECT
-					);
-					session.setSelectionKey(selectionKey);
-					Log.d(TAG,"Registered udp selector successfully");
-				}
-			}
+			nioService.registerSession(session);
 		} catch (ClosedChannelException e) {
 			e.printStackTrace();
 			Log.e(TAG,"failed to register udp channel with selector: "+ e.getMessage());
 			return null;
 		}
-
-		session.setChannel(channel);
 
 		if (table.containsKey(keys)) {
 			try {
@@ -227,19 +182,20 @@ public enum SessionManager {
 		} else {
 			table.put(keys, session);
 		}
+
 		Log.d(TAG,"new UDP session successfully created.");
 		return session;
 	}
 
 	@Nullable
-	public Session createNewSession(int ip, int port, int srcIp, int srcPort){
+	public Session createNewTCPSession(int ip, int port, int srcIp, int srcPort){
 		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
 		if (table.containsKey(key)) {
 			Log.e(TAG, "Session " + key + " was already created.");
 			return null;
 		}
 
-		Session session = new Session(srcIp, srcPort, ip, port);
+		Session session = new Session(srcIp, srcPort, ip, port, this);
 
 		SocketChannel channel;
 		try {
@@ -249,7 +205,7 @@ public enum SessionManager {
 			channel.socket().setSoTimeout(0);
 			channel.socket().setReceiveBufferSize(DataConst.MAX_RECEIVE_BUFFER_SIZE);
 			channel.configureBlocking(false);
-		}catch(SocketException e){
+		} catch(SocketException e) {
 			Log.e(TAG, e.toString());
 			return null;
 		} catch (IOException e) {
@@ -260,8 +216,9 @@ public enum SessionManager {
 		Log.d(TAG,"created new SocketChannel for " + key);
 
 		protector.protect(channel.socket());
-
 		Log.d(TAG,"Protected new SocketChannel");
+
+		session.setChannel(channel);
 
 		//initiate connection to reduce latency
 		// Use the real address, unless tcpPortRedirection defines a different
@@ -281,27 +238,13 @@ public enum SessionManager {
 
 		session.setConnected(connected);
 
-		//register for non-blocking operation
 		try {
-			synchronized(SocketNIODataService.syncSelector2){
-				selector.wakeup();
-				synchronized(SocketNIODataService.syncSelector){
-					SelectionKey selectionKey = channel.register(selector,
-						channel.isConnected()
-							? SelectionKey.OP_READ | SelectionKey.OP_WRITE
-							: SelectionKey.OP_CONNECT
-					);
-					session.setSelectionKey(selectionKey);
-					Log.d(TAG,"Registered tcp selector successfully");
-				}
-			}
+			nioService.registerSession(session);
 		} catch (ClosedChannelException e) {
 			e.printStackTrace();
-			Log.e(TAG,"failed to register tcp channel with selector: " + e.getMessage());
+			Log.e(TAG,"Failed to register channel with selector: " + e.getMessage());
 			return null;
 		}
-
-		session.setChannel(channel);
 
 		if (table.containsKey(key)) {
 			try {

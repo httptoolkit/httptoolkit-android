@@ -3,9 +3,8 @@ package tech.httptoolkit.android.vpn.socket;
 import androidx.annotation.NonNull;
 import android.util.Log;
 
-import tech.httptoolkit.android.vpn.IClientPacketWriter;
+import tech.httptoolkit.android.vpn.ClientPacketWriter;
 import tech.httptoolkit.android.vpn.Session;
-import tech.httptoolkit.android.vpn.SessionManager;
 import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException;
@@ -21,6 +20,7 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.NotYetConnectedException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
 import java.util.Date;
@@ -28,29 +28,24 @@ import java.util.Date;
 import tech.httptoolkit.android.TagKt;
 
 /**
- * background task for reading data from remote server and write data to vpn client
- * @author Borey Sao
- * Date: July 30, 2014
+ * Takes a session, and reads all available upstream data back into it.
+ *
+ * Used by the NIO thread, and run synchronously as part of that non-blocking loop.
  */
-class SocketDataReaderWorker implements Runnable {
-	private final String TAG = TagKt.getTAG(this);
-	private IClientPacketWriter writer;
-	private String sessionKey;
+class SocketChannelReader {
 
-	SocketDataReaderWorker(IClientPacketWriter writer, String sessionKey) {
+	private final String TAG = TagKt.getTAG(this);
+
+	private final ClientPacketWriter writer;
+
+	public SocketChannelReader(ClientPacketWriter writer) {
 		this.writer = writer;
-		this.sessionKey = sessionKey;
 	}
 
-	@Override
-	public void run() {
-		Session session = SessionManager.INSTANCE.getSessionByKey(sessionKey);
-		if(session == null) {
-			Log.e(TAG, "Session NOT FOUND");
-			return;
-		}
-
+	public void read(Session session) {
 		AbstractSelectableChannel channel = session.getChannel();
+
+		Log.d(TAG, "Reading from session " + session);
 
 		if(channel instanceof SocketChannel) {
 			readTCP(session);
@@ -60,8 +55,11 @@ class SocketDataReaderWorker implements Runnable {
 			return;
 		}
 
+		// Resubscribe to reads, so that we're triggered again if more data arrives later.
+		session.subscribeKey(SelectionKey.OP_READ);
+
 		if(session.isAbortingConnection()) {
-			Log.d(TAG,"removing aborted connection -> "+ sessionKey);
+			Log.d(TAG,"removing aborted connection -> "+ session);
 			session.cancelKey();
 			if (channel instanceof SocketChannel){
 				try {
@@ -82,9 +80,7 @@ class SocketDataReaderWorker implements Runnable {
 					e.printStackTrace();
 				}
 			}
-			SessionManager.INSTANCE.closeSession(session);
-		} else {
-			session.setBusyread(false);
+			session.closeSession();
 		}
 	}
 	
@@ -106,12 +102,12 @@ class SocketDataReaderWorker implements Runnable {
 						buffer.clear();
 					} else if(len == -1) {
 						Log.d(TAG,"End of data from remote server, will send FIN to client");
-						Log.d(TAG,"send FIN to: " + sessionKey);
+						Log.d(TAG,"send FIN to: " + session);
 						sendFin(session);
 						session.setAbortingConnection(true);
 					}
 				} else {
-					Log.e(TAG,"*** client window is full, now pause for " + sessionKey);
+					Log.e(TAG,"*** client window is full, now pause for " + session);
 					break;
 				}
 			} while(len > 0);
@@ -177,11 +173,8 @@ class SocketDataReaderWorker implements Runnable {
 					tcpheader, packetBody, session.hasReceivedLastSegment(),
 					session.getRecSequence(), unAck,
 					session.getTimestampSender(), session.getTimestampReplyto());
-			try {
-				writer.write(data);
-			} catch (IOException e) {
-				Log.e(TAG,"Failed to send ACK + Data packet: " + e.getMessage());
-			}
+
+			writer.write(data);
 		}
 	}
 	private void sendFin(Session session){
@@ -190,12 +183,10 @@ class SocketDataReaderWorker implements Runnable {
 		final byte[] data = TCPPacketFactory.createFinData(ipHeader, tcpheader,
 				session.getSendNext(), session.getRecSequence(),
 				session.getTimestampSender(), session.getTimestampReplyto());
-		try {
-			writer.write(data);
-		} catch (IOException e) {
-			Log.e(TAG,"Failed to send FIN packet: " + e.getMessage());
-		}
+
+		writer.write(data);
 	}
+
 	private void readUDP(Session session){
 		DatagramChannel channel = (DatagramChannel) session.getChannel();
 		ByteBuffer buffer = ByteBuffer.allocate(DataConst.MAX_RECEIVE_BUFFER_SIZE);
@@ -218,8 +209,10 @@ class SocketDataReaderWorker implements Runnable {
 					System.arraycopy(buffer.array(),0, data, 0, len);
 					byte[] packetData = UDPPacketFactory.createResponsePacket(
 							session.getLastIpHeader(), session.getLastUdpHeader(), data);
+
 					//write to client
 					writer.write(packetData);
+
 					Log.d(TAG,"SDR: sent " + len + " bytes to UDP client, packetData.length: "
 							+ packetData.length);
 					buffer.clear();
@@ -230,7 +223,7 @@ class SocketDataReaderWorker implements Runnable {
 						UDPHeader udp = UDPPacketFactory.createUDPHeader(stream);
 						String str = PacketUtil.getUDPoutput(ip, udp);
 						Log.d(TAG,"++++++ SD: packet sending to client ++++++++");
-						Log.i(TAG,"got response time: " + responseTime);
+						Log.d(TAG,"got response time: " + responseTime);
 						Log.d(TAG,str);
 						Log.d(TAG,"++++++ SD: end sending packet to client ++++");
 					} catch (PacketHeaderException e) {

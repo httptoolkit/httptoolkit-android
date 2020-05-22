@@ -19,6 +19,7 @@ package tech.httptoolkit.android.vpn;
 import android.util.Log;
 
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.socket.ICloseSession;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.udp.UDPHeader;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
@@ -36,15 +37,15 @@ import java.nio.channels.spi.AbstractSelectableChannel;
  * Date: May 19, 2014
  */
 public class Session {
-	private static  final String TAG = "Session";
+	private final String TAG = "Session";
 
 	private AbstractSelectableChannel channel;
 	
-	private int destIp = 0;
-	private int destPort = 0;
+	private final int destIp;
+	private final int destPort;
 	
-	private int sourceIp = 0;
-	private int sourcePort = 0;
+	private final int sourceIp;
+	private final int sourcePort;
 	
 	//sequence received from client
 	private long recSequence = 0;
@@ -69,10 +70,10 @@ public class Session {
 	private boolean isConnected = false;
 	
 	//receiving buffer for storing data from remote host
-	private ByteArrayOutputStream receivingStream;
+	private final ByteArrayOutputStream receivingStream;
 	
 	//sending buffer for storing data from vpn client to be send to destination host
-	private ByteArrayOutputStream sendingStream;
+	private final ByteArrayOutputStream sendingStream;
 	
 	private boolean hasReceivedLastSegment = false;
 	
@@ -85,7 +86,7 @@ public class Session {
 	private boolean closingConnection = false;
 	
 	//indicate data from client is ready for sending to destination
-	private boolean isDataForSendingReady = false;
+	private volatile boolean isDataForSendingReady = false;
 	
 	//store data for retransmission
 	private byte[] unackData = null;
@@ -102,24 +103,31 @@ public class Session {
 	//indicate that vpn client has sent FIN flag and it has been acked
 	private boolean ackedToFin = false;
 	
-	//indicate that this session is currently being worked on by some SocketDataWorker already
-	private volatile boolean isBusyRead = false;
-	private volatile boolean isBusyWrite = false;
-	
 	//closing session and aborting connection, will be done by background task
 	private volatile boolean abortingConnection = false;
 	
 	private SelectionKey selectionkey = null;
 	
 	public long connectionStartTime = 0;
+
+	private final ICloseSession sessionCloser;
 	
-	Session(int sourceIp, int sourcePort, int destinationIp, int destinationPort){
+	Session(
+		int sourceIp,
+		int sourcePort,
+		int destinationIp,
+		int destinationPort,
+		ICloseSession sessionCloser
+	) {
 		receivingStream = new ByteArrayOutputStream();
 		sendingStream = new ByteArrayOutputStream();
+
 		this.sourceIp = sourceIp;
 		this.sourcePort = sourcePort;
 		this.destIp = destinationIp;
 		this.destPort = destinationPort;
+
+		this.sessionCloser = sessionCloser;
 	}
 
 	/**
@@ -357,18 +365,6 @@ public class Session {
 		return ackedToFin;
 	}
 
-	public boolean isBusyRead() {
-		return isBusyRead;
-	}
-	public void setBusyread(boolean isbusyread) {
-		this.isBusyRead = isbusyread;
-	}
-	public boolean isBusywrite() {
-		return isBusyWrite;
-	}
-	public void setBusywrite(boolean isbusywrite) {
-		this.isBusyWrite = isbusywrite;
-	}
 	public boolean isAbortingConnection() {
 		return abortingConnection;
 	}
@@ -378,7 +374,7 @@ public class Session {
 	public SelectionKey getSelectionKey() {
 		return selectionkey;
 	}
-	void setSelectionKey(SelectionKey selectionkey) {
+	public void setSelectionKey(SelectionKey selectionkey) {
 		this.selectionkey = selectionkey;
 	}
 
@@ -401,6 +397,10 @@ public class Session {
 			if (!this.selectionkey.isValid()) return;
 			this.selectionkey.interestOps(this.selectionkey.interestOps() & ~OP);
 		}
+	}
+
+	public void closeSession() {
+		this.sessionCloser.closeSession(this);
 	}
 
 	public String getSessionKey() {

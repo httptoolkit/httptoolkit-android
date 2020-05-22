@@ -18,11 +18,11 @@ package tech.httptoolkit.android.vpn;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.nio.channels.SelectionKey;
 
 import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.socket.SocketNIODataService;
 import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPPacketFactory;
@@ -44,49 +44,47 @@ import tech.httptoolkit.android.TagKt;
 public class SessionHandler {
 	private final String TAG = TagKt.getTAG(this);
 
-	private static final SessionHandler handler = new SessionHandler();
+	private final SessionManager manager;
+	private final SocketNIODataService nioService;
+	private final ClientPacketWriter writer;
 
-	private Queue<Session> writableSessionsQueue = new ConcurrentLinkedQueue<>();
-	private IClientPacketWriter writer;
-
-	public static SessionHandler getInstance(){
-		return handler;
-	}
-
-	private SessionHandler() { }
-
-	public Queue<Session> getWritableSessions() {
-		return this.writableSessionsQueue;
-	}
-
-	public void setWriter(IClientPacketWriter writer){
+	public SessionHandler(SessionManager manager, SocketNIODataService nioService, ClientPacketWriter writer) {
+		this.manager = manager;
+		this.nioService = nioService;
 		this.writer = writer;
 	}
 
 	private void handleUDPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader, UDPHeader udpheader){
-		Session session = SessionManager.INSTANCE.getSession(ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
-				ipHeader.getSourceIP(), udpheader.getSourcePort());
+		Session session = manager.getSession(
+			ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
+			ipHeader.getSourceIP(), udpheader.getSourcePort()
+		);
 
-		if(session == null){
-			session = SessionManager.INSTANCE.createNewUDPSession(ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
-					ipHeader.getSourceIP(), udpheader.getSourcePort());
+		if (session == null){
+			session = manager.createNewUDPSession(
+				ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
+				ipHeader.getSourceIP(), udpheader.getSourcePort()
+			);
 		}
 
 		if(session == null){
 			return;
 		}
 
-		session.setLastIpHeader(ipHeader);
-		session.setLastUdpHeader(udpheader);
-		int len = SessionManager.INSTANCE.addClientData(clientPacketData, session);
-		session.setDataForSendingReady(true);
+		synchronized (session) {
+			session.setLastIpHeader(ipHeader);
+			session.setLastUdpHeader(udpheader);
+			int len = manager.addClientData(clientPacketData, session);
+			session.setDataForSendingReady(true);
 
-		// Put this on the queue and nudge the socket NIO thread to write it
-		this.writableSessionsQueue.add(session);
-		session.getSelectionKey().selector().wakeup();
-		Log.d(TAG,"added UDP data for bg worker to send: "+len);
+			// Ping the NIO thread to write this, when the session is next writable
+			session.subscribeKey(SelectionKey.OP_WRITE);
+			nioService.refreshSelect(session);
 
-		SessionManager.INSTANCE.keepSessionAlive(session);
+			Log.d(TAG,"Added " + len + " bytes of UDP data, ready to send");
+		}
+
+		manager.keepSessionAlive(session);
 	}
 
 	private void handleTCPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader, TCPHeader tcpheader){
@@ -102,7 +100,7 @@ public class SessionHandler {
 			replySynAck(ipHeader,tcpheader);
 		} else if(tcpheader.isACK()) {
 			String key = Session.getSessionKey(destinationIP, destinationPort, sourceIP, sourcePort);
-			Session session = SessionManager.INSTANCE.getSessionByKey(key);
+			Session session = manager.getSessionByKey(key);
 
 			if(session == null) {
 				if (tcpheader.isFIN()) {
@@ -116,55 +114,56 @@ public class SessionHandler {
 				return;
 			}
 
-			session.setLastIpHeader(ipHeader);
-			session.setLastTcpHeader(tcpheader);
+			synchronized (session) {
+				session.setLastIpHeader(ipHeader);
+				session.setLastTcpHeader(tcpheader);
 
-			//any data from client?
-			if(dataLength > 0) {
-				//accumulate data from client
-				if(session.getRecSequence() == 0 || tcpheader.getSequenceNumber() >= session.getRecSequence()) {
-					int addedLength = SessionManager.INSTANCE.addClientData(clientPacketData, session);
-					//send ack to client only if new data was added
-					sendAck(ipHeader, tcpheader, addedLength, session);
+				//any data from client?
+				if (dataLength > 0) {
+					//accumulate data from client
+					if (session.getRecSequence() == 0 || tcpheader.getSequenceNumber() >= session.getRecSequence()) {
+						int addedLength = manager.addClientData(clientPacketData, session);
+						//send ack to client only if new data was added
+						sendAck(ipHeader, tcpheader, addedLength, session);
+					} else {
+						sendAckForDisorder(ipHeader, tcpheader, dataLength);
+					}
 				} else {
-					sendAckForDisorder(ipHeader, tcpheader, dataLength);
-				}
-			} else {
-				//an ack from client for previously sent data
-				acceptAck(tcpheader, session);
+					//an ack from client for previously sent data
+					acceptAck(tcpheader, session);
 
-				if(session.isClosingConnection()){
-					sendFinAck(ipHeader, tcpheader, session);
-				}else if(session.isAckedToFin() && !tcpheader.isFIN()){
-					//the last ACK from client after FIN-ACK flag was sent
-					SessionManager.INSTANCE.closeSession(destinationIP, destinationPort, sourceIP, sourcePort);
-					Log.d(TAG,"got last ACK after FIN, session is now closed.");
+					if (session.isClosingConnection()) {
+						sendFinAck(ipHeader, tcpheader, session);
+					} else if (session.isAckedToFin() && !tcpheader.isFIN()) {
+						//the last ACK from client after FIN-ACK flag was sent
+						manager.closeSession(destinationIP, destinationPort, sourceIP, sourcePort);
+						Log.d(TAG, "got last ACK after FIN, session is now closed.");
+					}
 				}
-			}
-			//received the last segment of data from vpn client
-			if(tcpheader.isPSH()){
-				//push data to destination here. Background thread will receive data and fill session's buffer.
-				//Background thread will send packet to client
-				pushDataToDestination(session, tcpheader);
-			} else if(tcpheader.isFIN()){
-				//fin from vpn client is the last packet
-				//ack it
-				Log.d(TAG,"FIN from vpn client, will ack it.");
-				ackFinAck(ipHeader, tcpheader, session);
-			} else if(tcpheader.isRST()){
-				resetConnection(ipHeader, tcpheader);
-			}
+				//received the last segment of data from vpn client
+				if (tcpheader.isPSH()) {
+					// Tell the NIO thread to immediately send data to the destination
+					pushDataToDestination(session, tcpheader);
+				} else if (tcpheader.isFIN()) {
+					//fin from vpn client is the last packet
+					//ack it
+					Log.d(TAG, "FIN from vpn client, will ack it.");
+					ackFinAck(ipHeader, tcpheader, session);
+				} else if (tcpheader.isRST()) {
+					resetConnection(ipHeader, tcpheader);
+				}
 
-			if(!session.isClientWindowFull() && !session.isAbortingConnection()){
-				SessionManager.INSTANCE.keepSessionAlive(session);
+				if (!session.isClientWindowFull() && !session.isAbortingConnection()) {
+					manager.keepSessionAlive(session);
+				}
 			}
 		} else if(tcpheader.isFIN()){
 			//case client sent FIN without ACK
-			Session session = SessionManager.INSTANCE.getSession(destinationIP, destinationPort, sourceIP, sourcePort);
+			Session session = manager.getSession(destinationIP, destinationPort, sourceIP, sourcePort);
 			if(session == null)
 				ackFinAck(ipHeader, tcpheader, null);
 			else
-				SessionManager.INSTANCE.keepSessionAlive(session);
+				manager.keepSessionAlive(session);
 
 		} else if(tcpheader.isRST()){
 			resetConnection(ipHeader, tcpheader);
@@ -207,42 +206,33 @@ public class SessionHandler {
 
 	private void sendRstPacket(IPv4Header ip, TCPHeader tcp, int dataLength){
 		byte[] data = TCPPacketFactory.createRstData(ip, tcp, dataLength);
-		try {
-			writer.write(data);
-			Log.d(TAG,"Sent RST Packet to client with dest => " +
-					PacketUtil.intToIPAddress(ip.getDestinationIP()) + ":" +
-					tcp.getDestinationPort());
-		} catch (IOException e) {
-			Log.e(TAG,"failed to send RST packet: " + e.getMessage());
-		}
+
+		writer.write(data);
+		Log.d(TAG,"Sent RST Packet to client with dest => " +
+				PacketUtil.intToIPAddress(ip.getDestinationIP()) + ":" +
+				tcp.getDestinationPort());
 	}
 
 	private void sendLastAck(IPv4Header ip, TCPHeader tcp){
 		byte[] data = TCPPacketFactory.createResponseAckData(ip, tcp, tcp.getSequenceNumber()+1);
-		try {
-			writer.write(data);
-			Log.d(TAG,"Sent last ACK Packet to client with dest => " +
-					PacketUtil.intToIPAddress(ip.getDestinationIP()) + ":" +
-					tcp.getDestinationPort());
-		} catch (IOException e) {
-			Log.e(TAG,"failed to send last ACK packet: " + e.getMessage());
-		}
+
+		writer.write(data);
+		Log.d(TAG,"Sent last ACK Packet to client with dest => " +
+				PacketUtil.intToIPAddress(ip.getDestinationIP()) + ":" +
+				tcp.getDestinationPort());
 	}
 
 	private void ackFinAck(IPv4Header ip, TCPHeader tcp, Session session){
 		long ack = tcp.getSequenceNumber() + 1;
 		long seq = tcp.getAckNumber();
 		byte[] data = TCPPacketFactory.createFinAckData(ip, tcp, ack, seq, true, true);
-		try {
-			writer.write(data);
-			if(session != null){
-				session.cancelKey();
-				SessionManager.INSTANCE.closeSession(session);
-				Log.d(TAG,"ACK to client's FIN and close session => "+PacketUtil.intToIPAddress(ip.getDestinationIP())+":"+tcp.getDestinationPort()
-						+"-"+PacketUtil.intToIPAddress(ip.getSourceIP())+":"+tcp.getSourcePort());
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+
+		writer.write(data);
+		if(session != null){
+			session.cancelKey();
+			manager.closeSession(session);
+			Log.d(TAG,"ACK to client's FIN and close session => "+PacketUtil.intToIPAddress(ip.getDestinationIP())+":"+tcp.getDestinationPort()
+					+"-"+PacketUtil.intToIPAddress(ip.getSourceIP())+":"+tcp.getSourcePort());
 		}
 	}
 	private void sendFinAck(IPv4Header ip, TCPHeader tcp, Session session){
@@ -250,33 +240,30 @@ public class SessionHandler {
 		final long seq = tcp.getAckNumber();
 		final byte[] data = TCPPacketFactory.createFinAckData(ip, tcp, ack, seq,true,false);
 		final ByteBuffer stream = ByteBuffer.wrap(data);
+
+		writer.write(data);
+		Log.d(TAG,"00000000000 FIN-ACK packet data to vpn client 000000000000");
+		IPv4Header vpnip = null;
 		try {
-			writer.write(data);
-			Log.d(TAG,"00000000000 FIN-ACK packet data to vpn client 000000000000");
-			IPv4Header vpnip = null;
-			try {
-				vpnip = IPPacketFactory.createIPv4Header(stream);
-			} catch (PacketHeaderException e) {
-				e.printStackTrace();
-			}
-
-			TCPHeader vpntcp = null;
-			try {
-				if (vpnip != null)
-					vpntcp = TCPPacketFactory.createTCPHeader(stream);
-			} catch (PacketHeaderException e) {
-				e.printStackTrace();
-			}
-
-			if(vpnip != null && vpntcp != null){
-				String sout = PacketUtil.getOutput(vpnip, vpntcp, data);
-				Log.d(TAG,sout);
-			}
-			Log.d(TAG,"0000000000000 finished sending FIN-ACK packet to vpn client 000000000000");
-
-		} catch (IOException e) {
-			Log.e(TAG,"Failed to send ACK packet: "+e.getMessage());
+			vpnip = IPPacketFactory.createIPv4Header(stream);
+		} catch (PacketHeaderException e) {
+			e.printStackTrace();
 		}
+
+		TCPHeader vpntcp = null;
+		try {
+			if (vpnip != null)
+				vpntcp = TCPPacketFactory.createTCPHeader(stream);
+		} catch (PacketHeaderException e) {
+			e.printStackTrace();
+		}
+
+		if(vpnip != null && vpntcp != null){
+			String sout = PacketUtil.getOutput(vpnip, vpntcp, data);
+			Log.d(TAG,sout);
+		}
+		Log.d(TAG,"0000000000000 finished sending FIN-ACK packet to vpn client 000000000000");
+
 		session.setSendNext(seq + 1);
 		//avoid re-sending it, from here client should take care the rest
 		session.setClosingConnection(false);
@@ -287,9 +274,9 @@ public class SessionHandler {
 		session.setTimestampReplyto(tcp.getTimeStampSender());
 		session.setTimestampSender((int)System.currentTimeMillis());
 
-		// Put this on the queue and nudge the socket NIO thread to write it
-		this.writableSessionsQueue.add(session);
-		session.getSelectionKey().selector().wakeup();
+		// Ping the NIO thread to write this, when the session is next writable
+		session.subscribeKey(SelectionKey.OP_WRITE);
+		nioService.refreshSelect(session);
 
 		Log.d(TAG,"set data ready for sending to dest, bg will do it. data size: "
                 + session.getSendingDataSize());
@@ -307,11 +294,8 @@ public class SessionHandler {
 		Log.d(TAG,"sent ack, ack# "+session.getRecSequence()+" + "+acceptedDataLength+" = "+acknumber);
 		session.setRecSequence(acknumber);
 		byte[] data = TCPPacketFactory.createResponseAckData(ipheader, tcpheader, acknumber);
-		try {
-			writer.write(data);
-		} catch (IOException e) {
-			Log.e(TAG,"Failed to send ACK packet: " + e.getMessage());
-		}
+
+		writer.write(data);
 	}
 
 	private void sendAckForDisorder(IPv4Header ipHeader, TCPHeader tcpheader, int acceptedDataLength) {
@@ -319,11 +303,8 @@ public class SessionHandler {
 		Log.d(TAG,"sent ack, ack# " + tcpheader.getSequenceNumber() +
 				" + " + acceptedDataLength + " = " + ackNumber);
 		byte[] data = TCPPacketFactory.createResponseAckData(ipHeader, tcpheader, ackNumber);
-		try {
-			writer.write(data);
-		} catch (IOException e) {
-			Log.e(TAG,"Failed to send ACK packet: " + e.getMessage());
-		}
+
+		writer.write(data);
 	}
 
 	/**
@@ -360,10 +341,14 @@ public class SessionHandler {
 	 * @param tcp TCP
 	 */
 	private void resetConnection(IPv4Header ip, TCPHeader tcp){
-		Session session = SessionManager.INSTANCE.getSession(ip.getDestinationIP(), tcp.getDestinationPort(),
-				ip.getSourceIP(), tcp.getSourcePort());
+		Session session = manager.getSession(
+			ip.getDestinationIP(), tcp.getDestinationPort(),
+			ip.getSourceIP(), tcp.getSourcePort()
+		);
 		if(session != null){
-			session.setAbortingConnection(true);
+			synchronized (session) {
+				session.setAbortingConnection(true);
+			}
 		}
 	}
 
@@ -378,25 +363,25 @@ public class SessionHandler {
 		
 		TCPHeader tcpheader = (TCPHeader) packet.getTransportHeader();
 		
-		Session session = SessionManager.INSTANCE.createNewSession(ip.getDestinationIP(),
-				tcp.getDestinationPort(), ip.getSourceIP(), tcp.getSourcePort());
+		Session session = manager.createNewTCPSession(
+				ip.getDestinationIP(), tcp.getDestinationPort(),
+				ip.getSourceIP(), tcp.getSourcePort()
+		);
 		if(session == null)
 			return;
-		
-		int windowScaleFactor = (int) Math.pow(2, tcpheader.getWindowScale());
-		session.setSendWindowSizeAndScale(tcpheader.getWindowSize(), windowScaleFactor);
-		Log.d(TAG,"send-window size: " + session.getSendWindow());
-		session.setMaxSegmentSize(tcpheader.getMaxSegmentSize());
-		session.setSendUnack(tcpheader.getSequenceNumber());
-		session.setSendNext(tcpheader.getSequenceNumber() + 1);
-		//client initial sequence has been incremented by 1 and set to ack
-		session.setRecSequence(tcpheader.getAckNumber());
 
-		try {
+		synchronized (session) {
+			int windowScaleFactor = (int) Math.pow(2, tcpheader.getWindowScale());
+			session.setSendWindowSizeAndScale(tcpheader.getWindowSize(), windowScaleFactor);
+			Log.d(TAG, "send-window size: " + session.getSendWindow());
+			session.setMaxSegmentSize(tcpheader.getMaxSegmentSize());
+			session.setSendUnack(tcpheader.getSequenceNumber());
+			session.setSendNext(tcpheader.getSequenceNumber() + 1);
+			//client initial sequence has been incremented by 1 and set to ack
+			session.setRecSequence(tcpheader.getAckNumber());
+
 			writer.write(packet.getBuffer());
 			Log.d(TAG,"Send SYN-ACK to client");
-		} catch (IOException e) {
-			Log.e(TAG,"Error sending data to client: "+e.getMessage());
 		}
 	}
 }//end class

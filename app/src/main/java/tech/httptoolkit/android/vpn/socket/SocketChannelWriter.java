@@ -3,9 +3,8 @@ package tech.httptoolkit.android.vpn.socket;
 import androidx.annotation.NonNull;
 import android.util.Log;
 
-import tech.httptoolkit.android.vpn.IClientPacketWriter;
+import tech.httptoolkit.android.vpn.ClientPacketWriter;
 import tech.httptoolkit.android.vpn.Session;
-import tech.httptoolkit.android.vpn.SessionManager;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPPacketFactory;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
 
@@ -20,42 +19,38 @@ import java.util.Date;
 
 import tech.httptoolkit.android.TagKt;
 
-public class SocketDataWriterWorker implements Runnable {
+/**
+ * Takes a VPN session, and writes all received data from it to the upstream channel.
+ *
+ * If any writes fail, it resubscribes to OP_WRITE, and tries again next time
+ * that fires (as soon as the channel is ready for more data).
+ *
+ * Used by the NIO thread, and run synchronously as part of that non-blocking loop.
+ */
+public class SocketChannelWriter {
 	private final String TAG = TagKt.getTAG(this);
 
-	private static IClientPacketWriter writer;
-	@NonNull private String sessionKey;
+	private final ClientPacketWriter writer;
 
-	SocketDataWriterWorker(IClientPacketWriter writer, @NonNull String sessionKey) {
+	SocketChannelWriter(ClientPacketWriter writer) {
 		this.writer = writer;
-		this.sessionKey = sessionKey;
 	}
 
-	@Override
-	public void run() {
-		final Session session = SessionManager.INSTANCE.getSessionByKey(sessionKey);
-		if(session == null) {
-			Log.d(TAG, "No session related to " + sessionKey + "for write");
-			return;
-		}
-
-		session.setBusywrite(true);
-
+	public void write(@NonNull Session session) {
 		AbstractSelectableChannel channel = session.getChannel();
-		if(channel instanceof SocketChannel){
+		if (channel instanceof SocketChannel) {
 			writeTCP(session);
-		}else if(channel instanceof DatagramChannel){
+		} else if(channel instanceof DatagramChannel) {
 			writeUDP(session);
 		} else {
 			return;
 		}
-		session.setBusywrite(false);
 
 		if(session.isAbortingConnection()){
-			Log.d(TAG,"removing aborted connection -> " + sessionKey);
+			Log.d(TAG,"removing aborted connection -> " + session);
 			session.cancelKey();
 
-			if(channel instanceof SocketChannel) {
+			if (channel instanceof SocketChannel) {
 				try {
 					SocketChannel socketChannel = (SocketChannel) channel;
 					if (socketChannel.isConnected()) {
@@ -64,7 +59,7 @@ public class SocketDataWriterWorker implements Runnable {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-			} else if(channel instanceof DatagramChannel) {
+			} else if (channel instanceof DatagramChannel) {
 				try {
 					DatagramChannel datagramChannel = (DatagramChannel) channel;
 					if (datagramChannel.isConnected()) {
@@ -74,7 +69,8 @@ public class SocketDataWriterWorker implements Runnable {
 					e.printStackTrace();
 				}
 			}
-			SessionManager.INSTANCE.closeSession(session);
+
+			session.closeSession();
 		}
 	}
 
@@ -107,16 +103,14 @@ public class SocketDataWriterWorker implements Runnable {
 		} catch (NotYetConnectedException ex) {
 			Log.e(TAG,"failed to write to unconnected socket: " + ex.getMessage());
 		} catch (IOException e) {
-			Log.e(TAG,"Error writing to server: " + e.getMessage());
+			Log.e(TAG,"Error writing to server: " + e.toString()); // TODO: null here?
 			
 			//close connection with vpn client
 			byte[] rstData = TCPPacketFactory.createRstData(
 					session.getLastIpHeader(), session.getLastTcpHeader(), 0);
-			try {
-				writer.write(rstData);
-			} catch (IOException ex) {
-				ex.printStackTrace();
-			}
+
+			writer.write(rstData);
+
 			//remove session
 			Log.e(TAG,"failed to write to remote socket, aborting connection");
 			session.setAbortingConnection(true);
@@ -132,6 +126,8 @@ public class SocketDataWriterWorker implements Runnable {
 		buffer.put(data);
 		buffer.flip();
 
+		Log.d(TAG, "Write " + buffer.remaining() + " bytes from " + session + " to " + channel);
+
 		while (buffer.hasRemaining()) {
 			int bytesWritten = channel instanceof SocketChannel
 				? ((SocketChannel) channel).write(buffer)
@@ -144,17 +140,19 @@ public class SocketDataWriterWorker implements Runnable {
 
 		if (buffer.hasRemaining()) {
 			// The channel's own buffer is full, so we have to save this for later.
+			Log.i(TAG, buffer.remaining() + " bytes unwritten for " + channel.toString());
 
 			// Put the remaining data from the buffer back into the session
-			session.setSendingData(buffer);
+			session.setSendingData(buffer.compact());
 
-			// Subscribe to WRITE events, so we know when this is ready to resume
+			// Subscribe to WRITE events, so we know when this is ready to resume.
 			session.subscribeKey(SelectionKey.OP_WRITE);
 		} else {
 			// All done, all good -> wait until the next TCP PSH / UDP packet
 			session.setDataForSendingReady(false);
 
-			// If we were interested in WRITE events, we're definitely not now
+			// We don't need to know about WRITE events any more, we've written all our data.
+			// This is safe from races with new data, due to the session lock in NIO.
 			session.unsubscribeKey(SelectionKey.OP_WRITE);
 		}
 	}
