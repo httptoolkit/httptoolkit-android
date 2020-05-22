@@ -49,7 +49,7 @@ public class TCPPacketFactory {
 				tcpheader.getTcpFlags(), tcpheader.getWindowSize(),
 				tcpheader.getChecksum(), tcpheader.getUrgentPointer());
 
-		tcp.setMaxSegmentSize(65535);//tcpheader.getMaxSegmentSize());
+		tcp.setMaxSegmentSize(tcpheader.getMaxSegmentSize());
 		tcp.setWindowScale(tcpheader.getWindowScale());
 		tcp.setSelectiveAckPermitted(tcpheader.isSelectiveAckPermitted());
 		tcp.setTimeStampSender(tcpheader.getTimeStampSender());
