@@ -98,7 +98,7 @@ public class IPPacketFactory {
 		final byte versionAndHeaderLength = stream.get();
 		final byte ipVersion = (byte) (versionAndHeaderLength >> 4);
 		if (ipVersion != 0x04) {
-			throw new PacketHeaderException("Invalid IPv4 header. IP version should be 4.");
+			throw new PacketHeaderException("Invalid IPv4 header. IP version should be 4 but was " + ipVersion);
 		}
 
 		final byte internetHeaderLength = (byte) (versionAndHeaderLength & 0x0F);

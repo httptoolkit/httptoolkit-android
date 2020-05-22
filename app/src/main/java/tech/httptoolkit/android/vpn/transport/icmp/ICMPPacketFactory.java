@@ -30,7 +30,7 @@ public class ICMPPacketFactory {
         if (type == 8) {
             return new ICMPPacket(type, code, checksum, identifier, sequenceNumber, data);
         } else {
-            throw new PacketHeaderException("For ICMP, only echo requests are supported");
+            throw new PacketHeaderException("Unknown ICMP type (" + type + "). Only echo requests are supported");
         }
     }
 

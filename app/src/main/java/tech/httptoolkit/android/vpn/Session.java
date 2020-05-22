@@ -408,7 +408,11 @@ public class Session {
 	}
 
 	public static String getSessionKey(int destIp, int destPort, int sourceIp, int sourcePort) {
-		return PacketUtil.intToIPAddress(sourceIp) + ":" + sourcePort + "-" +
+		return PacketUtil.intToIPAddress(sourceIp) + ":" + sourcePort + "->" +
 				PacketUtil.intToIPAddress(destIp) + ":" + destPort;
+	}
+
+	public String toString() {
+		return "Session (" + this.getSessionKey() + ")";
 	}
 }

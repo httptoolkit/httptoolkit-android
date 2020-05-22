@@ -136,14 +136,13 @@ public class SessionHandler {
 			Session session = manager.getSessionByKey(key);
 
 			if(session == null) {
+				Log.w(TAG, "Ack for unknown session: " + key);
 				if (tcpheader.isFIN()) {
 					sendLastAck(ipHeader, tcpheader);
 				} else if (!tcpheader.isRST()) {
 					sendRstPacket(ipHeader, tcpheader, dataLength);
 				}
-				else {
-					Log.e(TAG,"**** ==> Session not found: " + key);
-				}
+
 				return;
 			}
 
@@ -305,7 +304,7 @@ public class SessionHandler {
 
 	private void sendAckForDisorder(IPv4Header ipHeader, TCPHeader tcpheader, int acceptedDataLength) {
 		long ackNumber = tcpheader.getSequenceNumber() + acceptedDataLength;
-		Log.d(TAG,"sent ack, ack# " + tcpheader.getSequenceNumber() +
+		Log.d(TAG,"sent disorder ack, ack# " + tcpheader.getSequenceNumber() +
 				" + " + acceptedDataLength + " = " + ackNumber);
 		byte[] data = TCPPacketFactory.createResponseAckData(ipHeader, tcpheader, ackNumber);
 
