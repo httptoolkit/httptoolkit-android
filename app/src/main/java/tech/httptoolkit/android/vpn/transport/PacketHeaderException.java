@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-package tech.httptoolkit.android.vpn.transport.tcp;
+package tech.httptoolkit.android.vpn.transport;
 /**
  * 
  * @author Borey Sao

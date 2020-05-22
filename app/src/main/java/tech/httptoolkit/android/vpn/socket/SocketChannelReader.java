@@ -7,7 +7,7 @@ import tech.httptoolkit.android.vpn.ClientPacketWriter;
 import tech.httptoolkit.android.vpn.Session;
 import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
-import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException;
+import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPPacketFactory;
 import tech.httptoolkit.android.vpn.transport.udp.UDPHeader;

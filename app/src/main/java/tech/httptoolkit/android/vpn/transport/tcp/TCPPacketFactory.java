@@ -23,6 +23,7 @@ import android.util.Log;
 import tech.httptoolkit.android.vpn.Packet;
 import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
 
 import java.nio.ByteBuffer;

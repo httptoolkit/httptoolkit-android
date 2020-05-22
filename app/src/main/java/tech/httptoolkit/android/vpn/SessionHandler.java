@@ -17,16 +17,20 @@
 package tech.httptoolkit.android.vpn;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService;
-import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException;
+import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
+import tech.httptoolkit.android.vpn.transport.icmp.ICMPPacket;
+import tech.httptoolkit.android.vpn.transport.icmp.ICMPPacketFactory;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPPacketFactory;
-import tech.httptoolkit.android.vpn.transport.ITransportHeader;
 import tech.httptoolkit.android.vpn.transport.udp.UDPHeader;
 import tech.httptoolkit.android.vpn.transport.udp.UDPPacketFactory;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
@@ -48,13 +52,41 @@ public class SessionHandler {
 	private final SocketNIODataService nioService;
 	private final ClientPacketWriter writer;
 
+	private final ExecutorService pingThreadpool = Executors.newCachedThreadPool();
+
 	public SessionHandler(SessionManager manager, SocketNIODataService nioService, ClientPacketWriter writer) {
 		this.manager = manager;
 		this.nioService = nioService;
 		this.writer = writer;
 	}
 
-	private void handleUDPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader, UDPHeader udpheader){
+	/**
+	 * Handle unknown raw IP packet data
+	 *
+	 * @param stream ByteBuffer to be read
+	 */
+	public void handlePacket(@NonNull ByteBuffer stream) throws PacketHeaderException, IOException {
+		final byte[] rawPacket = new byte[stream.limit()];
+		stream.get(rawPacket, 0, stream.limit());
+		stream.rewind();
+
+		final IPv4Header ipHeader = IPPacketFactory.createIPv4Header(stream);
+
+		if (ipHeader.getProtocol() == 6) {
+			handleTCPPacket(stream, ipHeader);
+		} else if (ipHeader.getProtocol() == 17) {
+			handleUDPPacket(stream, ipHeader);
+		} else if (ipHeader.getProtocol() == 1) {
+			handleICMPPacket(stream, ipHeader);
+		} else {
+			Log.w(TAG, "Unsupported IP protocol: " + ipHeader.getProtocol());
+			return;
+		}
+	}
+
+	private void handleUDPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader) throws PacketHeaderException {
+		UDPHeader udpheader = UDPPacketFactory.createUDPHeader(clientPacketData);
+
 		Session session = manager.getSession(
 			ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
 			ipHeader.getSourceIP(), udpheader.getSourcePort()
@@ -77,17 +109,18 @@ public class SessionHandler {
 			int len = manager.addClientData(clientPacketData, session);
 			session.setDataForSendingReady(true);
 
+			Log.i(TAG, "Subscribe UDP to OP_WRITE");
 			// Ping the NIO thread to write this, when the session is next writable
 			session.subscribeKey(SelectionKey.OP_WRITE);
 			nioService.refreshSelect(session);
-
-			Log.d(TAG,"Added " + len + " bytes of UDP data, ready to send");
+			Log.d(TAG,"added UDP data for bg worker to send: "+len);
 		}
 
 		manager.keepSessionAlive(session);
 	}
 
-	private void handleTCPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader, TCPHeader tcpheader){
+	private void handleTCPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader) throws PacketHeaderException {
+		TCPHeader tcpheader = TCPPacketFactory.createTCPHeader(clientPacketData);
 		int dataLength = clientPacketData.limit() - clientPacketData.position();
 		int sourceIP = ipHeader.getSourceIP();
 		int destinationIP = ipHeader.getDestinationIP();
@@ -173,34 +206,6 @@ public class SessionHandler {
 			Log.d(TAG,">>>>>>>> Received from client <<<<<<<<<<");
 			Log.d(TAG,str1);
 			Log.d(TAG,">>>>>>>>>>>>>>>>>>>end receiving from client>>>>>>>>>>>>>>>>>>>>>");
-		}
-	}
-
-	/**
-	 * handle each packet from each vpn client
-	 * @param stream ByteBuffer to be read
-	 */
-	public void handlePacket(@NonNull ByteBuffer stream) throws PacketHeaderException {
-		final byte[] rawPacket = new byte[stream.limit()];
-		stream.get(rawPacket, 0, stream.limit());
-		stream.rewind();
-
-		final IPv4Header ipHeader = IPPacketFactory.createIPv4Header(stream);
-
-		final ITransportHeader transportHeader;
-		if(ipHeader.getProtocol() == 6) {
-			transportHeader = TCPPacketFactory.createTCPHeader(stream);
-		} else if(ipHeader.getProtocol() == 17) {
-			transportHeader = UDPPacketFactory.createUDPHeader(stream);
-		} else {
-			Log.e(TAG, "******===> Unsupported protocol: " + ipHeader.getProtocol());
-			return;
-		}
-
-		if (transportHeader instanceof TCPHeader) {
-			handleTCPPacket(stream, ipHeader, (TCPHeader) transportHeader);
-		} else if (ipHeader.getProtocol() == 17){
-			handleUDPPacket(stream, ipHeader, (UDPHeader) transportHeader);
 		}
 	}
 
@@ -384,4 +389,48 @@ public class SessionHandler {
 			Log.d(TAG,"Send SYN-ACK to client");
 		}
 	}
-}//end class
+
+	private void handleICMPPacket(
+		ByteBuffer clientPacketData,
+		final IPv4Header ipHeader
+	) throws PacketHeaderException {
+		final ICMPPacket requestPacket = ICMPPacketFactory.parseICMPPacket(clientPacketData);
+
+		pingThreadpool.execute(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					if (!isReachable(PacketUtil.intToIPAddress(ipHeader.getDestinationIP()))) {
+						Log.d(TAG, "Failed ping, ignoring");
+						return;
+					}
+
+					ICMPPacket response = ICMPPacketFactory.buildSuccessPacket(requestPacket);
+
+					// Flip the address
+					int destination = ipHeader.getDestinationIP();
+					int source = ipHeader.getSourceIP();
+					ipHeader.setSourceIP(destination);
+					ipHeader.setDestinationIP(source);
+
+					byte[] responseData = ICMPPacketFactory.packetToBuffer(ipHeader, response);
+
+					Log.d(TAG, "Successful ping response");
+					writer.write(responseData);
+				} catch (PacketHeaderException e) {
+					Log.w(TAG, "Handling ICMP failed with " + e.getMessage());
+					return;
+				}
+			}
+
+			private boolean isReachable(String ipAddress) {
+				try {
+					InetAddress destAddr = InetAddress.getByName(ipAddress);
+					return destAddr.isReachable(10000);
+				} catch (IOException e) {
+					return false;
+				}
+			}
+		});
+	}
+}

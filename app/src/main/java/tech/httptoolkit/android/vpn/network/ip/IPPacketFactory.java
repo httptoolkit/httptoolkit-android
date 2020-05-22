@@ -18,7 +18,7 @@ package tech.httptoolkit.android.vpn.network.ip;
 
 import androidx.annotation.NonNull;
 
-import tech.httptoolkit.android.vpn.transport.tcp.PacketHeaderException;
+import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
