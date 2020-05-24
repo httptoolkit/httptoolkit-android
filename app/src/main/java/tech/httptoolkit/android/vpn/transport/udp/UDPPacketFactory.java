@@ -2,8 +2,8 @@ package tech.httptoolkit.android.vpn.transport.udp;
 
 import androidx.annotation.NonNull;
 
-import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
-import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.ip.IPPacketFactory;
+import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
 

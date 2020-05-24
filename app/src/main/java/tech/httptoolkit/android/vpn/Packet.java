@@ -17,9 +17,8 @@
 package tech.httptoolkit.android.vpn;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.transport.ITransportHeader;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.udp.UDPHeader;

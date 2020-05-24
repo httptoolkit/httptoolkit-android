@@ -23,8 +23,8 @@ import java.nio.channels.SelectionKey;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
-import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.ip.IPPacketFactory;
+import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService;
 import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 import tech.httptoolkit.android.vpn.transport.icmp.ICMPPacket;

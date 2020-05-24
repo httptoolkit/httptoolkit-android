@@ -1,7 +1,5 @@
 package tech.httptoolkit.android.vpn.transport.icmp;
 
-import java.nio.ByteBuffer;
-
 import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 
 public class ICMPPacket {

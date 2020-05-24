@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-package tech.httptoolkit.android.vpn.network.ip;
+package tech.httptoolkit.android.vpn.transport.ip;
 
 import androidx.annotation.NonNull;
 

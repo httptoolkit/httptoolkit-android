@@ -1,15 +1,12 @@
 package tech.httptoolkit.android.vpn.transport.icmp;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
-import tech.httptoolkit.android.TagKt;
-import tech.httptoolkit.android.vpn.network.ip.IPPacketFactory;
-import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.ip.IPPacketFactory;
+import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 
 import static tech.httptoolkit.android.vpn.util.PacketUtil.calculateChecksum;

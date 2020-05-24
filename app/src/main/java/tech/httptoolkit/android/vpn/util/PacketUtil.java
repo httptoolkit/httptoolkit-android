@@ -27,11 +27,9 @@ import java.util.Enumeration;
 import androidx.annotation.NonNull;
 import android.util.Log;
 
-import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.udp.UDPHeader;
-
-import tech.httptoolkit.android.TagKt;
 
 import static tech.httptoolkit.android.TagKt.formatTag;
 

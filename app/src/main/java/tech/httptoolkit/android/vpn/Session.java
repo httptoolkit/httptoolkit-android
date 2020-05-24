@@ -18,7 +18,7 @@ package tech.httptoolkit.android.vpn;
 
 import android.util.Log;
 
-import tech.httptoolkit.android.vpn.network.ip.IPv4Header;
+import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.socket.ICloseSession;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
 import tech.httptoolkit.android.vpn.transport.udp.UDPHeader;

@@ -14,9 +14,7 @@
  * limitations under the License.
 */
 
-package tech.httptoolkit.android.vpn.network.ip;
-
-import androidx.annotation.Nullable;
+package tech.httptoolkit.android.vpn.transport.ip;
 
 /**
  * Data structure for IPv4 header as defined in RFC 791.
