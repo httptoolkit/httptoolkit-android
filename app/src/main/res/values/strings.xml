@@ -36,7 +36,7 @@
     </string>
 
     <string name="user_connection_status_details">
-        HTTPS traffic may not be intercepted from all apps, unless they are configured to trust user-installed certificates.
+        HTTPS traffic will only be intercepted from apps that are configured to trust user-installed certificates.
     </string>
     <string name="system_connection_status_details">
         Traffic will be intercepted from all installed applications, except those using explicit certificate pinning.

@@ -19,22 +19,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-        <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical">
-
-            <TextView
-                    style="@style/ConnectionStatusHeading"
-                    android:drawableStart="@drawable/ic_check_circle"
-                    android:text="@string/user_connection_status_enabled_heading" />
-
-            <TextView
-                    style="@style/ConnectionStatusText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/user_connection_status_details" />
-        </LinearLayout>
+        <TextView
+                style="@style/ConnectionStatusHeading"
+                android:drawableStart="@drawable/ic_check_circle"
+                android:text="@string/user_connection_status_enabled_heading" />
 
     </com.google.android.material.card.MaterialCardView>
 
@@ -43,10 +31,22 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-        <TextView
-                style="@style/ConnectionStatusHeading"
-                android:drawableStart="@drawable/ic_exclamation_triangle"
-                android:text="@string/system_connection_status_disabled_heading" />
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+            <TextView
+                    style="@style/ConnectionStatusHeading"
+                    android:drawableStart="@drawable/ic_exclamation_triangle"
+                    android:text="@string/system_connection_status_disabled_heading" />
+
+            <TextView
+                    style="@style/ConnectionStatusText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/user_connection_status_details" />
+        </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
 </android.widget.LinearLayout>
