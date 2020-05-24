@@ -149,10 +149,18 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
                 .apply {
+                    // We exclude ourselves from interception, so we can still make network requests
+                    // separately, primarily because otherwise pinging with isReachable is recursive.
+                    val httpToolkitPackage = packageName
+
                     // For some reason, with Genymotion the whole device crashes if we intercept
                     // blindly, but intercepting every single application explicitly is fine.
                     if (isGenymotion) {
-                        packageNames.forEach { name -> addAllowedApplication(name) }
+                        packageNames.forEach { name ->
+                            if (name != httpToolkitPackage) addAllowedApplication(name)
+                        }
+                    } else {
+                        addDisallowedApplication(httpToolkitPackage)
                     }
                 }
                 .setSession(getString(R.string.app_name))
