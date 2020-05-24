@@ -21,7 +21,9 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import tech.httptoolkit.android.vpn.transport.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
@@ -52,12 +54,21 @@ public class SessionHandler {
 	private final SocketNIODataService nioService;
 	private final ClientPacketWriter writer;
 
-	private final ExecutorService pingThreadpool = Executors.newCachedThreadPool();
+	private final ExecutorService pingThreadpool;
 
 	public SessionHandler(SessionManager manager, SocketNIODataService nioService, ClientPacketWriter writer) {
 		this.manager = manager;
 		this.nioService = nioService;
 		this.writer = writer;
+
+		// Pool of threads to synchronously proxy ICMP ping requests in the background. We need to
+		// carefully limit these, or a ping flood can cause us big big problems.
+		this.pingThreadpool = new ThreadPoolExecutor(
+			1, 20, // 1 - 20 parallel pings max
+			60L, TimeUnit.SECONDS,
+			new SynchronousQueue<Runnable>(),
+			new ThreadPoolExecutor.DiscardPolicy() // Replace running pings if there's too many
+		);
 	}
 
 	/**
