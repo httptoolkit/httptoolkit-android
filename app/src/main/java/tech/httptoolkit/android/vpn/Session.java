@@ -56,12 +56,6 @@ public class Session {
 	
 	//the next ack to send to client
 	private long sendNext = 0;
-	private int sendWindow = 0; //window = windowsize x windowscale
-	private int sendWindowSize = 0;
-	private int sendWindowScale = 0;
-	
-	//track how many byte of data has been sent since last ACK from client
-	private volatile int sendAmountSinceLastAck = 0;
 	
 	//sent by client during SYN inside tcp options
 	private int maxSegmentSize = 0;
@@ -128,27 +122,6 @@ public class Session {
 		this.destPort = destinationPort;
 
 		this.sessionCloser = sessionCloser;
-	}
-
-	/**
-	 * decrease value of sendAmountSinceLastAck so that client's window is not full
-	 * @param amount Amount
-	 */
-	synchronized void decreaseAmountSentSinceLastAck(long amount){
-		sendAmountSinceLastAck -= amount;
-		if(sendAmountSinceLastAck < 0){
-			Log.e(TAG, "Amount data to be decreased is over than its window.");
-			sendAmountSinceLastAck = 0;
-		}
-	}
-
-	/**
-	 * determine if client's receiving window is full or not.
-	 * @return boolean
-	 */
-	public boolean isClientWindowFull(){
-		return (sendWindow > 0 && sendAmountSinceLastAck >= sendWindow) ||
-				(sendWindow == 0 && sendAmountSinceLastAck > 65535);
 	}
 
 	/**
@@ -244,10 +217,6 @@ public class Session {
 		this.sendNext = sendNext;
 	}
 
-	int getSendWindow() {
-		return sendWindow;
-	}
-
 	public int getMaxSegmentSize() {
 		return maxSegmentSize;
 	}
@@ -270,16 +239,6 @@ public class Session {
 
 	public int getSourcePort() {
 		return sourcePort;
-	}
-
-	void setSendWindowSizeAndScale(int sendWindowSize, int sendWindowScale) {
-		this.sendWindowSize = sendWindowSize;
-		this.sendWindowScale = sendWindowScale;
-		this.sendWindow = sendWindowSize * sendWindowScale;
-	}
-
-	int getSendWindowScale() {
-		return sendWindowScale;
 	}
 
 	void setAcked(boolean isacked) {

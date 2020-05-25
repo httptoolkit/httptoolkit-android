@@ -139,8 +139,7 @@ public class SessionHandler {
 		int destinationPort = tcpheader.getDestinationPort();
 
 		if(tcpheader.isSYN()) {
-			//3-way handshake + create new session
-			//set windows size and scale, set reply time in options
+			// 3-way handshake + create new session
 			replySynAck(ipHeader,tcpheader);
 		} else if(tcpheader.isACK()) {
 			String key = Session.getSessionKey(destinationIP, destinationPort, sourceIP, sourcePort);
@@ -196,7 +195,7 @@ public class SessionHandler {
 					resetConnection(ipHeader, tcpheader);
 				}
 
-				if (!session.isClientWindowFull() && !session.isAbortingConnection()) {
+				if (!session.isAbortingConnection()) {
 					manager.keepSessionAlive(session);
 				}
 			}
@@ -323,23 +322,24 @@ public class SessionHandler {
 	}
 
 	/**
-	 * acknowledge a packet and adjust the receiving window to avoid congestion.
+	 * acknowledge a packet.
 	 * @param tcpHeader TCP Header
 	 * @param session Session
 	 */
 	private void acceptAck(TCPHeader tcpHeader, Session session){
 		boolean isCorrupted = PacketUtil.isPacketCorrupted(tcpHeader);
+
 		session.setPacketCorrupted(isCorrupted);
-		if(isCorrupted){
+		if (isCorrupted) {
 			Log.e(TAG,"prev packet was corrupted, last ack# " + tcpHeader.getAckNumber());
 		}
-		if(tcpHeader.getAckNumber() > session.getSendUnack() ||
-				tcpHeader.getAckNumber() == session.getSendNext()){
+
+		if (
+			tcpHeader.getAckNumber() > session.getSendUnack() ||
+			tcpHeader.getAckNumber() == session.getSendNext()
+		) {
 			session.setAcked(true);
 
-			if(tcpHeader.getWindowSize() > 0){
-				session.setSendWindowSizeAndScale(tcpHeader.getWindowSize(), session.getSendWindowScale());
-			}
 			session.setSendUnack(tcpHeader.getAckNumber());
 			session.setRecSequence(tcpHeader.getSequenceNumber());
 			session.setTimestampReplyto(tcpHeader.getTimeStampSender());
@@ -350,6 +350,7 @@ public class SessionHandler {
 			session.setAcked(false);
 		}
 	}
+
 	/**
 	 * set connection as aborting so that background worker will close it.
 	 * @param ip IP
@@ -386,9 +387,6 @@ public class SessionHandler {
 			return;
 
 		synchronized (session) {
-			int windowScaleFactor = (int) Math.pow(2, tcpheader.getWindowScale());
-			session.setSendWindowSizeAndScale(tcpheader.getWindowSize(), windowScaleFactor);
-			Log.d(TAG, "send-window size: " + session.getSendWindow());
 			session.setMaxSegmentSize(tcpheader.getMaxSegmentSize());
 			session.setSendUnack(tcpheader.getSequenceNumber());
 			session.setSendNext(tcpheader.getSequenceNumber() + 1);

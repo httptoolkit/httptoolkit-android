@@ -95,22 +95,17 @@ class SocketChannelReader {
 
 		try {
 			do {
-				if(!session.isClientWindowFull()) {
-					len = channel.read(buffer);
-					if(len > 0) { //-1 mean it reach the end of stream
-						sendToRequester(buffer, len, session);
-						buffer.clear();
-					} else if(len == -1) {
-						Log.d(TAG,"End of data from remote server, will send FIN to client");
-						Log.d(TAG,"send FIN to: " + session);
-						sendFin(session);
-						session.setAbortingConnection(true);
-					}
-				} else {
-					Log.e(TAG,"*** client window is full, now pause for " + session);
-					break;
+				len = channel.read(buffer);
+				if (len > 0) { //-1 mean it reach the end of stream
+					sendToRequester(buffer, len, session);
+					buffer.clear();
+				} else if (len == -1) {
+					Log.d(TAG,"End of data from remote server, will send FIN to client");
+					Log.d(TAG,"send FIN to: " + session);
+					sendFin(session);
+					session.setAbortingConnection(true);
 				}
-			} while(len > 0);
+			} while (len > 0);
 		}catch(NotYetConnectedException e){
 			Log.e(TAG,"socket not connected");
 		}catch(ClosedByInterruptException e){
@@ -148,7 +143,7 @@ class SocketChannelReader {
 	 * @param session Session
 	 */
 	private void pushDataToClient(@NonNull Session session){
-		if(!session.hasReceivedData()){
+		if (!session.hasReceivedData()) {
 			//no data to send
 			Log.d(TAG,"no data for vpn client");
 		}
