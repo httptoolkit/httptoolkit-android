@@ -5,6 +5,7 @@ import android.content.Intent
 import android.app.*
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.net.ProxyInfo
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
@@ -148,6 +149,15 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             vpnInterface = Builder()
                 .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
+                .apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        // Where possible, we want to explicitly set the proxy in addition to
+                        // manually redirecting traffic. This is useful because it captures HTTP sent
+                        // to non-default ports. We still need to do both though, as not all clients
+                        // will use the proxy settings.
+                        setHttpProxy(ProxyInfo.buildDirectProxy(proxyConfig.ip, proxyConfig.port))
+                    }
+                }
 
                 .setMtu(MAX_PACKET_LEN) // Limit the packet size to the buffer used by ProxyVpnRunnable
                 .setBlocking(true) // We use a blocking loop to read in ProxyVpnRunnable
