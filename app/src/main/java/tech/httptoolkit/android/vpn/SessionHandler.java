@@ -91,11 +91,10 @@ public class SessionHandler {
 			handleICMPPacket(stream, ipHeader);
 		} else {
 			Log.w(TAG, "Unsupported IP protocol: " + ipHeader.getProtocol());
-			return;
 		}
 	}
 
-	private void handleUDPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader) throws PacketHeaderException {
+	private void handleUDPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader) throws PacketHeaderException, IOException {
 		UDPHeader udpheader = UDPPacketFactory.createUDPHeader(clientPacketData);
 
 		Session session = manager.getSession(
@@ -103,15 +102,11 @@ public class SessionHandler {
 			ipHeader.getSourceIP(), udpheader.getSourcePort()
 		);
 
-		if (session == null){
+		if (session == null) {
 			session = manager.createNewUDPSession(
 				ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
 				ipHeader.getSourceIP(), udpheader.getSourcePort()
 			);
-		}
-
-		if(session == null){
-			return;
 		}
 
 		synchronized (session) {
@@ -130,7 +125,7 @@ public class SessionHandler {
 		manager.keepSessionAlive(session);
 	}
 
-	private void handleTCPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader) throws PacketHeaderException {
+	private void handleTCPPacket(ByteBuffer clientPacketData, IPv4Header ipHeader) throws PacketHeaderException, IOException {
 		TCPHeader tcpheader = TCPPacketFactory.createTCPHeader(clientPacketData);
 		int dataLength = clientPacketData.limit() - clientPacketData.position();
 		int sourceIP = ipHeader.getSourceIP();
@@ -138,7 +133,7 @@ public class SessionHandler {
 		int sourcePort = tcpheader.getSourcePort();
 		int destinationPort = tcpheader.getDestinationPort();
 
-		if(tcpheader.isSYN()) {
+		if (tcpheader.isSYN()) {
 			// 3-way handshake + create new session
 			replySynAck(ipHeader,tcpheader);
 		} else if(tcpheader.isACK()) {
@@ -373,18 +368,16 @@ public class SessionHandler {
 	 * @param ip IP
 	 * @param tcp TCP
 	 */
-	private void replySynAck(IPv4Header ip, TCPHeader tcp){
+	private void replySynAck(IPv4Header ip, TCPHeader tcp) throws IOException {
 		ip.setIdentification(0);
 		Packet packet = TCPPacketFactory.createSynAckPacketData(ip, tcp);
 		
 		TCPHeader tcpheader = (TCPHeader) packet.getTransportHeader();
 		
 		Session session = manager.createNewTCPSession(
-				ip.getDestinationIP(), tcp.getDestinationPort(),
-				ip.getSourceIP(), tcp.getSourcePort()
+			ip.getDestinationIP(), tcp.getDestinationPort(),
+			ip.getSourceIP(), tcp.getSourcePort()
 		);
-		if(session == null)
-			return;
 
 		synchronized (session) {
 			session.setMaxSegmentSize(tcpheader.getMaxSegmentSize());

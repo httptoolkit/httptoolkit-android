@@ -7,7 +7,6 @@ import tech.httptoolkit.android.vpn.ClientPacketWriter
 import tech.httptoolkit.android.vpn.SessionHandler
 import tech.httptoolkit.android.vpn.SessionManager
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService
-import tech.httptoolkit.android.vpn.transport.PacketHeaderException
 import io.sentry.Sentry
 import java.io.FileInputStream
 import java.io.FileOutputStream

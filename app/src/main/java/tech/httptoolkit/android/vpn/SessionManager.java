@@ -21,6 +21,8 @@ import androidx.annotation.Nullable;
 import android.util.Log;
 import android.util.SparseArray;
 
+import org.jetbrains.annotations.NotNull;
+
 import tech.httptoolkit.android.TagKt;
 import tech.httptoolkit.android.vpn.socket.DataConst;
 import tech.httptoolkit.android.vpn.socket.ICloseSession;
@@ -89,7 +91,7 @@ public class SessionManager implements ICloseSession {
 
 	@Nullable
 	public Session getSessionByKey(String key) {
-		if(table.containsKey(key)){
+		if (table.containsKey(key)) {
 			return table.get(key);
 		}
 
@@ -126,92 +128,64 @@ public class SessionManager implements ICloseSession {
 				session.getSourcePort());
 	}
 
-	@Nullable
-	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort) {
+	@NotNull
+	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort) throws IOException {
 		String keys = Session.getSessionKey(ip, port, srcIp, srcPort);
 
-		if (table.containsKey(keys))
+		if (table.containsKey(keys)) {
+			// For TCP, we freak out if you try to create an already existing session.
+			// With UDP though, it's totally fine:
 			return table.get(keys);
+		}
 
 		Session session = new Session(srcIp, srcPort, ip, port, this);
 
 		DatagramChannel channel;
 
-		try {
-			channel = DatagramChannel.open();
-			channel.socket().setSoTimeout(0);
-			channel.configureBlocking(false);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
+		channel = DatagramChannel.open();
+		channel.socket().setSoTimeout(0);
+		channel.configureBlocking(false);
 		protector.protect(channel.socket());
 
 		session.setChannel(channel);
 
-		//initiate connection to reduce latency
+		// Initiate connection early to reduce latency
 		String ips = PacketUtil.intToIPAddress(ip);
 		String sourceIpAddress = PacketUtil.intToIPAddress(srcIp);
 		SocketAddress socketAddress = new InetSocketAddress(ips, port);
 		Log.d(TAG,"initialized connection to remote UDP server: " + ips + ":" +
 				port + " from " + sourceIpAddress + ":" + srcPort);
 
-		try {
-			channel.connect(socketAddress);
-			session.setConnected(channel.isConnected());
-		} catch(IOException e) {
-			e.printStackTrace();
-			return null;
-		}
+		channel.connect(socketAddress);
+		session.setConnected(channel.isConnected());
 
-		try {
-			nioService.registerSession(session);
-		} catch (ClosedChannelException e) {
-			e.printStackTrace();
-			Log.e(TAG,"failed to register udp channel with selector: "+ e.getMessage());
-			return null;
-		}
-
-		if (table.containsKey(keys)) {
-			try {
-				channel.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-				return null;
-			}
-		} else {
-			table.put(keys, session);
-		}
+		nioService.registerSession(session);
+		table.put(keys, session);
 
 		Log.d(TAG,"new UDP session successfully created.");
 		return session;
 	}
 
-	@Nullable
-	public Session createNewTCPSession(int ip, int port, int srcIp, int srcPort){
+	@NotNull
+	public Session createNewTCPSession(int ip, int port, int srcIp, int srcPort) throws IOException {
 		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
 		if (table.containsKey(key)) {
-			Log.e(TAG, "Session " + key + " was already created.");
-			return null;
+			// This can happen if we receive two SYN packets somehow. That shouldn't happen, especially
+			// given that our connection is local & should be 100% reliable, but it does. We probably
+			// should RST, for now we just throw here (and so drop the packet entirely).
+			throw new IllegalArgumentException("Can't create duplicate session");
 		}
 
 		Session session = new Session(srcIp, srcPort, ip, port, this);
 
 		SocketChannel channel;
-		try {
-			channel = SocketChannel.open();
-			channel.socket().setKeepAlive(true);
-			channel.socket().setTcpNoDelay(true);
-			channel.socket().setSoTimeout(0);
-			channel.socket().setReceiveBufferSize(DataConst.MAX_RECEIVE_BUFFER_SIZE);
-			channel.configureBlocking(false);
-		} catch(SocketException e) {
-			Log.e(TAG, e.toString());
-			return null;
-		} catch (IOException e) {
-			Log.e(TAG,"Failed to create SocketChannel: "+ e.getMessage());
-			return null;
-		}
+		channel = SocketChannel.open();
+		channel.socket().setKeepAlive(true);
+		channel.socket().setTcpNoDelay(true);
+		channel.socket().setSoTimeout(0);
+		channel.socket().setReceiveBufferSize(DataConst.MAX_RECEIVE_BUFFER_SIZE);
+		channel.configureBlocking(false);
+
 		String ips = PacketUtil.intToIPAddress(ip);
 		Log.d(TAG,"created new SocketChannel for " + key);
 
@@ -220,42 +194,20 @@ public class SessionManager implements ICloseSession {
 
 		session.setChannel(channel);
 
-		//initiate connection to reduce latency
-		// Use the real address, unless tcpPortRedirection defines a different
+		// Initiate connection straight away, to reduce latency
+		// We use the real address, unless tcpPortRedirection redirects us to a different
 		// target address for traffic on this port.
 		SocketAddress socketAddress = tcpPortRedirection.get(port) != null
 			? tcpPortRedirection.get(port)
 			: new InetSocketAddress(ips, port);
 
-		Log.d(TAG,"initiate connecting to remote tcp server: " + socketAddress.toString());
-		boolean connected;
-		try{
-			connected = channel.connect(socketAddress);
-		} catch(IOException e) {
-			Log.e(TAG, e.toString());
-			return null;
-		}
-
+		Log.d(TAG,"Initiate connecting to remote tcp server: " + socketAddress.toString());
+		boolean connected = channel.connect(socketAddress);
 		session.setConnected(connected);
 
-		try {
-			nioService.registerSession(session);
-		} catch (ClosedChannelException e) {
-			e.printStackTrace();
-			Log.e(TAG,"Failed to register channel with selector: " + e.getMessage());
-			return null;
-		}
+		nioService.registerSession(session);
+		table.put(key, session);
 
-		if (table.containsKey(key)) {
-			try {
-				channel.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			return null;
-		} else {
-			table.put(key, session);
-		}
 		return session;
 	}
 
