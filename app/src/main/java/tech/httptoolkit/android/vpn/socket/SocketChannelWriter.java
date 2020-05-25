@@ -43,7 +43,8 @@ public class SocketChannelWriter {
 		} else if(channel instanceof DatagramChannel) {
 			writeUDP(session);
 		} else {
-			return;
+			// We only ever create TCP & UDP channels, so this should never happen
+			throw new IllegalArgumentException("Unexpected channel type: " + channel);
 		}
 
 		if(session.isAbortingConnection()){

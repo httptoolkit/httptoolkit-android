@@ -405,6 +405,7 @@ public class SessionHandler {
 		final IPv4Header ipHeader
 	) throws PacketHeaderException {
 		final ICMPPacket requestPacket = ICMPPacketFactory.parseICMPPacket(clientPacketData);
+		Log.d(TAG, "Got an ICMP ping packet, type " + requestPacket.toString());
 
 		pingThreadpool.execute(new Runnable() {
 			@Override
@@ -435,8 +436,7 @@ public class SessionHandler {
 
 			private boolean isReachable(String ipAddress) {
 				try {
-					InetAddress destAddr = InetAddress.getByName(ipAddress);
-					return destAddr.isReachable(10000);
+					return InetAddress.getByName(ipAddress).isReachable(10000);
 				} catch (IOException e) {
 					return false;
 				}
