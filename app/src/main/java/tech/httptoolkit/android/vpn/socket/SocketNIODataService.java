@@ -154,16 +154,12 @@ public class SocketNIODataService implements Runnable {
 
 					Session session = ((Session) key.attachment());
 					synchronized (session) { // Sessions are locked during processing (no VPN data races)
-						if (selectableChannel instanceof SocketChannel) {
-							try {
-								processTCPSelectionKey(key);
-							} catch (IOException e) {
-								synchronized (key) {
-									key.cancel();
-								}
+						try {
+							processSelectionKey(key);
+						} catch (IOException e) {
+							synchronized (key) {
+								key.cancel();
 							}
-						} else if (selectableChannel instanceof DatagramChannel) {
-							processUDPSelectionKey(key);
 						}
 					}
 
@@ -179,84 +175,43 @@ public class SocketNIODataService implements Runnable {
 		Log.i(TAG, "NIO selector shutdown");
 	}
 
-	private void processUDPSelectionKey(SelectionKey key){
-		if(!key.isValid()){
-			Log.d(TAG,"Invalid SelectionKey for UDP");
+	private void processSelectionKey(SelectionKey key) throws IOException {
+		if (!key.isValid()) {
+			Log.d(TAG,"Invalid SelectionKey");
 			return;
 		}
-		DatagramChannel channel = (DatagramChannel) key.channel();
+
+		SelectableChannel channel = key.channel();
 
 		Session session = ((Session) key.attachment());
 		if (session == null) {
+			Log.w(TAG, "Key fired with no session attached");
 			return;
 		}
 		
-		if (!session.isConnected() && key.isConnectable()) {
-			String ips = PacketUtil.intToIPAddress(session.getDestIp());
-			int port = session.getDestPort();
-			SocketAddress address = new InetSocketAddress(ips,port);
-			try {
-				Log.d(TAG,"selector: connecting to remote UDP server: "+ips+":"+port);
-				channel = channel.connect(address);
-				session.setChannel(channel);
-				session.setConnected(channel.isConnected());
-			}catch (Exception e) {
-				e.printStackTrace();
-				session.setAbortingConnection(true);
+		if (channel instanceof SocketChannel && !session.isConnected() && key.isConnectable()) {
+			SocketChannel socketChannel = (SocketChannel) channel;
+
+			if (socketChannel.isConnectionPending()) {
+				boolean connected = socketChannel.finishConnect();
+				session.setConnected(connected);
+			} else {
+				throw new IllegalStateException("TCP channels must either be connected or pending connection");
 			}
 		}
 
-		if(channel.isConnected()){
+		if (isConnected(channel)) {
 			processConnectedSelection(key, session);
 		}
 	}
 
-	private void processTCPSelectionKey(SelectionKey key) throws IOException{
-		if (!key.isValid()) {
-			Log.d(TAG,"Invalid SelectionKey for TCP");
-			return;
-		}
-
-		SocketChannel channel = (SocketChannel)key.channel();
-		Session session = ((Session) key.attachment());
-		if(session == null){
-			return;
-		}
-		
-		if (!session.isConnected() && key.isConnectable()) {
-			String ips = PacketUtil.intToIPAddress(session.getDestIp());
-			int port = session.getDestPort();
-			SocketAddress address = new InetSocketAddress(ips, port);
-			Log.d(TAG,"connecting to remote tcp server: " + ips + ":" + port);
-			boolean connected = false;
-			if(!channel.isConnected() && !channel.isConnectionPending()){
-				try{
-					connected = channel.connect(address);
-				} catch (
-					UnresolvedAddressException |
-					UnsupportedAddressTypeException |
-					SecurityException |
-					IOException e
-				) {
-					Log.e(TAG, e.toString());
-					session.setAbortingConnection(true);
-				}
-			}
-			
-			if (connected) {
-				session.setConnected(true);
-				Log.d(TAG,"connected immediately to remote tcp server: "+ips+":"+port);
-			} else {
-				if (channel.isConnectionPending()) {
-					connected = channel.finishConnect();
-					session.setConnected(connected);
-					Log.d(TAG,"connected to remote tcp server: "+ips+":"+port);
-				}
-			}
-		}
-
-		if (channel.isConnected()) {
-			processConnectedSelection(key, session);
+	private boolean isConnected(SelectableChannel channel) {
+		if (channel instanceof DatagramChannel) {
+			return ((DatagramChannel) channel).isConnected();
+		} else if (channel instanceof SocketChannel) {
+			return ((SocketChannel) channel).isConnected();
+		} else {
+			throw new IllegalArgumentException("isConnected on unexpected channel type: " + channel);
 		}
 	}
 
