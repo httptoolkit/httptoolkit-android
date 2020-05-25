@@ -76,7 +76,7 @@ class ProxyVpnRunnable(
                 try {
                     packet.limit(length)
                     handler.handlePacket(packet)
-                } catch (e: PacketHeaderException) {
+                } catch (e: Exception) {
                     Sentry.capture(e)
                     Log.e(TAG, e.message)
                 }
