@@ -1,6 +1,5 @@
 package tech.httptoolkit.android.vpn.socket;
 
-import android.annotation.SuppressLint;
 import android.util.Log;
 
 import tech.httptoolkit.android.vpn.ClientPacketWriter;
@@ -20,13 +19,8 @@ import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.nio.channels.spi.AbstractSelectableChannel;
 import java.util.Iterator;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 
 import tech.httptoolkit.android.TagKt;
 

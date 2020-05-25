@@ -192,6 +192,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     }
 
     private fun stopVpn() {
+        Log.i(TAG, "VPN stopping..")
+
         if (vpnRunnable != null) {
             app!!.trackEvent("VPN", "vpn-stopped")
             app!!.resumeEvents()

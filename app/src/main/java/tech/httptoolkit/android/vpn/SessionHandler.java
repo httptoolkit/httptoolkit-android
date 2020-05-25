@@ -115,11 +115,9 @@ public class SessionHandler {
 			int len = manager.addClientData(clientPacketData, session);
 			session.setDataForSendingReady(true);
 
-			Log.i(TAG, "Subscribe UDP to OP_WRITE");
 			// Ping the NIO thread to write this, when the session is next writable
 			session.subscribeKey(SelectionKey.OP_WRITE);
 			nioService.refreshSelect(session);
-			Log.d(TAG,"added UDP data for bg worker to send: "+len);
 		}
 
 		manager.keepSessionAlive(session);
@@ -140,7 +138,7 @@ public class SessionHandler {
 			String key = Session.getSessionKey(destinationIP, destinationPort, sourceIP, sourcePort);
 			Session session = manager.getSessionByKey(key);
 
-			if(session == null) {
+			if (session == null) {
 				Log.w(TAG, "Ack for unknown session: " + key);
 				if (tcpheader.isFIN()) {
 					sendLastAck(ipHeader, tcpheader);
@@ -286,9 +284,6 @@ public class SessionHandler {
 		// Ping the NIO thread to write this, when the session is next writable
 		session.subscribeKey(SelectionKey.OP_WRITE);
 		nioService.refreshSelect(session);
-
-		Log.d(TAG,"set data ready for sending to dest, bg will do it. data size: "
-                + session.getSendingDataSize());
 	}
 	
 	/**
@@ -300,7 +295,6 @@ public class SessionHandler {
 	 */
 	private void sendAck(IPv4Header ipheader, TCPHeader tcpheader, int acceptedDataLength, Session session){
 		long acknumber = session.getRecSequence() + acceptedDataLength;
-		Log.d(TAG,"sent ack, ack# "+session.getRecSequence()+" + "+acceptedDataLength+" = "+acknumber);
 		session.setRecSequence(acknumber);
 		byte[] data = TCPPacketFactory.createResponseAckData(ipheader, tcpheader, acknumber);
 

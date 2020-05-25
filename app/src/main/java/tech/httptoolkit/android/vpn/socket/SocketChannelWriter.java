@@ -47,7 +47,7 @@ public class SocketChannelWriter {
 			throw new IllegalArgumentException("Unexpected channel type: " + channel);
 		}
 
-		if(session.isAbortingConnection()){
+		if (session.isAbortingConnection()) {
 			Log.d(TAG,"removing aborted connection -> " + session);
 			session.cancelKey();
 
@@ -76,11 +76,7 @@ public class SocketChannelWriter {
 	}
 
 	private void writeUDP(Session session) {
-		String name = PacketUtil.intToIPAddress(session.getDestIp())+":"+session.getDestPort()+
-				"-"+PacketUtil.intToIPAddress(session.getSourceIp())+":"+session.getSourcePort();
-
 		try {
-			Log.d(TAG,"writing data to remote UDP: "+name);
 			writePendingData(session);
 			Date dt = new Date();
 			session.connectionStartTime = dt.getTime();
@@ -95,11 +91,7 @@ public class SocketChannelWriter {
 	}
 	
 	private void writeTCP(Session session) {
-		String name = PacketUtil.intToIPAddress(session.getDestIp())+":"+session.getDestPort()+
-				"-"+PacketUtil.intToIPAddress(session.getSourceIp())+":"+session.getSourcePort();
-
 		try {
-			Log.d(TAG,"writing TCP data to: " + name);
 			writePendingData(session);
 		} catch (NotYetConnectedException ex) {
 			Log.e(TAG,"failed to write to unconnected socket: " + ex.getMessage());
@@ -126,8 +118,6 @@ public class SocketChannelWriter {
 		ByteBuffer buffer = ByteBuffer.allocate(data.length);
 		buffer.put(data);
 		buffer.flip();
-
-		Log.d(TAG, "Write " + buffer.remaining() + " bytes from " + session + " to " + channel);
 
 		while (buffer.hasRemaining()) {
 			int bytesWritten = channel instanceof SocketChannel

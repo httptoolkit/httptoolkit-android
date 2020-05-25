@@ -45,8 +45,6 @@ class SocketChannelReader {
 	public void read(Session session) {
 		AbstractSelectableChannel channel = session.getChannel();
 
-		Log.d(TAG, "Reading from session " + session);
-
 		if(channel instanceof SocketChannel) {
 			readTCP(session);
 		} else if(channel instanceof DatagramChannel){
@@ -58,7 +56,7 @@ class SocketChannelReader {
 		// Resubscribe to reads, so that we're triggered again if more data arrives later.
 		session.subscribeKey(SelectionKey.OP_READ);
 
-		if(session.isAbortingConnection()) {
+		if (session.isAbortingConnection()) {
 			Log.d(TAG,"removing aborted connection -> "+ session);
 			session.cancelKey();
 			if (channel instanceof SocketChannel){
@@ -85,7 +83,7 @@ class SocketChannelReader {
 	}
 	
 	private void readTCP(@NonNull Session session) {
-		if(session.isAbortingConnection()){
+		if (session.isAbortingConnection()) {
 			return;
 		}
 
@@ -191,16 +189,15 @@ class SocketChannelReader {
 
 		try {
 			do{
-				if(session.isAbortingConnection()){
+				if (session.isAbortingConnection()) {
 					break;
 				}
+
 				len = channel.read(buffer);
-				if(len > 0){
-					Date date = new Date();
-					long responseTime = date.getTime() - session.connectionStartTime;
-					
+				if (len > 0) {
 					buffer.limit(len);
 					buffer.flip();
+
 					//create UDP packet
 					byte[] data = new byte[len];
 					System.arraycopy(buffer.array(),0, data, 0, len);
@@ -213,25 +210,11 @@ class SocketChannelReader {
 					Log.d(TAG,"SDR: sent " + len + " bytes to UDP client, packetData.length: "
 							+ packetData.length);
 					buffer.clear();
-					
-					try {
-						final ByteBuffer stream = ByteBuffer.wrap(packetData);
-						IPv4Header ip = IPPacketFactory.createIPv4Header(stream);
-						UDPHeader udp = UDPPacketFactory.createUDPHeader(stream);
-						String str = PacketUtil.getUDPoutput(ip, udp);
-						Log.d(TAG,"++++++ SD: packet sending to client ++++++++");
-						Log.d(TAG,"got response time: " + responseTime);
-						Log.d(TAG,str);
-						Log.d(TAG,"++++++ SD: end sending packet to client ++++");
-					} catch (PacketHeaderException e) {
-						e.printStackTrace();
-					}
 				}
 			} while(len > 0);
 		}catch(NotYetConnectedException ex){
 			Log.e(TAG,"failed to read from unconnected UDP socket");
 		} catch (IOException e) {
-			e.printStackTrace();
 			Log.e(TAG,"Failed to read from UDP socket, aborting connection");
 			session.setAbortingConnection(true);
 		}
