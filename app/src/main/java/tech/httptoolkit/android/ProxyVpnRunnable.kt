@@ -13,8 +13,8 @@ import java.io.FileOutputStream
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 
-// Taken from ToyShark - I suspect this is somewhat arbitrary
-private const val MAX_PACKET_LEN = 1500
+// Set on our VPN as the MTU, which should guarantee all packets fit this
+const val MAX_PACKET_LEN = 1500
 
 class ProxyVpnRunnable(
     vpnInterface: ParcelFileDescriptor,
