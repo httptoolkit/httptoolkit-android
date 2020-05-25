@@ -84,7 +84,7 @@ class ProxyVpnRunnable(
                 packet.clear()
             } else {
                 try {
-                    Thread.sleep(100)
+                    Thread.sleep(10)
                 } catch (e: InterruptedException) {
                     Log.d(TAG, "Failed to sleep: " + e.message)
                 }

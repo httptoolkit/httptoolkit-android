@@ -148,6 +148,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             vpnInterface = Builder()
                 .addAddress(VPN_IP_ADDRESS, 32)
                 .addRoute(ALL_ROUTES, 0)
+                .setBlocking(true) // We use a blocking loop to read this in ProxyVpnRunnable
                 .apply {
                     // We exclude ourselves from interception, so we can still make network requests
                     // separately, primarily because otherwise pinging with isReachable is recursive.
