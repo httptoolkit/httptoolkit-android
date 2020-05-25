@@ -10,6 +10,7 @@ import tech.httptoolkit.android.vpn.socket.SocketNIODataService
 import io.sentry.Sentry
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InterruptedIOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 
@@ -68,26 +69,27 @@ class ProxyVpnRunnable(
 
         running = true
         while (running) {
-            data = packet.array()
+            try {
+                data = packet.array()
 
-            length = vpnReadStream.read(data)
-            if (length > 0) {
-                try {
-                    packet.limit(length)
-                    handler.handlePacket(packet)
-                } catch (e: Exception) {
-                    Sentry.capture(e)
-                    Log.e(TAG, e.message)
-                }
+                length = vpnReadStream.read(data)
+                if (length > 0) {
+                    try {
+                        packet.limit(length)
+                        handler.handlePacket(packet)
+                    } catch (e: Exception) {
+                        Sentry.capture(e)
+                        Log.e(TAG, e.message)
+                    }
 
-                packet.clear()
-            } else {
-                try {
+                    packet.clear()
+                } else {
                     Thread.sleep(10)
-                } catch (e: InterruptedException) {
-                    Log.d(TAG, "Failed to sleep: " + e.message)
                 }
-
+            } catch (e: InterruptedException) {
+                Log.i(TAG, "Sleep interrupted: " + e.message)
+            } catch (e: InterruptedIOException) {
+                Log.i(TAG, "Read interrupted: " + e.message)
             }
         }
 
