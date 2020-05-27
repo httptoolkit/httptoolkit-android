@@ -11,46 +11,38 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.16" />
+            app:layout_constraintGuide_percent="0.175" />
 
-    <LinearLayout
-            android:id="@+id/headingContainer"
-            android:layout_width="match_parent"
+    <ImageView
+            android:id="@+id/logoImage"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingBottom="20dp"
+            android:contentDescription="The HTTP Toolkit Logo"
             app:layout_constraintBottom_toBottomOf="@+id/logoGuideline"
             app:layout_constraintTop_toTopOf="@+id/logoGuideline"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:srcCompat="@drawable/ic_transparent_icon" />
 
-        <ImageView
-                android:id="@+id/logoImage"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingStart="16dp"
-                android:contentDescription="The HTTP Toolkit Logo"
-                app:srcCompat="@drawable/ic_transparent_icon" />
+    <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/statusGuideline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.35" />
 
-        <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-        <TextView
-                android:id="@+id/statusText"
-                style="@style/StatusText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="@string/disconnected_status"
-                android:textSize="30sp" />
-
-        <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-    </LinearLayout>
+    <TextView
+            android:id="@+id/statusText"
+            style="@style/StatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="Not Connected"
+            app:layout_constraintBottom_toBottomOf="@+id/statusGuideline"
+            app:layout_constraintTop_toTopOf="@+id/statusGuideline"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
     <LinearLayout
             android:id="@+id/statusDetailContainer"
@@ -61,7 +53,7 @@
             app:layout_constrainedWidth="true"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/headingContainer"
+            app:layout_constraintTop_toBottomOf="@+id/statusText"
             android:orientation="vertical" />
 
     <com.google.android.material.card.MaterialCardView
