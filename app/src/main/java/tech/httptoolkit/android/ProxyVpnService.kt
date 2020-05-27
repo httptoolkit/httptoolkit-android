@@ -44,7 +44,7 @@ fun activeVpnConfig(): ProxyConfig? {
 
 class ProxyVpnService : VpnService(), IProtectSocket {
 
-    private var app: HttpToolkitApplication? = null
+    private lateinit var app: HttpToolkitApplication
 
     private var localBroadcastManager: LocalBroadcastManager? = null
 
@@ -180,7 +180,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 .setSession(getString(R.string.app_name))
                 .establish()
 
-            (this.application as HttpToolkitApplication).lastProxy = proxyConfig
+            app.lastProxy = proxyConfig
             showServiceNotification()
             localBroadcastManager!!.sendBroadcast(
                 Intent(VPN_STARTED_BROADCAST).apply {
@@ -201,6 +201,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 )
             )
             Thread(vpnRunnable, "Vpn thread").start()
+
+            app.vpnShouldBeRunning = true
         }
     }
 
@@ -228,6 +230,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         currentService = null
         this.proxyConfig = null
+        app.vpnShouldBeRunning = false
     }
 
     fun isActive(): Boolean {

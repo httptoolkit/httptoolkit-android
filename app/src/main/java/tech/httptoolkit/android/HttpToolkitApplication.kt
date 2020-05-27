@@ -1,7 +1,8 @@
 package tech.httptoolkit.android
 
 import android.app.Application
-import android.content.Context
+import android.content.*
+import android.os.Build
 import android.util.Log
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerClient.InstallReferrerResponse
@@ -12,7 +13,8 @@ import com.google.android.gms.analytics.HitBuilders
 import com.google.android.gms.analytics.Tracker
 import io.sentry.Sentry
 import io.sentry.android.AndroidSentryClientFactory
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.swiftzer.semver.SemVer
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -22,14 +24,51 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
+private const val VPN_START_TIME_PREF = "vpn-start-time"
+private const val APP_CRASHED_PREF = "app-crashed"
+private const val FIRST_RUN_PREF = "is-first-run"
+
+private val isProbablyEmulator =
+        Build.FINGERPRINT.startsWith("generic")
+        || Build.FINGERPRINT.startsWith("unknown")
+        || Build.MODEL.contains("google_sdk")
+        || Build.MODEL.contains("Emulator")
+        || Build.MODEL.contains("Android SDK built for x86")
+        || Build.BOARD == "QC_Reference_Phone"
+        || Build.MANUFACTURER.contains("Genymotion")
+        || Build.HOST.startsWith("Build")
+        || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+        || Build.PRODUCT == "google_sdk"
+
+private val bootTime = (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime())
 
 class HttpToolkitApplication : Application() {
 
     private var analytics: GoogleAnalytics? = null
     private var ga: Tracker? = null
 
+    private lateinit var prefs: SharedPreferences
+    private var vpnWasKilled: Boolean = false
+
+    var vpnShouldBeRunning: Boolean
+        get() {
+            return prefs.getLong(VPN_START_TIME_PREF, -1) > bootTime
+        }
+        set(value) {
+            if (value) {
+                prefs.edit().putLong(VPN_START_TIME_PREF, System.currentTimeMillis()).apply()
+            } else {
+                prefs.edit().putLong(VPN_START_TIME_PREF, -1).apply()
+            }
+        }
+
     override fun onCreate() {
         super.onCreate()
+        prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+
+        Thread.setDefaultUncaughtExceptionHandler { _, _ ->
+            prefs.edit().putBoolean(APP_CRASHED_PREF, true).apply()
+        }
 
         if (BuildConfig.SENTRY_DSN != null) {
             Sentry.init(BuildConfig.SENTRY_DSN, AndroidSentryClientFactory(this))
@@ -41,7 +80,26 @@ class HttpToolkitApplication : Application() {
             resumeEvents() // Resume events on app startup, in case they were paused and we crashed
         }
 
+        // Check if we've been recreated unexpectedly, with no crashes in the meantime:
+        val appCrashed = prefs.getBoolean(APP_CRASHED_PREF, false)
+        prefs.edit().putBoolean(APP_CRASHED_PREF, false).apply()
+
+        vpnWasKilled = vpnShouldBeRunning && !isVpnActive() && !appCrashed && !isProbablyEmulator
+        if (vpnWasKilled) {
+            Sentry.capture("VPN killed in the background")
+            // The UI will show an alert next time the MainActivity is created.
+        }
+
         Log.i(TAG, "App created")
+    }
+
+    /**
+     * Check whether the VPN was killed as a sleeping background process, and then
+     * reset that state so that future checks (until it's next killed) return false
+     */
+    fun popVpnKilledState(): Boolean {
+        return vpnWasKilled
+            .also { this.vpnWasKilled = false }
     }
 
     /**
@@ -49,10 +107,8 @@ class HttpToolkitApplication : Application() {
      * This will return first-run params at most once (per install).
       */
     suspend fun popFirstRunParams(): String? {
-        val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
-
-        val isFirstRun = prefs.getBoolean("is-first-run", true)
-        prefs.edit().putBoolean("is-first-run", false).apply()
+        val isFirstRun = prefs.getBoolean(FIRST_RUN_PREF, true)
+        prefs.edit().putBoolean(FIRST_RUN_PREF, false).apply()
 
         val installTime = packageManager.getPackageInfo(packageName, 0).firstInstallTime
         val now = System.currentTimeMillis()
@@ -96,7 +152,6 @@ class HttpToolkitApplication : Application() {
                 }
             })
         }
-
     }
 
     var lastProxy: ProxyConfig?

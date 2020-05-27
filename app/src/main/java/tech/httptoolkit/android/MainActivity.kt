@@ -1,14 +1,14 @@
 package tech.httptoolkit.android
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
 import android.security.KeyChain.EXTRA_NAME
@@ -99,10 +99,23 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
         }
 
-        // Async check for updates, and maybe prompt the user if necessary (if using play store)
-        launch {
-            supervisorScope {
-                if (isStoreAvailable(this@MainActivity) && app.isUpdateRequired()) promptToUpdate()
+        val batteryOptimizationsDisabled =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                (getSystemService(Context.POWER_SERVICE) as PowerManager)
+                    .isIgnoringBatteryOptimizations(packageName)
+            } else {
+                false // We can't check, so assume not
+            }
+
+        if (app.popVpnKilledState() && !batteryOptimizationsDisabled) {
+            // The app was killed last run, probably by battery optimizations: show a warning
+            showVpnKilledAlert()
+        } else {
+            // Async check for updates, and maybe prompt the user if necessary (if using play store)
+            launch {
+                supervisorScope {
+                    if (isStoreAvailable(this@MainActivity) && app.isUpdateRequired()) promptToUpdate()
+                }
             }
         }
     }
@@ -513,6 +526,58 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     )
                 }
                 .show()
+        }
+    }
+
+    private fun showVpnKilledAlert() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("HTTP Toolkit was killed")
+            .setIcon(R.drawable.ic_exclamation_triangle)
+            .setMessage(
+                "HTTP Toolkit interception was shut down automatically by Android. " +
+                "This is usually caused by overly strict power management of background processes. " +
+                "To fix this, disable battery optimization for HTTP Toolkit in your settings."
+            )
+            .setNegativeButton("Ignore") { _, _ -> }
+            .setPositiveButton("Go to settings") { _, _ ->
+                val batterySettingIntents = listOf(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    } else null,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                        Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                    } else null,
+                    Intent().apply {
+                        this.component = ComponentName(
+                            "com.samsung.android.lool",
+                            "com.samsung.android.sm.ui.battery.BatteryActivity"
+                        )
+                    },
+                    Intent().apply {
+                        this.component = ComponentName(
+                            "com.samsung.android.sm",
+                            "com.samsung.android.sm.ui.battery.BatteryActivity"
+                        )
+                    },
+                    Intent(Settings.ACTION_SETTINGS)
+                )
+
+                // Try the intents in order until one of them works
+                for (intent in batterySettingIntents) {
+                    if (intent != null && tryStartActivity(intent)) break
+                }
+            }
+            .show()
+    }
+
+    private fun tryStartActivity(intent: Intent): Boolean {
+        return try {
+            startActivity(intent)
+            true
+        } catch (e: ActivityNotFoundException) {
+            false
+        } catch (e: SecurityException) {
+            false
         }
     }
 }
