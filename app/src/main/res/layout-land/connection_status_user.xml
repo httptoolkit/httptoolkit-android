@@ -3,16 +3,16 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:paddingStart="16sp"
-        android:paddingEnd="16sp"
-        android:paddingBottom="4sp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="4dp"
         android:clipToPadding="false">
 
     <TextView
             android:id="@+id/connectedTo"
             style="@style/ConnectedToText"
             android:text=""
-            android:layout_marginBottom="24sp" />
+            android:layout_marginBottom="24dp" />
 
     <com.google.android.material.card.MaterialCardView
             style="@style/ConnectionStatusCard"
