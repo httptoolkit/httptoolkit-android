@@ -25,6 +25,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 private const val VPN_START_TIME_PREF = "vpn-start-time"
+private const val LAST_UPDATE_CHECK_TIME_PREF = "update-check-time"
 private const val APP_CRASHED_PREF = "app-crashed"
 private const val FIRST_RUN_PREF = "is-first-run"
 
@@ -212,16 +213,19 @@ class HttpToolkitApplication : Application() {
 
     suspend fun isUpdateRequired(): Boolean {
         return withContext(Dispatchers.IO) {
-            if (isVpnActive()) {
-                Log.i(TAG, "VPN currently active, so not checking for updates for now")
-                return@withContext false
-            }
-
             if (wasInstalledFromStore(this@HttpToolkitApplication)) {
                 // We only check for updates for side-loaded/ADB-loaded versions. This is useful
                 // because otherwise anything outside the play store gets no updates.
                 Log.i(TAG, "Installed from play store, no update prompting required")
                 return@withContext false
+            }
+
+            val lastUpdateTime = prefs.getLong(LAST_UPDATE_CHECK_TIME_PREF,
+                firstInstallTime(this@HttpToolkitApplication)
+            )
+
+            if (System.currentTimeMillis() - lastUpdateTime < 1000 * 60) {
+                return@withContext false;
             }
 
             val httpClient = OkHttpClient()
@@ -258,6 +262,8 @@ class HttpToolkitApplication : Application() {
                     else
                         "App is up to date"
                 )
+
+                prefs.edit().putLong(LAST_UPDATE_CHECK_TIME_PREF, System.currentTimeMillis()).apply()
                 return@withContext updateAvailable && updateNotTooRecent
             } catch (e: Exception) {
                 Log.w(TAG, e)
@@ -270,6 +276,10 @@ class HttpToolkitApplication : Application() {
 
 private fun wasInstalledFromStore(context: Context): Boolean {
     return context.packageManager.getInstallerPackageName(context.packageName) != null
+}
+
+private fun firstInstallTime(context: Context): Long {
+    return context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
 }
 
 private data class GithubRelease(
