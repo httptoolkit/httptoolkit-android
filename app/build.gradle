@@ -3,21 +3,22 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
-
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
+
     defaultConfig {
         applicationId "tech.httptoolkit.android.v1"
         minSdkVersion 21
         targetSdkVersion 29
-        versionCode 9
-        versionName "1.0.0-alpha9"
+        versionCode 10
+        versionName "1.0.0-alpha10"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "SENTRY_DSN", "null"
         buildConfigField "String", "GA_ID", "null"
     }
+
     buildTypes {
         release {
             minifyEnabled false
