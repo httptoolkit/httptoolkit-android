@@ -11,36 +11,17 @@
     <string name="connected_status">Connected</string>
     <string name="failed_status">Oh no!</string>
 
-    <string name="disconnected_details">
-        To intercept this device, start HTTP Toolkit on your computer, click the Android
-        interception option, and scan the QR code shown.
-    </string>
-    <string name="connected_details">
-        to %s on port %d
-    </string>
-    <string name="failed_details">
-        We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?
-    </string>
+    <string name="disconnected_details">To intercept this device, start HTTP Toolkit on your computer, click the Android interception option, and scan the QR code shown.</string>
+    <string name="connected_details">to %s on port %d</string>
+    <string name="failed_details">We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?</string>
 
-    <string name="disabled_connection_status_heading">
-        HTTPS interception disabled
-    </string>
-    <string name="user_connection_status_enabled_heading">
-        User interception enabled
-    </string>
-    <string name="system_connection_status_disabled_heading">
-        System interception disabled
-    </string>
-    <string name="system_connection_status_enabled_heading">
-        System interception enabled
-    </string>
+    <string name="disabled_connection_status_heading">HTTPS interception disabled</string>
+    <string name="user_connection_status_enabled_heading">User interception enabled</string>
+    <string name="system_connection_status_disabled_heading">System interception disabled</string>
+    <string name="system_connection_status_enabled_heading">System interception enabled</string>
 
-    <string name="user_connection_status_details">
-        HTTPS traffic will only be intercepted from apps that are configured to trust user-installed certificates.
-    </string>
-    <string name="system_connection_status_details">
-        Traffic will be intercepted from all installed applications, except those using explicit certificate pinning.
-    </string>
+    <string name="user_connection_status_details">HTTPS traffic will only be intercepted from apps that are configured to trust user-installed certificates.</string>
+    <string name="system_connection_status_details">Traffic will be intercepted from all installed applications, except those using explicit certificate pinning.</string>
 
     <string name="scan_button">Scan code</string>
     <string name="reconnect_button">Reconnect</string>
