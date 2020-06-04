@@ -176,7 +176,7 @@ class SocketChannelReader {
 		final IPv4Header ipHeader = session.getLastIpHeader();
 		final TCPHeader tcpheader = session.getLastTcpHeader();
 		final byte[] data = TCPPacketFactory.createFinData(ipHeader, tcpheader,
-				session.getSendNext(), session.getRecSequence(),
+				session.getRecSequence(), session.getSendNext(),
 				session.getTimestampSender(), session.getTimestampReplyto());
 
 		writer.write(data);
