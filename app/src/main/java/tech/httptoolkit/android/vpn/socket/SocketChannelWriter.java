@@ -96,7 +96,7 @@ public class SocketChannelWriter {
 		} catch (NotYetConnectedException ex) {
 			Log.e(TAG,"failed to write to unconnected socket: " + ex.getMessage());
 		} catch (IOException e) {
-			Log.e(TAG,"Error writing to server: " + e.toString()); // TODO: null here?
+			Log.e(TAG,"Error writing to server: " + e.toString());
 			
 			//close connection with vpn client
 			byte[] rstData = TCPPacketFactory.createRstData(
