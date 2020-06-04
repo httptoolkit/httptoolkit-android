@@ -42,9 +42,11 @@
                     android:text="@string/system_connection_status_disabled_heading" />
 
             <TextView
+                    android:id="@+id/connectionStatusText"
                     style="@style/ConnectionStatusText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:textColorLink="@color/primaryInputBackground"
                     android:text="@string/user_connection_status_details" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

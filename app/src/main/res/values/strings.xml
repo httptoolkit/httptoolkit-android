@@ -20,7 +20,7 @@
     <string name="system_connection_status_disabled_heading">System interception disabled</string>
     <string name="system_connection_status_enabled_heading">System interception enabled</string>
 
-    <string name="user_connection_status_details">HTTPS traffic will only be intercepted from apps that are configured to trust user-installed certificates.</string>
+    <string name="user_connection_status_details">HTTPS traffic will be only intercepted from apps that are configured to trust user-installed certificates (<a href="https://httptoolkit.tech/docs/guides/android#intercepting-traffic-from-your-own-android-app">How?</a>)</string>
     <string name="system_connection_status_details">Traffic will be intercepted from all installed applications, except those using explicit certificate pinning.</string>
 
     <string name="scan_button">Scan code</string>
