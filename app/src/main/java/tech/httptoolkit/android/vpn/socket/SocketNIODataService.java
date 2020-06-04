@@ -150,8 +150,6 @@ public class SocketNIODataService implements Runnable {
 
 				while (iterator.hasNext()) {
 					SelectionKey key = iterator.next();
-					SelectableChannel selectableChannel = key.channel();
-
 					Session session = ((Session) key.attachment());
 					synchronized (session) { // Sessions are locked during processing (no VPN data races)
 						try {
@@ -235,7 +233,10 @@ public class SocketNIODataService implements Runnable {
 
 	private void processPendingWrite(SelectionKey selectionKey, Session session) {
 		// Nothing to write? Skip this entirely, and make sure we're not subscribed
-		if (!session.hasDataToSend() || !session.isDataForSendingReady()) return;
+		if (!session.hasDataToSend() || !session.isDataForSendingReady()) {
+			session.unsubscribeKey(SelectionKey.OP_WRITE);
+			return;
+		}
 
 		boolean canWrite;
 		synchronized (selectionKey) {
