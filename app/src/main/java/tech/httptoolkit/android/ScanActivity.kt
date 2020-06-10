@@ -57,7 +57,7 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (grantResults[0] == PERMISSION_GRANTED) {
+        if (grantResults.isNotEmpty() && grantResults[0] == PERMISSION_GRANTED) {
             Log.i(TAG, "Camera permissions granted")
         } else {
             Log.i(TAG, "Camera permissions rejected")
