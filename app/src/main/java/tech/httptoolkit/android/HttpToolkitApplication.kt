@@ -163,9 +163,13 @@ class HttpToolkitApplication : Application() {
 
             return when {
                 serialized != null -> {
+                    Log.i(TAG, "Found last proxy config: $serialized")
                     Klaxon().converter(CertificateConverter).parse<ProxyConfig>(serialized)
                 }
-                else -> null
+                else -> {
+                    Log.i(TAG, "No proxy config found")
+                    null
+                }
             }
         }
         set(proxyConfig) {
