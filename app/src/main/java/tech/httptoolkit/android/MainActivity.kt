@@ -612,8 +612,9 @@ private fun getTestBrowserPackage(context: Context): String? {
         "com.android.browser", // <= Android 2.3
         "com.google.android.browser", // > 2.3, < 4.0.2
         "com.brave.browser", // Brave
-        "com.microsoft.emmx" // Edge
-        // FF, Opera & others don't trust user CAs by default, so we avoid them for testing
+        "com.microsoft.emmx", // Edge
+        "com.sec.android.app.sbrowser" // Samsung browser
+        // FF/Opera/UC Browser & others don't trust user CAs by default, so we avoid them for testing
     )
 
     // If the default browser is supported, just use that, easy
@@ -623,6 +624,7 @@ private fun getTestBrowserPackage(context: Context): String? {
         return defaultBrowser
     }
 
+    // If not, use the first browser in the list above that's installed, or return null
     return supportedBrowsers.firstOrNull { packageName ->
         isPackageAvailable(context, packageName)
     }
