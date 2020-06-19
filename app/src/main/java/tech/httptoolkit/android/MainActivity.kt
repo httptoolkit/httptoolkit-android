@@ -407,27 +407,29 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun testInterception() {
         app.trackEvent("Button", "test-interception")
 
-        // If there's a supported browser available, make sure we use it. This prioritises
-        // the default browser, and only returns null if no known supported browser is installed.
-        val testBrowserPackage = getTestBrowserPackage(this)
-
         val certIsSystemTrusted = whereIsCertTrusted(
             this.currentProxyConfig!! // Safe!! because you can only run tests while connected
         ) == "system"
+
+        val testBrowser = if (certIsSystemTrusted) {
+            null // If we have a system cert, we can safely always use the system browser
+        } else {
+            // If not, and there is a supported browser available, we use it. This prioritises
+            // the default browser, and only returns null if no known supported browser exists.
+            getTestBrowserPackage(this)
+        }
 
         val browserIntent = Intent(
             Intent.ACTION_VIEW,
             Uri.parse(
                 (
-                    // We test with just plain HTTP if there's no user-cert-trusting browser
-                    // installed, to reduce confusing failures.
-                    if (testBrowserPackage == null && !certIsSystemTrusted) "http" else "https"
+                    // We test with just plain HTTP if we don't have system injection setup and
+                    // there's no user-cert-trusting browser, to reduce confusing failures.
+                    if (testBrowser == null && !certIsSystemTrusted) "http" else "https"
                 ) + "://amiusing.httptoolkit.tech"
             )
         ).apply {
-            if (testBrowserPackage != null) {
-                setPackage(testBrowserPackage)
-            }
+            if (testBrowser != null) setPackage(testBrowser)
         }
         startActivity(browserIntent)
     }
