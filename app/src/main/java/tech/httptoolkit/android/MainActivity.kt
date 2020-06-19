@@ -407,15 +407,24 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun testInterception() {
         app.trackEvent("Button", "test-interception")
 
-        val browserIntent = Intent(Intent.ACTION_VIEW,
-            Uri.parse("https://amiusing.httptoolkit.tech")
-        )
-
         // If there's a supported browser available, make sure we use it. This prioritises
         // the default browser, and only returns null if no known supported browser is installed.
         val testBrowserPackage = getTestBrowserPackage(this)
-        if (testBrowserPackage != null) browserIntent.setPackage(testBrowserPackage)
 
+        val browserIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse(
+                (
+                    // We test with just plain HTTP if there's no user-cert-trusting browser
+                    // installed, to reduce confusing failures.
+                    if (testBrowserPackage == null) "http" else "https"
+                ) + "://amiusing.httptoolkit.tech"
+            )
+        ).apply {
+            if (testBrowserPackage != null) {
+                setPackage(testBrowserPackage)
+            }
+        }
         startActivity(browserIntent)
     }
 
