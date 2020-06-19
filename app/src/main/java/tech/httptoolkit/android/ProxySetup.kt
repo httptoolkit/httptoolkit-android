@@ -8,6 +8,7 @@ import android.util.Base64
 import android.util.Log
 import androidx.core.content.ContextCompat.getSystemService
 import com.beust.klaxon.Klaxon
+import io.sentry.Sentry
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -161,13 +162,24 @@ fun whereIsCertTrusted(proxyConfig: ProxyConfig): String? {
     val keyStore = KeyStore.getInstance("AndroidCAStore")
     keyStore.load(null, null)
 
-    val certificateAlias = keyStore.getCertificateAlias(proxyConfig.certificate)
-    Log.i(TAG, "Cert alias $certificateAlias")
+    val proxyCertData = proxyConfig.certificate.encoded
+
+    val aliases = keyStore.aliases()
+
+    val proxyCertAliases = aliases.toList().filter { alias ->
+        val storedCertData = keyStore.getCertificate(alias).encoded
+        return@filter storedCertData != null && storedCertData.contentEquals(proxyCertData)
+    }
+
+    Log.i(TAG, "Proxy cert aliases: $proxyCertAliases")
 
     return when {
-        certificateAlias == null -> null
-        certificateAlias.startsWith("system:") -> "system"
-        certificateAlias.startsWith("user:") -> "user"
-        else -> "unknown-store"
+        proxyCertAliases.isEmpty() -> null
+        proxyCertAliases.any { alias -> alias.startsWith("system:") } -> "system"
+        proxyCertAliases.any { alias -> alias.startsWith("user:") } -> "user"
+        else -> {
+            Sentry.capture("Cert has no recognizable aliases")
+            return "unknown-store"
+        }
     }
 }
