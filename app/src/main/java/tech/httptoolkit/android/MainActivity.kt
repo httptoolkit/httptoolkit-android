@@ -411,13 +411,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         // the default browser, and only returns null if no known supported browser is installed.
         val testBrowserPackage = getTestBrowserPackage(this)
 
+        val certIsSystemTrusted = whereIsCertTrusted(
+            this.currentProxyConfig!! // Safe!! because you can only run tests while connected
+        ) == "system"
+
         val browserIntent = Intent(
             Intent.ACTION_VIEW,
             Uri.parse(
                 (
                     // We test with just plain HTTP if there's no user-cert-trusting browser
                     // installed, to reduce confusing failures.
-                    if (testBrowserPackage == null) "http" else "https"
+                    if (testBrowserPackage == null && !certIsSystemTrusted) "http" else "https"
                 ) + "://amiusing.httptoolkit.tech"
             )
         ).apply {
