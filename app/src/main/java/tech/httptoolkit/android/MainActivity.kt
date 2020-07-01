@@ -256,6 +256,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
                 buttonContainer.addView(secondaryButton(R.string.test_button, ::testInterception))
+                val isInterceptingAllApps =
+                    ApplicationListActivity.getWhiteListAppSharedPreferences(this).all.isEmpty()
+                buttonContainer.addView(
+                    secondaryButton(
+                        if (isInterceptingAllApps) R.string.intercepting_all else R.string.intercepting_selected,
+                        ::chooseApps
+                    )
+                )
             }
             MainState.DISCONNECTING -> {
                 statusText.setText(R.string.disconnecting_status)
@@ -417,6 +425,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             Uri.parse("https://httptoolkit.tech/docs/guides/android")
         )
         startActivity(browserIntent)
+    }
+
+    private fun chooseApps(){
+        startActivity(Intent(this,ApplicationListActivity::class.java))
     }
 
     private fun testInterception() {

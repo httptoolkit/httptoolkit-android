@@ -31,4 +31,10 @@
     <string name="docs_button">Read the docs</string>
     <string name="try_again_button">Try again</string>
     <string name="test_button">Test interception</string>
+    <string name="intercepting_all">Intercepting All Apps</string>
+    <string name="intercepting_selected">Intercepting Selected Apps</string>
+    <string name="app_drawable">App Drawable</string>
+    <string name="applications">Applications</string>
+    <string name="all_applications">All Applications</string>
+    <string name="show_system">Show System</string>
 </resources>

@@ -1,0 +1,49 @@
+package tech.httptoolkit.android
+
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.recyclerview.widget.RecyclerView
+import kotlinx.android.synthetic.main.item_app_row.view.*
+
+class ApplicationListAdapter(
+    private val data: MutableList<PackageInfo>,
+    private val isAppWhitelisted: (String) -> Boolean,
+    private val onCheckChanged: (PackageInfo, Boolean) -> Unit
+) :
+    RecyclerView.Adapter<ApplicationListAdapter.AppsViewHolder>() {
+
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppsViewHolder {
+        return AppsViewHolder(
+            LayoutInflater.from(parent.context).inflate(R.layout.item_app_row, parent, false)
+        )
+    }
+
+    override fun getItemCount() = data.size
+
+    override fun onBindViewHolder(holder: AppsViewHolder, position: Int) {
+        holder.bind(data[position].applicationInfo)
+    }
+
+    inner class AppsViewHolder(v: View) : RecyclerView.ViewHolder(v) {
+        private val packageManager by lazy {
+            itemView.context.packageManager
+        }
+
+        init {
+            itemView.row_app_check_box.setOnCheckedChangeListener { buttonView, isChecked ->
+                onCheckChanged(data[layoutPosition], isChecked)
+            }
+        }
+
+        fun bind(appInfo: ApplicationInfo) {
+            itemView.row_app_icon_image.setImageDrawable(appInfo.loadIcon(packageManager))
+            itemView.row_app_name.text = appInfo.loadLabel(packageManager)
+            itemView.row_app_package_name.text = appInfo.packageName
+            itemView.row_app_check_box.isChecked = isAppWhitelisted(appInfo.packageName)
+        }
+    }
+}

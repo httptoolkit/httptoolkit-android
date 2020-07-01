@@ -142,12 +142,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
-        val packageNames = packages.map { pkg -> pkg.packageName }
-        val isGenymotion = packageNames.any {
-            // This check could be stricter (com.genymotion.genyd), but right now it doesn't seem to
-            // have any false positives, and it's very flexible to changes in genymotion itself.
-            name -> name.startsWith("com.genymotion")
-        }
+        val whiteListedPackages = ApplicationListActivity.getWhiteListAppSharedPreferences(this@ProxyVpnService).all.keys
+        val packageNames = if(whiteListedPackages.isNotEmpty()) whiteListedPackages else packages.map { pkg -> pkg.packageName }
 
         if (this.vpnInterface != null) return false // The VPN is already running, somehow? Do nothing
 
@@ -174,14 +170,8 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 // separately, primarily because otherwise pinging with isReachable is recursive.
                 val httpToolkitPackage = packageName
 
-                // For some reason, with Genymotion the whole device crashes if we intercept
-                // blindly, but intercepting every single application explicitly is fine.
-                if (isGenymotion) {
-                    packageNames.forEach { name ->
-                        if (name != httpToolkitPackage) addAllowedApplication(name)
-                    }
-                } else {
-                    addDisallowedApplication(httpToolkitPackage)
+                packageNames.forEach { name ->
+                    if (name != httpToolkitPackage) addAllowedApplication(name)
                 }
             }
             .setSession(getString(R.string.app_name))
