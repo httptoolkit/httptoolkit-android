@@ -306,6 +306,20 @@ public class SessionHandler {
 		writer.write(data);
 	}
 
+	/**
+	 * resend the last acknowledgment packet to VPN client, e.g. when an unexpected out of order
+	 * packet arrives.
+	 * @param session Session
+	 */
+	private void resendAck(Session session){
+		byte[] data = TCPPacketFactory.createResponseAckData(
+				session.getLastIpHeader(),
+				session.getLastTcpHeader(),
+				session.getRecSequence()
+		);
+		writer.write(data);
+	}
+
 	private void sendAckForDisorder(IPv4Header ipHeader, TCPHeader tcpheader, int acceptedDataLength) {
 		long ackNumber = tcpheader.getSequenceNumber() + acceptedDataLength;
 		Log.d(TAG,"sent disorder ack, ack# " + tcpheader.getSequenceNumber() +
@@ -377,6 +391,14 @@ public class SessionHandler {
 			ip.getDestinationIP(), tcp.getDestinationPort(),
 			ip.getSourceIP(), tcp.getSourcePort()
 		);
+
+		if (session.getLastIpHeader() != null) {
+			// We have an existing session for this connection! We've somehow received a SYN
+			// for an existing socket (or some kind of other race). We resend the last ACK
+			// for this session, rejecting this SYN. Not clear why this happens, but it can.
+			resendAck(session);
+			return;
+		}
 
 		synchronized (session) {
 			session.setMaxSegmentSize(tcpheader.getMaxSegmentSize());

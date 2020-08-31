@@ -126,11 +126,10 @@ public class SessionManager implements ICloseSession {
 	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort) throws IOException {
 		String keys = Session.getSessionKey(ip, port, srcIp, srcPort);
 
-		if (table.containsKey(keys)) {
-			// For TCP, we freak out if you try to create an already existing session.
-			// With UDP though, it's totally fine:
-			return table.get(keys);
-		}
+		// For TCP, we freak out if you try to create an already existing session.
+		// With UDP though, it's totally fine:
+		Session existingSession = table.get(keys);
+		if (existingSession != null) return existingSession;
 
 		Session session = new Session(srcIp, srcPort, ip, port, this);
 
@@ -162,12 +161,13 @@ public class SessionManager implements ICloseSession {
 	@NotNull
 	public Session createNewTCPSession(int ip, int port, int srcIp, int srcPort) throws IOException {
 		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
-		if (table.containsKey(key)) {
-			// This can happen if we receive two SYN packets somehow. That shouldn't happen, especially
-			// given that our connection is local & should be 100% reliable, but it does. We probably
-			// should RST, for now we just throw here (and so drop the packet entirely).
-			throw new IllegalArgumentException("Can't create duplicate session");
-		}
+
+		Session existingSession = table.get(key);
+
+		// This can happen if we receive two SYN packets somehow. That shouldn't happen,
+		// given that our connection is local & should be 100% reliable, but it can.
+		// We return the initialized session, which will be reacked to indicate rejection.
+		if (existingSession != null) return existingSession;
 
 		Session session = new Session(srcIp, srcPort, ip, port, this);
 
