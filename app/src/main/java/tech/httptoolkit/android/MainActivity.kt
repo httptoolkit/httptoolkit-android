@@ -604,10 +604,10 @@ private fun isPackageAvailable(context: Context, packageName: String) = try {
     false
 }
 
-private fun getDefaultBrowserPackage(context: Context): String {
+private fun getDefaultBrowserPackage(context: Context): String? {
     val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://example.com"))
     val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
-    return resolveInfo.activityInfo.packageName
+    return resolveInfo?.activityInfo?.packageName
 }
 
 private fun getTestBrowserPackage(context: Context): String? {
