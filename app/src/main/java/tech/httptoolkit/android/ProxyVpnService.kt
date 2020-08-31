@@ -76,11 +76,17 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         if (intent.action == START_VPN_ACTION) {
             val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
-            startVpn(proxyConfig)
 
-            // If the system briefly kills us for some reason (memory, the user, whatever) whilst
-            // running the VPN, it should redeliver the VPN setup intent ASAP.
-            return Service.START_REDELIVER_INTENT
+            val vpnStarted = startVpn(proxyConfig)
+
+            if (vpnStarted) {
+                // If the system briefly kills us for some reason (memory, the user, whatever) whilst
+                // running the VPN, it should redeliver the VPN setup intent ASAP.
+                return Service.START_REDELIVER_INTENT
+            } else {
+                // We failed to start somehow - cleanup
+                stopVpn()
+            }
         } else if (intent.action == STOP_VPN_ACTION) {
             stopVpn()
         }
@@ -132,7 +138,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     }
 
-    private fun startVpn(proxyConfig: ProxyConfig) {
+    private fun startVpn(proxyConfig: ProxyConfig): Boolean {
         this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
@@ -143,67 +149,76 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             name -> name.startsWith("com.genymotion")
         }
 
+        if (this.vpnInterface != null) return false // The VPN is already running, somehow? Do nothing
+
+        app!!.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
+        app!!.trackEvent("VPN", "vpn-started")
+        val vpnInterface = Builder()
+            .addAddress(VPN_IP_ADDRESS, 32)
+            .addRoute(ALL_ROUTES, 0)
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Where possible, we want to explicitly set the proxy in addition to
+                    // manually redirecting traffic. This is useful because it captures HTTP sent
+                    // to non-default ports. We still need to do both though, as not all clients
+                    // will use the proxy settings.
+                    setHttpProxy(ProxyInfo.buildDirectProxy(proxyConfig.ip, proxyConfig.port))
+                }
+            }
+
+            .setMtu(MAX_PACKET_LEN) // Limit the packet size to the buffer used by ProxyVpnRunnable
+            .setBlocking(true) // We use a blocking loop to read in ProxyVpnRunnable
+
+            .apply {
+                // We exclude ourselves from interception, so we can still make network requests
+                // separately, primarily because otherwise pinging with isReachable is recursive.
+                val httpToolkitPackage = packageName
+
+                // For some reason, with Genymotion the whole device crashes if we intercept
+                // blindly, but intercepting every single application explicitly is fine.
+                if (isGenymotion) {
+                    packageNames.forEach { name ->
+                        if (name != httpToolkitPackage) addAllowedApplication(name)
+                    }
+                } else {
+                    addDisallowedApplication(httpToolkitPackage)
+                }
+            }
+            .setSession(getString(R.string.app_name))
+            .establish()
+
+        // establish() returns null if we no longer have permissions to establish the VPN somehow
+        // In that case, we give up. The UI
         if (vpnInterface == null) {
-            app!!.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
-            app!!.trackEvent("VPN", "vpn-started")
-            vpnInterface = Builder()
-                .addAddress(VPN_IP_ADDRESS, 32)
-                .addRoute(ALL_ROUTES, 0)
-                .apply {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // Where possible, we want to explicitly set the proxy in addition to
-                        // manually redirecting traffic. This is useful because it captures HTTP sent
-                        // to non-default ports. We still need to do both though, as not all clients
-                        // will use the proxy settings.
-                        setHttpProxy(ProxyInfo.buildDirectProxy(proxyConfig.ip, proxyConfig.port))
-                    }
-                }
-
-                .setMtu(MAX_PACKET_LEN) // Limit the packet size to the buffer used by ProxyVpnRunnable
-                .setBlocking(true) // We use a blocking loop to read in ProxyVpnRunnable
-
-                .apply {
-                    // We exclude ourselves from interception, so we can still make network requests
-                    // separately, primarily because otherwise pinging with isReachable is recursive.
-                    val httpToolkitPackage = packageName
-
-                    // For some reason, with Genymotion the whole device crashes if we intercept
-                    // blindly, but intercepting every single application explicitly is fine.
-                    if (isGenymotion) {
-                        packageNames.forEach { name ->
-                            if (name != httpToolkitPackage) addAllowedApplication(name)
-                        }
-                    } else {
-                        addDisallowedApplication(httpToolkitPackage)
-                    }
-                }
-                .setSession(getString(R.string.app_name))
-                .establish()
-
-            app.lastProxy = proxyConfig
-            showServiceNotification()
-            localBroadcastManager!!.sendBroadcast(
-                Intent(VPN_STARTED_BROADCAST).apply {
-                    putExtra(PROXY_CONFIG_EXTRA, proxyConfig)
-                }
-            )
-
-            SocketProtector.getInstance().setProtector(this)
-
-            vpnRunnable = ProxyVpnRunnable(
-                vpnInterface!!,
-                proxyConfig.ip,
-                proxyConfig.port,
-                intArrayOf(
-                    80, // HTTP
-                    443, // HTTPS
-                    8000, 8001, 8080, 8888, 9000 // Common local dev ports
-                )
-            )
-            Thread(vpnRunnable, "Vpn thread").start()
-
-            app.vpnShouldBeRunning = true
+            return false
+        } else {
+            this.vpnInterface = vpnInterface
         }
+
+        app.lastProxy = proxyConfig
+        showServiceNotification()
+        localBroadcastManager!!.sendBroadcast(
+            Intent(VPN_STARTED_BROADCAST).apply {
+                putExtra(PROXY_CONFIG_EXTRA, proxyConfig)
+            }
+        )
+
+        SocketProtector.getInstance().setProtector(this)
+
+        vpnRunnable = ProxyVpnRunnable(
+            vpnInterface,
+            proxyConfig.ip,
+            proxyConfig.port,
+            intArrayOf(
+                80, // HTTP
+                443, // HTTPS
+                8000, 8001, 8080, 8888, 9000 // Common local dev ports
+            )
+        )
+        Thread(vpnRunnable, "Vpn thread").start()
+
+        app.vpnShouldBeRunning = true
+        return true
     }
 
     private fun stopVpn() {
