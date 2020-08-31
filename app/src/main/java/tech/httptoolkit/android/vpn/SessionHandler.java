@@ -102,6 +102,8 @@ public class SessionHandler {
 			ipHeader.getSourceIP(), udpheader.getSourcePort()
 		);
 
+		boolean newSession = session != null;
+
 		if (session == null) {
 			session = manager.createNewUDPSession(
 				ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
@@ -112,8 +114,11 @@ public class SessionHandler {
 		synchronized (session) {
 			session.setLastIpHeader(ipHeader);
 			session.setLastUdpHeader(udpheader);
-			int len = manager.addClientData(clientPacketData, session);
+			manager.addClientData(clientPacketData, session);
 			session.setDataForSendingReady(true);
+
+			// We don't register the session until it's fully populated (as above)
+			if (newSession) nioService.registerSession(session);
 
 			// Ping the NIO thread to write this, when the session is next writable
 			session.subscribeKey(SelectionKey.OP_WRITE);
@@ -379,6 +384,11 @@ public class SessionHandler {
 			session.setSendNext(tcpheader.getSequenceNumber() + 1);
 			//client initial sequence has been incremented by 1 and set to ack
 			session.setRecSequence(tcpheader.getAckNumber());
+
+			session.setLastIpHeader(ip);
+			session.setLastTcpHeader(tcp);
+
+			nioService.registerSession(session);
 
 			writer.write(packet.getBuffer());
 			Log.d(TAG,"Send SYN-ACK to client");

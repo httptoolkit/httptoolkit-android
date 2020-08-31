@@ -53,12 +53,6 @@ public class SessionManager implements ICloseSession {
 	private final Map<String, Session> table = new ConcurrentHashMap<>();
 	private SocketProtector protector = SocketProtector.getInstance();
 
-	private SocketNIODataService nioService;
-
-	public SessionManager(SocketNIODataService nioService) {
-		this.nioService = nioService;
-	}
-
 	/**
 	 * keep java garbage collector from collecting a session
 	 * @param session Session
@@ -159,7 +153,6 @@ public class SessionManager implements ICloseSession {
 		channel.connect(socketAddress);
 		session.setConnected(channel.isConnected());
 
-		nioService.registerSession(session);
 		table.put(keys, session);
 
 		Log.d(TAG,"new UDP session successfully created.");
@@ -205,7 +198,6 @@ public class SessionManager implements ICloseSession {
 		boolean connected = channel.connect(socketAddress);
 		session.setConnected(connected);
 
-		nioService.registerSession(session);
 		table.put(key, session);
 
 		return session;

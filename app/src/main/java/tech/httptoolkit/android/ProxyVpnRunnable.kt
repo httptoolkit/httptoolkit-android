@@ -38,7 +38,7 @@ class ProxyVpnRunnable(
     private val nioService = SocketNIODataService(vpnPacketWriter)
     private val dataServiceThread = Thread(nioService, "Socket NIO thread")
 
-    private val manager = SessionManager(nioService)
+    private val manager = SessionManager()
     private val handler = SessionHandler(manager, nioService, vpnPacketWriter)
 
     // Allocate the buffer for a single packet.
