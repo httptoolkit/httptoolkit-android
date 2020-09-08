@@ -2,12 +2,13 @@ package tech.httptoolkit.android
 
 import android.content.*
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.os.PowerManager
+import android.provider.MediaStore
 import android.provider.Settings
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
@@ -17,6 +18,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ContextThemeWrapper
@@ -25,6 +27,8 @@ import com.google.android.gms.common.GooglePlayServicesUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.sentry.Sentry
 import kotlinx.coroutines.*
+import java.lang.RuntimeException
+import java.security.cert.Certificate
 import java.security.cert.X509Certificate
 
 
@@ -42,6 +46,8 @@ enum class MainState {
 
 private const val ACTIVATE_INTENT = "tech.httptoolkit.android.ACTIVATE"
 private const val DEACTIVATE_INTENT = "tech.httptoolkit.android.DEACTIVATE"
+
+private val PROMPTED_CERT_SETUP_SUPPORTED = Build.VERSION.SDK_INT < Build.VERSION_CODES.R;
 
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
@@ -308,7 +314,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
         val vpnNotConfigured = vpnIntent != null
 
-        if (whereIsCertTrusted(config) == null) {
+        if (whereIsCertTrusted(config) == null && PROMPTED_CERT_SETUP_SUPPORTED) {
             // The cert isn't trusted, and the VPN may need setup, so there'll be a series of prompts
             // here. Explain them beforehand, so users understand what's going on.
             withContext(Dispatchers.Main) {
@@ -446,14 +452,19 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             SCAN_REQUEST -> "scan-request"
             else -> requestCode.toString()
         })
+
         Log.i(TAG, if (resultCode == RESULT_OK) "ok" else resultCode.toString())
 
-        if (resultCode == RESULT_OK) {
+        val resultOk = resultCode == RESULT_OK ||
+            (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null)
+
+        if (resultOk) {
             if (requestCode == START_VPN_REQUEST && currentProxyConfig != null) {
                 Log.i(TAG, "Installing cert")
                 ensureCertificateTrusted(currentProxyConfig!!)
             } else if (requestCode == INSTALL_CERT_REQUEST) {
                 Log.i(TAG, "Starting VPN")
+                app.trackEvent("Setup", "installed-cert-successfully")
                 startService(Intent(this, ProxyVpnService::class.java).apply {
                     action = START_VPN_ACTION
                     putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
@@ -512,17 +523,74 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             app.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
 
-            // Install the required cert into the user CA store. Notably, if the cert is already
-            // installed as a system cert but disabled, this will get triggered, and will enable
-            // the cert, rather than adding a user cert.
-            val certInstallIntent = KeyChain.createInstallIntent()
-            certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
-            certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
-            startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                app.trackEvent("Setup", "installing-cert-manually")
+                // Android 11+, with no trusted cert: we need to download the cert to Downloads and
+                // then tell the user how to install it manually:
+                launch { promptToManuallyInstallCert(proxyConfig.certificate) }
+            } else {
+                // Up until Android 11, we can prompt the user to install the CA cert into the user
+                // CA store. Notably, if the cert is already installed as a system cert but
+                // disabled, this will get triggered, and will enable the cert, rather than adding
+                // a normal user cert.
+                app.trackEvent("Setup", "installing-cert-automatically")
+                val certInstallIntent = KeyChain.createInstallIntent()
+                certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
+                certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
+                startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
+            }
         } else {
             app.trackEvent("Setup", "existing-$existingTrust-cert")
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private suspend fun promptToManuallyInstallCert(cert: Certificate) {
+        // Get ready to save the cert to downloads:
+        val downloadsUri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+
+        val contentDetails = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, "HTTP Toolkit Certificate.crt")
+            put(MediaStore.Downloads.MIME_TYPE, "application/x-x509-ca-cert")
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+
+        val certUri = contentResolver.insert(downloadsUri, contentDetails)
+            ?: throw RuntimeException("Could not get download cert URI")
+
+        // Write cert contents to a file:
+        withContext(Dispatchers.IO) {
+            contentResolver.openFileDescriptor(certUri, "w", null).use { f ->
+                ParcelFileDescriptor.AutoCloseOutputStream(f).write(cert.encoded)
+            }
+        }
+
+        // All done, mark it as such:
+        contentDetails.clear()
+        contentDetails.put(MediaStore.Downloads.IS_PENDING, 0)
+        contentResolver.update(certUri, contentDetails, null, null)
+
+        withContext(Dispatchers.Main) {
+            MaterialAlertDialogBuilder(this@MainActivity)
+                .setTitle("Manual setup required")
+                .setIcon(R.drawable.ic_exclamation_triangle)
+                .setMessage(
+                    """
+                    Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup.
+
+                    To allow HTTP Toolkit to intercept HTTPS traffic:
+
+                    - Open "Encryption & Credentials" in your security settings
+                    - Select "Install a certificate", and then "CA Certificate"
+                    - Select the HTTP Toolkit certificate
+                    """.trimIndent()
+                )
+                .setPositiveButton("Open security settings now") { _, _ ->
+                    startActivityForResult(Intent(Settings.ACTION_SECURITY_SETTINGS), INSTALL_CERT_REQUEST)
+                }
+                .show()
         }
     }
 
