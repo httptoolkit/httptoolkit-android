@@ -457,7 +457,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
                 })
             } else if (requestCode == SCAN_REQUEST && data != null) {
-                val url = data.getStringExtra(SCANNED_URL_EXTRA)
+                val url = data.getStringExtra(SCANNED_URL_EXTRA)!!
                 launch { connectToVpnFromUrl(url) }
             }
         } else {

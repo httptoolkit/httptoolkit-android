@@ -67,7 +67,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         currentService = this
         Log.i(TAG, "onStartCommand called")
-        Log.i(TAG, if (intent.action != null) intent.action else "no action")
+        Log.i(TAG, intent.action ?: "no action")
 
         if (localBroadcastManager == null) {
             localBroadcastManager = LocalBroadcastManager.getInstance(this)
@@ -77,7 +77,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         if (intent.action == START_VPN_ACTION) {
             val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
 
-            val vpnStarted = startVpn(proxyConfig)
+            val vpnStarted = startVpn(proxyConfig!!)
 
             if (vpnStarted) {
                 // If the system briefly kills us for some reason (memory, the user, whatever) whilst

@@ -79,7 +79,8 @@ class ProxyVpnRunnable(
                         handler.handlePacket(packet)
                     } catch (e: Exception) {
                         Sentry.capture(e)
-                        Log.e(TAG, e.message)
+                        val errorMessage = e.message ?: e.toString()
+                        Log.e(TAG, errorMessage)
                     }
 
                     packet.clear()

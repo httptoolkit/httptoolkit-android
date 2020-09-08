@@ -248,7 +248,7 @@ class HttpToolkitApplication : Application() {
                     tryParseSemver(release.name)
                     ?: tryParseSemver(release.tag_name)
                     ?: throw RuntimeException("Could not parse release version ${release.tag_name}")
-                val releaseDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(release.published_at)
+                val releaseDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(release.published_at)!!
 
                 val installedVersion = getInstalledVersion(this@HttpToolkitApplication)
 
