@@ -141,8 +141,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        app.trackEvent("Setup", "action-view")
-
         // RC intents are intents that have passed the RC permission requirement in the manifest.
         // Implicit intents with the matching actions will always use the RC activity, this check
         // protects against explicit intents targeting MainActivity. RC intents are known to be
@@ -153,6 +151,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // ACTION_VIEW means that somebody had the app installed, and scanned the barcode with
             // a separate barcode app anyway (or opened the QR code URL in a browser)
             intent.action == Intent.ACTION_VIEW -> {
+                app.trackEvent("Setup", "action-view")
                 if (app.lastProxy != null && isVpnConfigured()) {
                     Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
 
@@ -184,14 +183,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // RC setup API, used by ADB to enable/disable without prompts.
             // Permission required, checked for via activity-alias in the manifest
             isRCIntent && intent.action == ACTIVATE_INTENT -> {
+                app.trackEvent("Setup", "rc-activate")
                 launch { connectToVpnFromUrl(intent.data!!) }
             }
             isRCIntent && intent.action == DEACTIVATE_INTENT -> {
+                app.trackEvent("Setup", "rc-deactivate")
                 disconnect()
             }
 
             intent.action == "android.intent.action.MAIN" -> {
                 // The app is being opened - nothing to do here
+                app.trackEvent("Setup", "ui-opened")
             }
 
             else -> Log.w(TAG, "Ignoring unknown intent. Action ${
@@ -505,7 +507,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
-        if (whereIsCertTrusted(proxyConfig) == null) {
+        val existingTrust = whereIsCertTrusted(proxyConfig)
+        if (existingTrust == null) {
             app.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
 
@@ -517,7 +520,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
             startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
         } else {
-            app.trackEvent("Setup", "existing-cert")
+            app.trackEvent("Setup", "existing-$existingTrust-cert")
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
         }
