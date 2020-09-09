@@ -413,10 +413,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun openDocs() {
         app.trackEvent("Button", "open-docs")
-        val browserIntent = Intent(Intent.ACTION_VIEW,
+        startActivity(Intent(
+            Intent.ACTION_VIEW,
             Uri.parse("https://httptoolkit.tech/docs/guides/android")
-        )
-        startActivity(browserIntent)
+        ))
     }
 
     private fun testInterception() {
@@ -446,7 +446,21 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         ).apply {
             if (testBrowser != null) setPackage(testBrowser)
         }
-        startActivity(browserIntent)
+
+        try {
+            startActivity(browserIntent)
+        } catch (e: ActivityNotFoundException) {
+            if (browserIntent.`package` != null) {
+                // If we tried a specific package, and it failed, try again with the simplest
+                // plain HTTP catch-all VIEW intent, and hope something somewhere can handle it.
+                startActivity(Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("http://amiusing.httptoolkit.tech")
+                ))
+            } else {
+                throw e
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
