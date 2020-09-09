@@ -256,7 +256,7 @@ class HttpToolkitApplication : Application() {
                 // We avoid immediately prompting for updates because a) there's a review delay
                 // before new updates go live, and b) it's annoying otherwise, if there's a rapid
                 // series of releases. Better to start chasing users only after a week stable.
-                val updateNotTooRecent = releaseDate.before(daysAgo(0))
+                val updateNotTooRecent = releaseDate.before(daysAgo(7))
 
                 Log.i(TAG,
                     if (updateAvailable && updateNotTooRecent)
