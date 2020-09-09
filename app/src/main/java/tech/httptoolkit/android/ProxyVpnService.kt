@@ -142,8 +142,13 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
+        val allPackageNames = packages.map { pkg -> pkg.packageName }
         val whiteListedPackages = ApplicationListActivity.getWhiteListAppSharedPreferences(this@ProxyVpnService).all.keys
-        val packageNames = if(whiteListedPackages.isNotEmpty()) whiteListedPackages else packages.map { pkg -> pkg.packageName }
+        val isGenymotion = allPackageNames.any {
+            // This check could be stricter (com.genymotion.genyd), but right now it doesn't seem to
+            // have any false positives, and it's very flexible to changes in genymotion itself.
+            name -> name.startsWith("com.genymotion")
+        }
 
         if (this.vpnInterface != null) return false // The VPN is already running, somehow? Do nothing
 
@@ -170,8 +175,26 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 // separately, primarily because otherwise pinging with isReachable is recursive.
                 val httpToolkitPackage = packageName
 
-                packageNames.forEach { name ->
-                    if (name != httpToolkitPackage) addAllowedApplication(name)
+                when {
+                    whiteListedPackages.isNotEmpty() -> {
+                        // If we've explicitly picked some packages, intercept only those:
+                        whiteListedPackages.forEach {name ->
+                            if (name != httpToolkitPackage) addAllowedApplication(name)
+                        }
+                    }
+                    isGenymotion -> {
+                        // For some reason, with Genymotion the whole device crashes if we intercept
+                        // blindly, but intercepting every single application explicitly is fine:
+                        allPackageNames.forEach { name ->
+                            if (name != httpToolkitPackage) addAllowedApplication(name)
+                        }
+                    }
+                    else -> {
+                        // If we want everything, it's better to disallow just this app, rather than
+                        // adding everything except this app, because that ensures new apps installed
+                        // whilst interception is active get intercepted too:
+                        addDisallowedApplication(httpToolkitPackage)
+                    }
                 }
             }
             .setSession(getString(R.string.app_name))
