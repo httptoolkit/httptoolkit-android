@@ -34,7 +34,7 @@ class ApplicationListAdapter(
         }
 
         init {
-            itemView.row_app_check_box.setOnCheckedChangeListener { buttonView, isChecked ->
+            itemView.row_app_switch.setOnCheckedChangeListener { _, isChecked ->
                 onCheckChanged(data[layoutPosition], isChecked)
             }
         }
@@ -43,7 +43,7 @@ class ApplicationListAdapter(
             itemView.row_app_icon_image.setImageDrawable(appInfo.loadIcon(packageManager))
             itemView.row_app_name.text = appInfo.loadLabel(packageManager)
             itemView.row_app_package_name.text = appInfo.packageName
-            itemView.row_app_check_box.isChecked = isAppWhitelisted(appInfo.packageName)
+            itemView.row_app_switch.isChecked = isAppWhitelisted(appInfo.packageName)
         }
     }
 }

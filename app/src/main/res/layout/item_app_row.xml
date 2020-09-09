@@ -20,7 +20,7 @@
             style="@style/TextAppearance.AppCompat.Title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_toStartOf="@id/row_app_check_box"
+            android:layout_toStartOf="@id/row_app_switch"
             android:layout_toEndOf="@id/row_app_icon_image"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
@@ -32,15 +32,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/row_app_name"
-            android:layout_toStartOf="@id/row_app_check_box"
+            android:layout_toStartOf="@id/row_app_switch"
             android:layout_toEndOf="@id/row_app_icon_image"
             android:maxLines="2"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             tools:text="@tools:sample/lorem/random" />
 
-    <com.google.android.material.checkbox.MaterialCheckBox
-            android:id="@+id/row_app_check_box"
+    <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/row_app_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
