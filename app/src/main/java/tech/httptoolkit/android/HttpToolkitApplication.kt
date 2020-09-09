@@ -124,7 +124,7 @@ class HttpToolkitApplication : Application() {
         // Get & return the actual referrer and return it
         Log.i(TAG, "Getting first run referrer...")
         return suspendCoroutine { cont ->
-            var wasResumed = AtomicBoolean()
+            val wasResumed = AtomicBoolean()
             val resume = { value: String? ->
                 if (wasResumed.getAndSet(true)) {
                     cont.resume(value)
