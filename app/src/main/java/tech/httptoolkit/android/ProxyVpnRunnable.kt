@@ -8,9 +8,11 @@ import tech.httptoolkit.android.vpn.SessionHandler
 import tech.httptoolkit.android.vpn.SessionManager
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService
 import io.sentry.Sentry
+import tech.httptoolkit.android.vpn.transport.PacketHeaderException
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InterruptedIOException
+import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 
@@ -78,9 +80,16 @@ class ProxyVpnRunnable(
                         packet.limit(length)
                         handler.handlePacket(packet)
                     } catch (e: Exception) {
-                        Sentry.capture(e)
-                        val errorMessage = e.message ?: e.toString()
+                        val errorMessage = (e.message ?: e.toString())
                         Log.e(TAG, errorMessage)
+
+                        val isIgnorable =
+                            (e is ConnectException && errorMessage == "Network is unreachable") ||
+                            (e is PacketHeaderException && errorMessage.contains("IP version should be 4 but was 6"))
+
+                        if (!isIgnorable) {
+                            Sentry.capture(e)
+                        }
                     }
 
                     packet.clear()
