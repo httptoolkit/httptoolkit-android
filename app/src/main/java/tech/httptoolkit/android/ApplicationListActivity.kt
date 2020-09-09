@@ -26,12 +26,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
         getWhiteListAppSharedPreferences(this)
     }
 
-    private enum class SortMode {
-        ASCENDING, DESCENDING
-    }
-
     private val allApps = ArrayList<PackageInfo>()
-    private var sortMode = SortMode.ASCENDING
     private var showSystem = false
     private var textFilter = ""
 
@@ -50,7 +45,6 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                         sharedPreferences.edit().remove(pInfo.packageName).apply()
                 })
         apps_list_swipeRefreshLayout.setOnRefreshListener(this)
-        apps_list_sortBy.setOnClickListener(this)
         apps_list_more_menu.setOnClickListener(this)
         apps_list_filterEditText.doAfterTextChanged {
             textFilter = it.toString()
@@ -63,7 +57,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
         launch(Dispatchers.Main) {
             if (apps_list_swipeRefreshLayout.isRefreshing.not())
                 apps_list_swipeRefreshLayout.isRefreshing = true
-            val apps = loadAllApps(showSystem, sortMode, textFilter)
+            val apps = loadAllApps(showSystem, textFilter)
             allApps.clear()
             allApps.addAll(apps)
             apps_list_recyclerView.adapter?.notifyDataSetChanged()
@@ -73,7 +67,6 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
 
     private suspend fun loadAllApps(
         showSystem: Boolean,
-        sortMode: SortMode,
         filterByText: String
     ): List<PackageInfo> =
         withContext(Dispatchers.IO) {
@@ -93,17 +86,10 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                         it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 1
                     }.toMutableList()
                 }.apply { // Sorting Order
-                    if (sortMode == SortMode.ASCENDING)
-                        sortBy {
-                            it.applicationInfo.loadLabel(packageManager).toString().toUpperCase(
-                                Locale.getDefault()
-                            )
-                        }
-                    else {
-                        sortByDescending {
-                            it.applicationInfo.loadLabel(packageManager).toString()
-                                .toUpperCase(Locale.getDefault())
-                        }
+                    sortBy {
+                        it.applicationInfo.loadLabel(packageManager).toString().toUpperCase(
+                            Locale.getDefault()
+                        )
                     }
                 }
         }
@@ -121,11 +107,6 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
 
     override fun onClick(v: View?) {
         when (v?.id) {
-            R.id.apps_list_sortBy -> {
-                sortMode =
-                    if (sortMode == SortMode.ASCENDING) SortMode.DESCENDING else SortMode.ASCENDING
-                onRefresh()
-            }
             R.id.apps_list_more_menu -> {
                 PopupMenu(this, apps_list_more_menu).apply {
                     this.inflate(R.menu.menu_app_list)

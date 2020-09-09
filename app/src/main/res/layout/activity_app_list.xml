@@ -35,14 +35,6 @@
             <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:id="@+id/apps_list_sortBy"
-                    android:padding="16dp"
-                    app:srcCompat="@drawable/ic_baseline_sort_by_alpha_24"
-                    tools:ignore="ContentDescription" />
-
-            <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
                     android:id="@+id/apps_list_more_menu"
                     android:padding="16dp"
                     app:srcCompat="@drawable/ic_baseline_more_vert_24"
