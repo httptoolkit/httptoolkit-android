@@ -28,6 +28,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.sentry.Sentry
 import kotlinx.coroutines.*
 import java.lang.RuntimeException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 import java.security.cert.Certificate
 import java.security.cert.X509Certificate
 
@@ -388,11 +390,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
             Log.e(TAG, e.toString())
             e.printStackTrace()
-            Sentry.capture(e)
+
             withContext(Dispatchers.Main) {
                 app.trackEvent("Setup", "reconnect-failed")
                 mainState = MainState.FAILED
                 updateUi()
+            }
+
+            // We report errors only that aren't simple connection failures
+            if (e !is SocketTimeoutException && e !is ConnectException) {
+                Sentry.capture(e)
             }
         }
     }
@@ -503,11 +510,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             } catch (e: Exception) {
                 Log.e(TAG, e.toString())
                 e.printStackTrace()
-                Sentry.capture(e)
+
                 withContext(Dispatchers.Main) {
                     app.trackEvent("Setup", "connect-failed")
                     mainState = MainState.FAILED
                     updateUi()
+                }
+
+                // We report errors only that aren't simple connection failures
+                if (e !is SocketTimeoutException && e !is ConnectException) {
+                    Sentry.capture(e)
                 }
             }
         }
