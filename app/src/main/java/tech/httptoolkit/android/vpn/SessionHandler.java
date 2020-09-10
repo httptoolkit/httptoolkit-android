@@ -102,7 +102,7 @@ public class SessionHandler {
 			ipHeader.getSourceIP(), udpheader.getSourcePort()
 		);
 
-		boolean newSession = session != null;
+		boolean newSession = session == null;
 
 		if (session == null) {
 			session = manager.createNewUDPSession(
