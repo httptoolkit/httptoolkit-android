@@ -27,6 +27,8 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     }
 
     private val allApps = ArrayList<PackageInfo>()
+    private val filteredApps = ArrayList<PackageInfo>()
+
     private var showSystem = false
     private var textFilter = ""
 
@@ -34,9 +36,10 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_app_list)
+
         apps_list_recyclerView.adapter =
             ApplicationListAdapter(
-                allApps,
+                filteredApps,
                 { sharedPreferences.contains(it) },
                 { pInfo, isChecked ->
                     if (isChecked)
@@ -46,59 +49,61 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                 })
         apps_list_swipeRefreshLayout.setOnRefreshListener(this)
         apps_list_more_menu.setOnClickListener(this)
+
         apps_list_filterEditText.doAfterTextChanged {
             textFilter = it.toString()
-            onRefresh()
+            applyFilters()
         }
+
         onRefresh()
     }
 
     override fun onRefresh() {
         launch(Dispatchers.Main) {
-            if (apps_list_swipeRefreshLayout.isRefreshing.not())
+            if (apps_list_swipeRefreshLayout.isRefreshing.not()) {
                 apps_list_swipeRefreshLayout.isRefreshing = true
-            val apps = loadAllApps(showSystem, textFilter)
+            }
+
+            val apps = loadAllApps()
             allApps.clear()
             allApps.addAll(apps)
-            apps_list_recyclerView.adapter?.notifyDataSetChanged()
+            applyFilters()
+
             apps_list_swipeRefreshLayout.isRefreshing = false
         }
     }
 
-    private suspend fun loadAllApps(
-        showSystem: Boolean,
-        filterByText: String
-    ): List<PackageInfo> =
+    private fun applyFilters() {
+        filteredApps.clear()
+        filteredApps.addAll(allApps.filter(::matchesFilters))
+        apps_list_recyclerView.adapter?.notifyDataSetChanged()
+    }
+
+    private fun matchesFilters(app: PackageInfo): Boolean {
+        val appInfo = app.applicationInfo
+        val appLabel = appInfo.loadLabel(packageManager)
+        val isSystemApp = appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 1
+
+        return (textFilter.isEmpty() || appLabel.contains(textFilter, true)) &&
+            (showSystem || !isSystemApp)
+    }
+
+    private suspend fun loadAllApps(): List<PackageInfo> =
         withContext(Dispatchers.IO) {
-            return@withContext packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
-                .run { //Text Filter
-                    if (filterByText.isBlank())
-                        this
-                    else
-                        this.filter {
-                            it.applicationInfo.loadLabel(packageManager)
-                                .contains(filterByText, true)
-                        }.toMutableList()
-                }.run { //System App Info
-                    if (showSystem)
-                        this
-                    else this.filter {
-                        it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 1
-                    }.toMutableList()
-                }.apply { // Sorting Order
-                    sortBy {
-                        it.applicationInfo.loadLabel(packageManager).toString().toUpperCase(
-                            Locale.getDefault()
-                        )
-                    }
+            return@withContext packageManager.getInstalledPackages(PackageManager.GET_META_DATA).apply {
+                sortBy {
+                    it.applicationInfo.loadLabel(packageManager).toString().toUpperCase(
+                        Locale.getDefault()
+                    )
                 }
+            }
         }
 
     override fun onMenuItemClick(item: MenuItem?): Boolean {
         return when (item?.itemId) {
             R.id.action_show_system -> {
                 showSystem = showSystem.not()
-                onRefresh()
+                applyFilters()
                 true
             }
             else -> false
