@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:textColor">@color/textColor</item>
+        <item name="android:windowBackground">@color/containerBackground</item>
+
+        <item name="android:fontFamily">@font/lato</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+
+        <item name="colorPrimary">@color/primaryInputBackground</item>
+        <item name="android:statusBarColor">@color/containerBackground</item>
+    </style>
+</resources>

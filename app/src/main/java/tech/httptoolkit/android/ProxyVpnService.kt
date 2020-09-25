@@ -29,6 +29,7 @@ const val VPN_STARTED_BROADCAST = "tech.httptoolkit.android.VPN_STARTED_BROADCAS
 const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAST"
 
 const val PROXY_CONFIG_EXTRA = "tech.httptoolkit.android.PROXY_CONFIG"
+const val UNINTERCEPTED_APPS_EXTRA = "tech.httptoolkit.android.UNINTERCEPTED_APPS"
 
 private var currentService: ProxyVpnService? = null
 fun isVpnActive(): Boolean {
@@ -75,9 +76,13 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         app = this.application as HttpToolkitApplication
 
         if (intent.action == START_VPN_ACTION) {
-            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
+            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)!!
+            val uninterceptedApps = intent.getStringArrayExtra(UNINTERCEPTED_APPS_EXTRA)!!.toSet()
 
-            val vpnStarted = startVpn(proxyConfig!!)
+            val vpnStarted = if (isActive())
+                restartVpn(proxyConfig, uninterceptedApps)
+            else
+                startVpn(proxyConfig, uninterceptedApps)
 
             if (vpnStarted) {
                 // If the system briefly kills us for some reason (memory, the user, whatever) whilst
@@ -138,18 +143,18 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     }
 
-    private fun startVpn(proxyConfig: ProxyConfig): Boolean {
+    private fun startVpn(proxyConfig: ProxyConfig, uninterceptedApps: Set<String>): Boolean {
         this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
-        val packageNames = packages.map { pkg -> pkg.packageName }
-        val isGenymotion = packageNames.any {
+        val allPackageNames = packages.map { pkg -> pkg.packageName }
+        val isGenymotion = allPackageNames.any {
             // This check could be stricter (com.genymotion.genyd), but right now it doesn't seem to
             // have any false positives, and it's very flexible to changes in genymotion itself.
             name -> name.startsWith("com.genymotion")
         }
 
-        if (this.vpnInterface != null) return false // The VPN is already running, somehow? Do nothing
+        if (this.vpnInterface != null) return false // Already running, do nothing
 
         app.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
         app.trackEvent("VPN", "vpn-started")
@@ -174,21 +179,36 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 // separately, primarily because otherwise pinging with isReachable is recursive.
                 val httpToolkitPackage = packageName
 
-                // For some reason, with Genymotion the whole device crashes if we intercept
-                // blindly, but intercepting every single application explicitly is fine.
-                if (isGenymotion) {
-                    packageNames.forEach { name ->
-                        if (name != httpToolkitPackage) addAllowedApplication(name)
+                when {
+                    isGenymotion -> {
+                        // For some reason, with Genymotion the whole device crashes if we intercept
+                        // blindly, but intercepting every single application explicitly is fine, so
+                        // we have to individually allow every app instead:
+                        allPackageNames.forEach { name ->
+                            if (name != httpToolkitPackage && !uninterceptedApps.contains(name)) {
+                                addAllowedApplication(name)
+                            }
+                        }
                     }
-                } else {
-                    addDisallowedApplication(httpToolkitPackage)
+                    else -> {
+                        // In every other case, it's better to list the disallowed apps, rather than
+                        // adding only the intercepted apps, because that ensures new apps that are
+                        // installed whilst interception is active get intercepted straight away
+
+                        // Don't intercept them explicitly disallowed packages:
+                        uninterceptedApps.forEach {name ->
+                            addDisallowedApplication(name)
+                        }
+
+                        // Never intercept HTTP Toolkit (as above - doing so causes problems)
+                        addDisallowedApplication(httpToolkitPackage)
+                    }
                 }
             }
             .setSession(getString(R.string.app_name))
             .establish()
 
         // establish() returns null if we no longer have permissions to establish the VPN somehow
-        // In that case, we give up. The UI
         if (vpnInterface == null) {
             return false
         } else {
@@ -221,8 +241,28 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         return true
     }
 
+    private fun restartVpn(proxyConfig: ProxyConfig, uninterceptedApps: Set<String>): Boolean {
+        Log.i(TAG, "VPN stopping for restart...")
+
+        if (vpnRunnable != null) {
+            app.trackEvent("VPN", "vpn-stopped-for-restart")
+            vpnRunnable!!.stop()
+            vpnRunnable = null
+        }
+
+        try {
+            vpnInterface?.close()
+            vpnInterface = null
+        } catch (e: IOException) {
+            Sentry.capture(e)
+        }
+
+        stopForeground(true)
+        return startVpn(proxyConfig, uninterceptedApps)
+    }
+
     private fun stopVpn() {
-        Log.i(TAG, "VPN stopping..")
+        Log.i(TAG, "VPN stopping...")
 
         if (vpnRunnable != null) {
             app.trackEvent("VPN", "vpn-stopped")

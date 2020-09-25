@@ -87,6 +87,7 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".MainActivity" />
         </activity>
+        <activity android:name=".ApplicationListActivity"/>
 
         <meta-data android:name="search-engine" android:resource="@xml/noindex" />
     </application>
