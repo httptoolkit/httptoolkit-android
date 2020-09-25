@@ -76,10 +76,13 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         app = this.application as HttpToolkitApplication
 
         if (intent.action == START_VPN_ACTION) {
-            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
-            val uninterceptedApps = intent.getStringArrayExtra(UNINTERCEPTED_APPS_EXTRA)
+            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)!!
+            val uninterceptedApps = intent.getStringArrayExtra(UNINTERCEPTED_APPS_EXTRA)!!.toSet()
 
-            val vpnStarted = startVpn(proxyConfig!!, uninterceptedApps!!.toSet())
+            val vpnStarted = if (isActive())
+                restartVpn(proxyConfig, uninterceptedApps)
+            else
+                startVpn(proxyConfig, uninterceptedApps)
 
             if (vpnStarted) {
                 // If the system briefly kills us for some reason (memory, the user, whatever) whilst
@@ -206,7 +209,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             .establish()
 
         // establish() returns null if we no longer have permissions to establish the VPN somehow
-        // In that case, we give up. The UI
         if (vpnInterface == null) {
             return false
         } else {
@@ -239,8 +241,28 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         return true
     }
 
+    private fun restartVpn(proxyConfig: ProxyConfig, uninterceptedApps: Set<String>): Boolean {
+        Log.i(TAG, "VPN stopping for restart...")
+
+        if (vpnRunnable != null) {
+            app.trackEvent("VPN", "vpn-stopped-for-restart")
+            vpnRunnable!!.stop()
+            vpnRunnable = null
+        }
+
+        try {
+            vpnInterface?.close()
+            vpnInterface = null
+        } catch (e: IOException) {
+            Sentry.capture(e)
+        }
+
+        stopForeground(true)
+        return startVpn(proxyConfig, uninterceptedApps)
+    }
+
     private fun stopVpn() {
-        Log.i(TAG, "VPN stopping..")
+        Log.i(TAG, "VPN stopping...")
 
         if (vpnRunnable != null) {
             app.trackEvent("VPN", "vpn-stopped")

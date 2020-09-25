@@ -489,25 +489,35 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 Log.i(TAG, "Installing cert")
                 ensureCertificateTrusted(currentProxyConfig!!)
             } else if (requestCode == INSTALL_CERT_REQUEST) {
-                Log.i(TAG, "Starting VPN")
                 app.trackEvent("Setup", "installed-cert-successfully")
-                startService(Intent(this, ProxyVpnService::class.java).apply {
-                    action = START_VPN_ACTION
-                    putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
-                    putExtra(UNINTERCEPTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
-                })
+                startVpn()
             } else if (requestCode == SCAN_REQUEST && data != null) {
                 val url = data.getStringExtra(SCANNED_URL_EXTRA)!!
                 launch { connectToVpnFromUrl(url) }
             } else if (requestCode == PICK_APPS_REQUEST) {
                 app.trackEvent("Setup", "picked-apps")
                 app.uninterceptedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
+
+                if (isVpnActive()) startVpn()
             }
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
             updateUi()
         }
+    }
+
+    private fun startVpn() {
+        Log.i(TAG, "Starting VPN")
+
+        mainState = MainState.CONNECTING
+        updateUi()
+
+        startService(Intent(this, ProxyVpnService::class.java).apply {
+            action = START_VPN_ACTION
+            putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
+            putExtra(UNINTERCEPTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
+        })
     }
 
     private suspend fun connectToVpnFromUrl(url: String) {
