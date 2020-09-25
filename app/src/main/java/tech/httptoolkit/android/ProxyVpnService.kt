@@ -29,6 +29,7 @@ const val VPN_STARTED_BROADCAST = "tech.httptoolkit.android.VPN_STARTED_BROADCAS
 const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAST"
 
 const val PROXY_CONFIG_EXTRA = "tech.httptoolkit.android.PROXY_CONFIG"
+const val UNINTERCEPTED_APPS_EXTRA = "tech.httptoolkit.android.UNINTERCEPTED_APPS"
 
 private var currentService: ProxyVpnService? = null
 fun isVpnActive(): Boolean {
@@ -76,8 +77,9 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         if (intent.action == START_VPN_ACTION) {
             val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)
+            val uninterceptedApps = intent.getStringArrayExtra(UNINTERCEPTED_APPS_EXTRA)
 
-            val vpnStarted = startVpn(proxyConfig!!)
+            val vpnStarted = startVpn(proxyConfig!!, uninterceptedApps!!.toSet())
 
             if (vpnStarted) {
                 // If the system briefly kills us for some reason (memory, the user, whatever) whilst
@@ -138,19 +140,18 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     }
 
-    private fun startVpn(proxyConfig: ProxyConfig): Boolean {
+    private fun startVpn(proxyConfig: ProxyConfig, uninterceptedApps: Set<String>): Boolean {
         this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
         val allPackageNames = packages.map { pkg -> pkg.packageName }
-        val whiteListedPackages = ApplicationListActivity.getWhiteListAppSharedPreferences(this@ProxyVpnService).all.keys
         val isGenymotion = allPackageNames.any {
             // This check could be stricter (com.genymotion.genyd), but right now it doesn't seem to
             // have any false positives, and it's very flexible to changes in genymotion itself.
             name -> name.startsWith("com.genymotion")
         }
 
-        if (this.vpnInterface != null) return false // The VPN is already running, somehow? Do nothing
+        if (this.vpnInterface != null) return false // Already running, do nothing
 
         app.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
         app.trackEvent("VPN", "vpn-started")
@@ -176,23 +177,27 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 val httpToolkitPackage = packageName
 
                 when {
-                    whiteListedPackages.isNotEmpty() -> {
-                        // If we've explicitly picked some packages, intercept only those:
-                        whiteListedPackages.forEach {name ->
-                            if (name != httpToolkitPackage) addAllowedApplication(name)
-                        }
-                    }
                     isGenymotion -> {
                         // For some reason, with Genymotion the whole device crashes if we intercept
-                        // blindly, but intercepting every single application explicitly is fine:
+                        // blindly, but intercepting every single application explicitly is fine, so
+                        // we have to individually allow every app instead:
                         allPackageNames.forEach { name ->
-                            if (name != httpToolkitPackage) addAllowedApplication(name)
+                            if (name != httpToolkitPackage && !uninterceptedApps.contains(name)) {
+                                addAllowedApplication(name)
+                            }
                         }
                     }
                     else -> {
-                        // If we want everything, it's better to disallow just this app, rather than
-                        // adding everything except this app, because that ensures new apps installed
-                        // whilst interception is active get intercepted too:
+                        // In every other case, it's better to list the disallowed apps, rather than
+                        // adding only the intercepted apps, because that ensures new apps that are
+                        // installed whilst interception is active get intercepted straight away
+
+                        // Don't intercept them explicitly disallowed packages:
+                        uninterceptedApps.forEach {name ->
+                            addDisallowedApplication(name)
+                        }
+
+                        // Never intercept HTTP Toolkit (as above - doing so causes problems)
                         addDisallowedApplication(httpToolkitPackage)
                     }
                 }

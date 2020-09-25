@@ -1,5 +1,6 @@
 package tech.httptoolkit.android
 
+import android.app.Activity
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -37,6 +38,7 @@ import java.security.cert.X509Certificate
 const val START_VPN_REQUEST = 123
 const val INSTALL_CERT_REQUEST = 456
 const val SCAN_REQUEST = 789
+const val PICK_APPS_REQUEST = 499
 
 enum class MainState {
     DISCONNECTED,
@@ -256,8 +258,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
                 buttonContainer.addView(secondaryButton(R.string.test_button, ::testInterception))
-                val isInterceptingAllApps =
-                    ApplicationListActivity.getWhiteListAppSharedPreferences(this).all.isEmpty()
+                val isInterceptingAllApps = app.uninterceptedApps.isEmpty()
                 buttonContainer.addView(
                     secondaryButton(
                         if (isInterceptingAllApps) R.string.intercepting_all else R.string.intercepting_selected,
@@ -428,7 +429,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun chooseApps(){
-        startActivity(Intent(this,ApplicationListActivity::class.java))
+        startActivityForResult(
+            Intent(this,ApplicationListActivity::class.java).apply {
+                putExtra(UNSELECTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
+            },
+            PICK_APPS_REQUEST
+        )
     }
 
     private fun testInterception() {
@@ -469,6 +475,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             START_VPN_REQUEST -> "start-vpn"
             INSTALL_CERT_REQUEST -> "install-cert"
             SCAN_REQUEST -> "scan-request"
+            PICK_APPS_REQUEST -> "pick-apps"
             else -> requestCode.toString()
         })
 
@@ -487,10 +494,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 startService(Intent(this, ProxyVpnService::class.java).apply {
                     action = START_VPN_ACTION
                     putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
+                    putExtra(UNINTERCEPTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
                 })
             } else if (requestCode == SCAN_REQUEST && data != null) {
                 val url = data.getStringExtra(SCANNED_URL_EXTRA)!!
                 launch { connectToVpnFromUrl(url) }
+            } else if (requestCode == PICK_APPS_REQUEST) {
+                app.trackEvent("Setup", "picked-apps")
+                app.uninterceptedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
             }
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")

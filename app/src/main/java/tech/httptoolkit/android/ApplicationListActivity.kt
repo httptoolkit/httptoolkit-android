@@ -1,18 +1,14 @@
 package tech.httptoolkit.android
 
-import android.content.Context
-import android.content.SharedPreferences
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.MenuItem
 import android.view.View
 import android.widget.PopupMenu
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import kotlinx.android.synthetic.main.activity_app_list.*
@@ -20,33 +16,33 @@ import kotlinx.coroutines.*
 import java.util.*
 import kotlin.collections.ArrayList
 
+// Used to both to send and return the current list of selected apps
+const val UNSELECTED_APPS_EXTRA = "tech.httptoolkit.android.UNSELECTED_APPS_EXTRA"
+
 class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefreshListener,
     CoroutineScope by MainScope(), PopupMenu.OnMenuItemClickListener, View.OnClickListener {
-    private val sharedPreferences by lazy {
-        getWhiteListAppSharedPreferences(this)
-    }
 
     private val allApps = ArrayList<PackageInfo>()
     private val filteredApps = ArrayList<PackageInfo>()
 
+    private lateinit var blockedPackages: MutableSet<String>
+
     private var showSystem = false
     private var textFilter = ""
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_app_list)
 
+        blockedPackages = intent.getStringArrayExtra(UNSELECTED_APPS_EXTRA)?.toHashSet()
+            ?: HashSet()
+
         apps_list_recyclerView.adapter =
             ApplicationListAdapter(
                 filteredApps,
-                { sharedPreferences.contains(it) },
-                { pInfo, isChecked ->
-                    if (isChecked)
-                        sharedPreferences.edit().putString(pInfo.packageName, "").apply()
-                    else
-                        sharedPreferences.edit().remove(pInfo.packageName).apply()
-                })
+                ::isAppEnabled,
+                ::setAppEnabled
+            )
         apps_list_swipeRefreshLayout.setOnRefreshListener(this)
         apps_list_more_menu.setOnClickListener(this)
 
@@ -84,8 +80,21 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
         val appLabel = appInfo.loadLabel(packageManager)
         val isSystemApp = appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 1
 
-        return (textFilter.isEmpty() || appLabel.contains(textFilter, true)) &&
-            (showSystem || !isSystemApp)
+        return (textFilter.isEmpty() || appLabel.contains(textFilter, true)) && // Filter by name
+            (showSystem || !isSystemApp) && // Only show system if that's enabled
+            app.packageName != packageName // Never show ourselves
+    }
+
+    private fun isAppEnabled(app: PackageInfo): Boolean {
+        return !blockedPackages.contains(app.packageName)
+    }
+
+    private fun setAppEnabled(app: PackageInfo, isEnabled: Boolean) {
+        if (!isEnabled) {
+            blockedPackages.add(app.packageName)
+        } else {
+            blockedPackages.remove(app.packageName)
+        }
     }
 
     private suspend fun loadAllApps(): List<PackageInfo> =
@@ -122,14 +131,13 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
         }
     }
 
-    companion object {
-        fun getWhiteListAppSharedPreferences(ctx: Context): SharedPreferences =
-            ctx.getSharedPreferences("whiteListedApps", Context.MODE_PRIVATE)
-    }
-
     override fun onBackPressed() {
-        Toast.makeText(this, "Disconnect and Connect again to take effect.", Toast.LENGTH_LONG)
-            .show()
-        super.onBackPressed()
+        setResult(RESULT_OK, Intent().let { intent ->
+            intent.putExtra(
+                UNSELECTED_APPS_EXTRA,
+                blockedPackages.toTypedArray()
+            )
+        })
+        finish()
     }
 }

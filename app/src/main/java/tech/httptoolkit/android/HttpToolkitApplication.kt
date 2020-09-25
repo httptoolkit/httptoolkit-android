@@ -184,6 +184,17 @@ class HttpToolkitApplication : Application() {
             }
         }
 
+    var uninterceptedApps: Set<String>
+        get() {
+            val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+            val packagesSet = prefs.getStringSet("unintercepted-packages", null)
+            return packagesSet ?: setOf()
+        }
+        set(packageNames) {
+            val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+            prefs.edit().putStringSet("unintercepted-packages", packageNames).apply()
+        }
+
     fun trackScreen(name: String) {
         ga?.setScreenName(name)
         ga?.send(HitBuilders.EventBuilder().build())
