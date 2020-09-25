@@ -229,9 +229,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             MainState.DISCONNECTED -> {
                 statusText.setText(R.string.disconnected_status)
 
-                detailContainer.addView(
-                    detailText(getString(R.string.disconnected_details))
-                )
+                detailContainer.addView(detailText(R.string.disconnected_details))
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.scan_button, ::scanCode))
@@ -248,23 +246,23 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 buttonContainer.visibility = View.GONE
             }
             MainState.CONNECTED -> {
-                statusText.setText(R.string.connected_status)
                 val proxyConfig = this.currentProxyConfig!!
+                val isInterceptingAllApps = app.uninterceptedApps.isEmpty()
+
+                statusText.setText(R.string.connected_status)
 
                 detailContainer.addView(
-                    ConnectionStatusView(this, proxyConfig)
+                    ConnectionStatusView(
+                        this,
+                        proxyConfig,
+                        isInterceptingAllApps,
+                        ::chooseApps
+                    )
                 )
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
                 buttonContainer.addView(secondaryButton(R.string.test_button, ::testInterception))
-                val isInterceptingAllApps = app.uninterceptedApps.isEmpty()
-                buttonContainer.addView(
-                    secondaryButton(
-                        if (isInterceptingAllApps) R.string.intercepting_all else R.string.intercepting_selected,
-                        ::chooseApps
-                    )
-                )
             }
             MainState.DISCONNECTING -> {
                 statusText.setText(R.string.disconnecting_status)
@@ -273,9 +271,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             MainState.FAILED -> {
                 statusText.setText(R.string.failed_status)
 
-                detailContainer.addView(
-                    detailText(getString(R.string.failed_details))
-                )
+                detailContainer.addView(detailText(R.string.failed_details))
 
                 buttonContainer.visibility = View.VISIBLE
                 buttonContainer.addView(primaryButton(R.string.try_again_button, ::resetAfterFailure))
@@ -301,9 +297,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         return button
     }
 
-    private fun detailText(content: String): TextView {
+    private fun detailText(@StringRes resId: Int): TextView {
         val text = TextView(ContextThemeWrapper(this, R.style.DetailText))
-        text.text = content
+        text.text = getString(resId)
         return text
     }
 

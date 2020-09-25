@@ -12,4 +12,6 @@
 
     <color name="primaryInputBackground">#1076b9</color>
     <color name="primaryInputColor">#fafafa</color>
+
+    <color name="transparent">#00000000</color>
 </resources>

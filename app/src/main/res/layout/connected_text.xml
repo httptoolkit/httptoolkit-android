@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <TextView
+            android:id="@+id/connectedTo"
+            style="@style/ConnectedToText"
+            android:text="@string/connected_details"
+            android:layout_marginBottom="24dp" />
+
+</merge>

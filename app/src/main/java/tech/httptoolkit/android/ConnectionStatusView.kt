@@ -5,10 +5,13 @@ import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.google.android.material.card.MaterialCardView
 
 class ConnectionStatusView(
     context: Context,
-    proxyConfig: ProxyConfig
+    proxyConfig: ProxyConfig,
+    isInterceptingAllApps: Boolean,
+    changeApps: () -> Unit
 ) : LinearLayout(context) {
 
     init {
@@ -30,6 +33,17 @@ class ConnectionStatusView(
             R.string.connected_details,
             proxyConfig.ip,
             proxyConfig.port
+        )
+
+        val appInterceptionStatus = findViewById<MaterialCardView>(R.id.appInterceptionStatus)
+        appInterceptionStatus.setOnClickListener { _ -> changeApps() }
+
+        val appInterceptionStatusText = findViewById<TextView>(R.id.appInterceptionStatusText)
+        appInterceptionStatusText.text = context.getString(
+            if (isInterceptingAllApps)
+                R.string.intercepting_all
+            else
+                R.string.intercepting_selected
         )
     }
 
