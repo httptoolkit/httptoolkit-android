@@ -77,7 +77,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
 
     private fun matchesFilters(app: PackageInfo): Boolean {
         val appInfo = app.applicationInfo
-        val appLabel = appInfo.loadLabel(packageManager)
+        val appLabel = AppLabelCache.getAppLabel(packageManager, appInfo)
         val isSystemApp = appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 1
 
         return (textFilter.isEmpty() || appLabel.contains(textFilter, true)) && // Filter by name
@@ -100,8 +100,8 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     private suspend fun loadAllApps(): List<PackageInfo> =
         withContext(Dispatchers.IO) {
             return@withContext packageManager.getInstalledPackages(PackageManager.GET_META_DATA).apply {
-                sortBy {
-                    it.applicationInfo.loadLabel(packageManager).toString().toUpperCase(
+                sortBy { pkg ->
+                    AppLabelCache.getAppLabel(packageManager, pkg.applicationInfo).toUpperCase(
                         Locale.getDefault()
                     )
                 }

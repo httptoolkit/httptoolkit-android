@@ -37,11 +37,12 @@ class ApplicationListAdapter(
             }
         }
 
-        fun bind(appInfo: PackageInfo) {
-            itemView.row_app_icon_image.setImageDrawable(appInfo.applicationInfo.loadIcon(packageManager))
-            itemView.row_app_name.text = appInfo.applicationInfo.loadLabel(packageManager)
-            itemView.row_app_package_name.text = appInfo.packageName
-            itemView.row_app_switch.isChecked = isAppWhitelisted(appInfo)
+        fun bind(packageInfo: PackageInfo) {
+            val appInfo = packageInfo.applicationInfo
+            itemView.row_app_icon_image.setImageDrawable(appInfo.loadIcon(packageManager))
+            itemView.row_app_name.text = AppLabelCache.getAppLabel(packageManager, appInfo)
+            itemView.row_app_package_name.text = packageInfo.packageName
+            itemView.row_app_switch.isChecked = isAppWhitelisted(packageInfo)
         }
     }
 }
