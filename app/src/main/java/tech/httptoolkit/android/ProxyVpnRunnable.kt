@@ -84,6 +84,7 @@ class ProxyVpnRunnable(
                         Log.e(TAG, errorMessage)
 
                         val isIgnorable =
+                            (e is ConnectException && errorMessage == "Permission denied") ||
                             (e is ConnectException && errorMessage == "Network is unreachable") ||
                             (e is PacketHeaderException && errorMessage.contains("IP version should be 4 but was 6"))
 
