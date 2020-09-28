@@ -10,7 +10,8 @@ import com.google.android.material.card.MaterialCardView
 class ConnectionStatusView(
     context: Context,
     proxyConfig: ProxyConfig,
-    isInterceptingAllApps: Boolean,
+    totalAppCount: Int,
+    interceptedAppCount: Int,
     changeApps: () -> Unit
 ) : LinearLayout(context) {
 
@@ -40,11 +41,12 @@ class ConnectionStatusView(
 
         val appInterceptionStatusText = findViewById<TextView>(R.id.appInterceptionStatusText)
         appInterceptionStatusText.text = context.getString(
-            if (isInterceptingAllApps)
-                R.string.intercepting_all
-            else
-                R.string.intercepting_selected
-        )
+            when {
+                totalAppCount == interceptedAppCount -> R.string.intercepting_all
+                interceptedAppCount > 10 -> R.string.intercepting_selected
+                else -> R.string.intercepting_few
+            }
+        , interceptedAppCount, if (interceptedAppCount != 1) "s" else "")
     }
 
 }

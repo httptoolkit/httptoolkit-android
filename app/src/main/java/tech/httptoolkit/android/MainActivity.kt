@@ -249,7 +249,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
             MainState.CONNECTED -> {
                 val proxyConfig = this.currentProxyConfig!!
-                val isInterceptingAllApps = app.uninterceptedApps.isEmpty()
+                val totalAppCount = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+                    .map { app -> app.packageName }
+                    .toSet()
+                    .size
+                val interceptedAppsCount = totalAppCount - app.uninterceptedApps.size
 
                 statusText.setText(R.string.connected_status)
 
@@ -257,7 +261,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     ConnectionStatusView(
                         this,
                         proxyConfig,
-                        isInterceptingAllApps,
+                        totalAppCount,
+                        interceptedAppsCount,
                         ::chooseApps
                     )
                 )
