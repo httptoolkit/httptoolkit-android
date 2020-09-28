@@ -19,6 +19,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
@@ -216,6 +217,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
+    @MainThread
     private fun updateUi() {
         val statusText = findViewById<TextView>(R.id.statusText)
 
@@ -520,8 +522,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun startVpn() {
         Log.i(TAG, "Starting VPN")
 
-        mainState = MainState.CONNECTING
-        updateUi()
+        launch {
+            withContext(Dispatchers.Main) {
+                mainState = MainState.CONNECTING
+                updateUi()
+            }
+        }
 
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = START_VPN_ACTION
