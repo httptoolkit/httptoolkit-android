@@ -182,12 +182,20 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                 when {
                     isGenymotion -> {
                         // For some reason, with Genymotion the whole device crashes if we intercept
-                        // blindly, but intercepting every single application explicitly is fine, so
-                        // we have to individually allow every app instead:
-                        allPackageNames.forEach { name ->
-                            if (name != httpToolkitPackage && !uninterceptedApps.contains(name)) {
-                                addAllowedApplication(name)
-                            }
+                        // the whole system, so we have to ensure we *always* explicitly allow
+                        // every app that we care about.
+
+                        val pkgsToIntercept = allPackageNames.filter { name ->
+                            name != httpToolkitPackage && !uninterceptedApps.contains(name)
+                        }
+
+                        if (!pkgsToIntercept.isEmpty()) {
+                            pkgsToIntercept.forEach { pkg -> addAllowedApplication(pkg) }
+                        } else {
+                            // We can never intercept nothing (or the whole emulator crashes), so
+                            // instead we intercept a random bit of Genymotions internals, which
+                            // (AFAICT) doesn't seem to ever send traffic.
+                            addAllowedApplication("com.genymotion.genyd")
                         }
                     }
                     else -> {
