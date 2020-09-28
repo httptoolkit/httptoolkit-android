@@ -12,25 +12,6 @@
             android:layout_weight="1.1"
             tools:context=".MainActivity">
 
-        <androidx.constraintlayout.widget.Guideline
-                android:id="@+id/guideline"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                app:layout_constraintGuide_percent="0.06" />
-
-        <ImageView
-                android:id="@+id/logoImage"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="18dp"
-                android:contentDescription="The HTTP Toolkit Logo"
-                app:layout_constraintTop_toTopOf="@+id/guideline"
-                app:layout_constraintBottom_toTopOf="@+id/statusText"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:srcCompat="@drawable/ic_transparent_icon" />
-
         <TextView
                 android:id="@+id/statusText"
                 style="@style/StatusText"
@@ -38,46 +19,66 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
-                android:layout_marginBottom="8dp"
                 android:text="Not Connected"
                 app:layout_constraintBottom_toTopOf="@+id/statusDetailContainer"
-                app:layout_constraintTop_toBottomOf="@+id/logoImage"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_chainStyle="packed" />
 
         <LinearLayout
                 android:id="@+id/statusDetailContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:layout_constrainedWidth="true"
-                app:layout_constraintTop_toBottomOf="@+id/statusText"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:orientation="vertical" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <com.google.android.material.card.MaterialCardView
-            android:layout_height="wrap_content"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_gravity="center"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            style="@style/LandscapeButtonsCard"
-            >
-        <LinearLayout
-                android:id="@+id/buttonLayoutContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="12dp"
-                android:paddingBottom="10dp">
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+                app:layout_constrainedWidth="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/statusText" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.1"
+            tools:context=".MainActivity">
+
+        <ImageView
+                android:id="@+id/logoImage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="The HTTP Toolkit Logo"
+                app:layout_constraintBottom_toTopOf="@id/materialCardView"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_transparent_icon" />
+
+        <com.google.android.material.card.MaterialCardView
+                android:id="@+id/materialCardView"
+                style="@style/LandscapeButtonsCard"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_weight="1"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/logoImage">
+
+            <LinearLayout
+                    android:id="@+id/buttonLayoutContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="10dp"></LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </android.widget.LinearLayout>

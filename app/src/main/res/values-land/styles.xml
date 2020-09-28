@@ -1,0 +1,9 @@
+<resources>
+
+    <style name="ConnectionStatusCard" parent="@style/Widget.MaterialComponents.CardView">
+        <item name="cardElevation">0dp</item>
+        <item name="contentPadding">10dp</item>
+        <item name="android:layout_marginBottom">6dp</item>
+    </style>
+
+</resources>

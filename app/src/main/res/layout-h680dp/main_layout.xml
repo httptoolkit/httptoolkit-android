@@ -38,7 +38,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
-            android:text="Not Connected"
+            android:text="@string/disconnected_status"
             app:layout_constraintBottom_toBottomOf="@+id/statusGuideline"
             app:layout_constraintTop_toTopOf="@+id/statusGuideline"
             app:layout_constraintEnd_toEndOf="parent"
