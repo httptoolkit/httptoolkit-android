@@ -44,7 +44,7 @@ class ProxyVpnRunnable(
     private val handler = SessionHandler(manager, nioService, vpnPacketWriter)
 
     // Allocate the buffer for a single packet.
-    private val packet = ByteBuffer.allocate(MAX_PACKET_LEN)!!
+    private val packet = ByteBuffer.allocate(MAX_PACKET_LEN)
 
     // Our redirect rules, defining which traffic should be forwarded to what proxy address
     private val portRedirections = SparseArray<InetSocketAddress>().apply {

@@ -6,8 +6,8 @@
     <string name="vpn_active_notification_action">Stop intercepting</string>
 
     <string name="disconnected_status">Disconnected</string>
-    <string name="disconnecting_status">Disconnecting...</string>
-    <string name="connecting_status">Connecting...</string>
+    <string name="disconnecting_status">Disconnecting…</string>
+    <string name="connecting_status">Connecting…</string>
     <string name="connected_status">Connected</string>
     <string name="failed_status">Oh no!</string>
 
