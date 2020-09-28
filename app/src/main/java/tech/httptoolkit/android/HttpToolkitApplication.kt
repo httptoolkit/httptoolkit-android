@@ -2,6 +2,7 @@ package tech.httptoolkit.android
 
 import android.app.Application
 import android.content.*
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import com.android.installreferrer.api.InstallReferrerClient
@@ -188,7 +189,11 @@ class HttpToolkitApplication : Application() {
         get() {
             val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
             val packagesSet = prefs.getStringSet("unintercepted-packages", null)
-            return packagesSet ?: setOf()
+            val allPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+                .map { pkg -> pkg.packageName }
+            return (packagesSet ?: setOf())
+                .filter { pkg -> allPackages.contains(pkg) } // Filter, as packages might've been uninstalled
+                .toSet()
         }
         set(packageNames) {
             val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)

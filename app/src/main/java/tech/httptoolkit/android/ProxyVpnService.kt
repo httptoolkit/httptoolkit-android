@@ -196,9 +196,11 @@ class ProxyVpnService : VpnService(), IProtectSocket {
                         // installed whilst interception is active get intercepted straight away
 
                         // Don't intercept them explicitly disallowed packages:
-                        uninterceptedApps.forEach {name ->
-                            addDisallowedApplication(name)
-                        }
+                        uninterceptedApps
+                            .filter { app -> allPackageNames.contains(app) }
+                            .forEach { name ->
+                                addDisallowedApplication(name)
+                            }
 
                         // Never intercept HTTP Toolkit (as above - doing so causes problems)
                         addDisallowedApplication(httpToolkitPackage)
