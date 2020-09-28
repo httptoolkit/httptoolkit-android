@@ -11,7 +11,8 @@
     <string name="connected_status">Connected</string>
     <string name="failed_status">Oh no!</string>
 
-    <string name="disconnected_details">To intercept this device, start HTTP Toolkit on your computer, click the Android interception option, and scan the QR code shown.</string>
+    <string name="disconnected_details">To intercept this device, start HTTP Toolkit on your computer, and activate Android interception there via QR code or using ADB.</string>
+
     <string name="connected_details">to %s on port %d</string>
     <string name="failed_details">We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?</string>
 
@@ -24,7 +25,7 @@
     <string name="user_connection_status_details">HTTPS interception will only be available for apps that are configured to trust user-installed certificates (<a href="https://httptoolkit.tech/docs/guides/android#intercepting-traffic-from-your-own-android-app">How?</a>)</string>
     <string name="system_connection_status_details">Traffic from all intercepted applications will be available, except those using explicit certificate pinning.</string>
 
-    <string name="scan_button">Scan code</string>
+    <string name="scan_button">Scan QR code</string>
     <string name="reconnect_button">Reconnect</string>
     <string name="manual_button">Connect manually</string>
     <string name="disconnect_button">Disconnect</string>
