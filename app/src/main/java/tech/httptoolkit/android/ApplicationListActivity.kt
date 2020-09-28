@@ -28,6 +28,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     private lateinit var blockedPackages: MutableSet<String>
 
     private var showSystem = false
+    private var showEnabledOnly = false
     private var textFilter = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,7 +82,8 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
         val isSystemApp = appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 1
 
         return (textFilter.isEmpty() || appLabel.contains(textFilter, true)) && // Filter by name
-            (showSystem || !isSystemApp) && // Only show system if that's enabled
+            (showSystem || !isSystemApp) && // Show system apps, if that's active
+            (!showEnabledOnly || isAppEnabled(app)) && // Only show enabled apps, if that's active
             app.packageName != packageName // Never show ourselves
     }
 
@@ -90,11 +92,13 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     }
 
     private fun setAppEnabled(app: PackageInfo, isEnabled: Boolean) {
-        if (!isEnabled) {
+        val wasChanged = if (!isEnabled) {
             blockedPackages.add(app.packageName)
         } else {
             blockedPackages.remove(app.packageName)
         }
+
+        if (wasChanged && showEnabledOnly) applyFilters()
     }
 
     private suspend fun loadAllApps(): List<PackageInfo> =
@@ -115,6 +119,27 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                 applyFilters()
                 true
             }
+            R.id.action_show_enabled -> {
+                showEnabledOnly = showEnabledOnly.not()
+                applyFilters()
+                true
+            }
+            R.id.action_toggle_all -> {
+                if (blockedPackages.isEmpty()) {
+                    // If everything is enabled, disable everything
+                    blockedPackages.addAll(allApps.map { app -> app.packageName })
+                } else {
+                    // Otherwise, re-enable everything
+                    blockedPackages.removeAll(allApps.map { app -> app.packageName })
+                }
+
+                if (showEnabledOnly) {
+                    applyFilters()
+                } else {
+                    apps_list_recyclerView.adapter?.notifyDataSetChanged()
+                }
+                true
+            }
             else -> false
         }
     }
@@ -125,6 +150,13 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                 PopupMenu(this, apps_list_more_menu).apply {
                     this.inflate(R.menu.menu_app_list)
                     this.menu.findItem(R.id.action_show_system).isChecked = showSystem
+                    this.menu.findItem(R.id.action_show_enabled).isChecked = showEnabledOnly
+                    this.menu.findItem(R.id.action_toggle_all).title = getString(
+                        if (blockedPackages.isEmpty())
+                            R.string.disable_all
+                        else
+                            R.string.enable_all
+                    )
                     this.setOnMenuItemClickListener(this@ApplicationListActivity)
                 }.show()
             }

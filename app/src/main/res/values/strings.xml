@@ -38,4 +38,7 @@
     <string name="applications">Applications</string>
     <string name="all_applications">All applications</string>
     <string name="show_system">Show system</string>
+    <string name="show_enabled">Show enabled only</string>
+    <string name="enable_all">Enable all apps</string>
+    <string name="disable_all">Disable all apps</string>
 </resources>
