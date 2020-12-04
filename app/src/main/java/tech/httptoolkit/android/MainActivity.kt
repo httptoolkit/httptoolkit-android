@@ -425,10 +425,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private fun openDocs() {
         app.trackEvent("Button", "open-docs")
-        startActivity(Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("https://httptoolkit.tech/docs/guides/android")
-        ))
+        launchBrowser("httptoolkit.tech/docs/guides/android")
     }
 
     private fun chooseApps(){
@@ -455,31 +452,30 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             getTestBrowserPackage(this)
         }
 
-        val browserIntent = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse(
-                (
-                    // We test with just plain HTTP if we don't have system injection setup and
-                    // there's no user-cert-trusting browser, to reduce confusing failures.
-                    if (testBrowser == null && !certIsSystemTrusted) "http" else "https"
-                ) + "://amiusing.httptoolkit.tech"
-            )
-        ).apply {
-            if (testBrowser != null) setPackage(testBrowser)
-        }
+        val canUseHttps = testBrowser != null || certIsSystemTrusted
 
+        launchBrowser("amiusing.httptoolkit.tech", canUseHttps, testBrowser)
+    }
+
+    private fun launchBrowser(uri: String, canUseHttps: Boolean = true, browserPackage: String? = null) {
         try {
-            startActivity(browserIntent)
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse((
+                        if (canUseHttps) "https" else "http"
+                    ) + "://" + uri)
+                ).apply {
+                    if (browserPackage != null) setPackage(browserPackage)
+                }
+            )
         } catch (e: ActivityNotFoundException) {
-            if (browserIntent.`package` != null) {
+            if (browserPackage != null) {
                 // If we tried a specific package, and it failed, try again with the simplest
                 // plain HTTP catch-all VIEW intent, and hope something somewhere can handle it.
-                startActivity(Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("http://amiusing.httptoolkit.tech")
-                ))
+                launchBrowser(uri, false)
             } else {
-                throw e
+                showNoBrowserAlert(uri)
             }
         }
     }
@@ -719,6 +715,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     if (intent != null && tryStartActivity(intent)) break
                 }
             }
+            .show()
+    }
+
+    private fun showNoBrowserAlert(uri: String) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("No browser available")
+            .setIcon(R.drawable.ic_exclamation_triangle)
+            .setMessage(
+                "HTTP Toolkit could not open a browser on this device. " +
+                "This usually means you don't have any browser installed. To visit " +
+                uri +
+                " please install a browser app."
+            )
+            .setNeutralButton("OK") { _, _ -> }
             .show()
     }
 
