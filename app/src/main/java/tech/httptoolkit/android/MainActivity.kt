@@ -444,13 +444,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             this.currentProxyConfig!! // Safe!! because you can only run tests while connected
         ) == "system"
 
-        val testBrowser = if (certIsSystemTrusted) {
-            null // If we have a system cert, we can safely always use the system browser
-        } else {
-            // If not, and there is a supported browser available, we use it. This prioritises
-            // the default browser, and only returns null if no known supported browser exists.
-            getTestBrowserPackage(this)
-        }
+        // If we have a system cert, in theory we could use any browser. In practice though, some
+        // (i.e. Firefox) ignore system certs to use their own settings. It's best to try and ensure
+        // for testing, we always use a supported browser. This will prioritize the default, if it
+        // is supported, so only matters if the default browser is not on our known-good list.
+        val testBrowser = getTestBrowserPackage(this)
 
         val canUseHttps = testBrowser != null || certIsSystemTrusted
 
