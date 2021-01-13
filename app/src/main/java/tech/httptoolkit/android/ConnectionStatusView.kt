@@ -23,7 +23,11 @@ class ConnectionStatusView(
 
     init {
         val layout = when (whereIsCertTrusted(proxyConfig)) {
-            "user" -> R.layout.connection_status_user
+            "user" ->
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+                    R.layout.connection_status_pre_v7
+                else
+                    R.layout.connection_status_user
             "system" -> R.layout.connection_status_system
             else -> R.layout.connection_status_none
         }
