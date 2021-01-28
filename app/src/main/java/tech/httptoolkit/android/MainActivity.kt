@@ -700,6 +700,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setMessage(
                 "HTTP Toolkit interception was shut down automatically by Android. " +
                 "This is usually caused by overly strict power management of background processes. " +
+                "\n\n" +
                 "To fix this, disable battery optimization for HTTP Toolkit in your settings."
             )
             .setNegativeButton("Ignore") { _, _ -> }
