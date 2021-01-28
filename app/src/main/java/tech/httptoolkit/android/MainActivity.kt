@@ -78,6 +78,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     // If connected/late-stage connecting, the proxy we're connected/trying to connect to. Otherwise null.
     private var currentProxyConfig: ProxyConfig? = activeVpnConfig()
 
+    // Used to track extremely fast VPN setup failures, indicating setup issues (rather than
+    // manual user cancellation). Doesn't matter that it's not properly persistent.
+    private var lastPauseTime = -1L;
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -141,6 +145,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         super.onPause()
         Log.d(TAG, "onPause")
         app.clearScreen()
+        this.lastPauseTime = System.currentTimeMillis()
     }
 
     override fun onDestroy() {
@@ -511,6 +516,19 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
                 if (isVpnActive()) startVpn()
             }
+        } else if (
+            requestCode == START_VPN_REQUEST &&
+            System.currentTimeMillis() - lastPauseTime < 200 && // On Pixel 4a it takes < 50ms
+            resultCode == Activity.RESULT_CANCELED
+        ) {
+            // If another always-on VPN is active, VPN start requests fail instantly as cancelled.
+            // We can't check that the VPN is always-on, but given an instant failure that's
+            // the likely cause, so we warn about it:
+            showActiveVpnFailureAlert()
+
+            // Then go back to the disconnected state:
+            mainState = MainState.DISCONNECTED
+            updateUi()
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
@@ -727,6 +745,28 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 " please install a browser app."
             )
             .setNeutralButton("OK") { _, _ -> }
+            .show()
+    }
+
+    private fun showActiveVpnFailureAlert() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("VPN setup failed")
+            .setIcon(R.drawable.ic_exclamation_triangle)
+            .setMessage(
+                "HTTP Toolkit could not be configured as a VPN on your device." +
+                "\n\n" +
+                "This usually means you have an always-on VPN configured, which blocks " +
+                "installation of other VPNs. To activate HTTP Toolkit you'll need to " +
+                "deactivate that VPN first."
+            )
+            .setNegativeButton("Cancel") { _, _ -> }
+            .setPositiveButton("Open VPN Settings") { _, _ ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
+                } else {
+                    startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                }
+            }
             .show()
     }
 
