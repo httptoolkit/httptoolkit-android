@@ -14,6 +14,7 @@
     <string name="disconnected_details">To intercept this device, start HTTP Toolkit on your computer, and activate Android interception there via QR code or using ADB.</string>
 
     <string name="connected_details">to %s on port %d</string>
+    <string name="connected_tunnel_details">via ADB tunnel</string>
     <string name="failed_details">We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?</string>
 
     <string name="disabled_connection_status_heading">HTTPS interception disabled</string>

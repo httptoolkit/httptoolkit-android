@@ -40,11 +40,15 @@ class ConnectionStatusView(
         }
 
         val connectedToText = findViewById<TextView>(R.id.connectedTo)
-        connectedToText.text = context.getString(
-            R.string.connected_details,
-            proxyConfig.ip,
-            proxyConfig.port
-        )
+        connectedToText.text = if (proxyConfig.ip == "127.0.0.1") {
+            context.getString(R.string.connected_tunnel_details)
+        } else {
+            context.getString(
+                R.string.connected_details,
+                proxyConfig.ip,
+                proxyConfig.port
+            )
+        }
 
         val appInterceptionStatus = findViewById<MaterialCardView>(R.id.appInterceptionStatus)
         appInterceptionStatus.setOnClickListener { _ ->
