@@ -4,6 +4,7 @@ import android.os.Parcelable
 import android.util.Base64
 import android.util.Log
 import com.beust.klaxon.Converter
+import com.beust.klaxon.Json
 import com.beust.klaxon.JsonValue
 import kotlinx.android.parcel.Parcelize
 import java.io.ByteArrayInputStream
@@ -32,6 +33,7 @@ data class ProxyInfo(
      * direct network connection, since it's dependent on the ADB server, but it's a useful fallback
      * especially if the proxy computer has a firewall or the network blocks connections.
      */
+    @Json(serializeNull = false)
     val localTunnelPort: Int?,
 
     /**
