@@ -398,6 +398,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 ProxyInfo(
                     listOf(lastProxy.ip),
                     lastProxy.port,
+                    null,
                     getCertificateFingerprint(lastProxy.certificate as X509Certificate)
                 )
             )

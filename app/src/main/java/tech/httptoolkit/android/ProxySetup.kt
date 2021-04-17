@@ -61,7 +61,19 @@ suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
 
             // Return with the first working proxy config (cert & address)
             // (or throw if all addresses are unreachable/invalid)
-            return@supervisorScope proxyTests.awaitFirst()
+            try {
+                return@supervisorScope proxyTests.awaitFirst()
+            } catch (e: Exception) {
+                if (proxyInfo.localTunnelPort == null) throw e;
+
+                // If all network connections fail, and we have a local ADB tunnel, fallback to
+                // using that connection instead.
+                return@supervisorScope testProxyAddress(
+                    "127.0.0.1",
+                    proxyInfo.localTunnelPort,
+                    proxyInfo.certFingerprint
+                )
+            }
         }
     }
 }

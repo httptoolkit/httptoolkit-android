@@ -28,6 +28,13 @@ data class ProxyInfo(
     val port: Int,
 
     /**
+     * A local tunnel port, with an ADB tunnel connected to the proxy. This is less good than a
+     * direct network connection, since it's dependent on the ADB server, but it's a useful fallback
+     * especially if the proxy computer has a firewall or the network blocks connections.
+     */
+    val localTunnelPort: Int?,
+
+    /**
      * The expected PK hash of the proxy certificate. The certificate itself is obtained from the
      * proxy, as part of validating the connection. This hash is included in QR codes to
      * protect against MitM of our MitM during setup.
