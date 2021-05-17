@@ -79,6 +79,7 @@ class HttpToolkitApplication : Application() {
         if (BuildConfig.GA_ID != null) {
             analytics = GoogleAnalytics.getInstance(this)
             ga = analytics!!.newTracker(BuildConfig.GA_ID)
+            ga!!.setAnonymizeIp(true)
             resumeEvents() // Resume events on app startup, in case they were paused and we crashed
         }
 
