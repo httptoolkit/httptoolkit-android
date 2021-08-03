@@ -513,9 +513,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 launch { connectToVpnFromUrl(url) }
             } else if (requestCode == PICK_APPS_REQUEST) {
                 app.trackEvent("Setup", "picked-apps")
-                app.uninterceptedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
-
-                if (isVpnActive()) startVpn()
+                val unselectedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
+                if (unselectedApps != app.uninterceptedApps) {
+                    app.uninterceptedApps = unselectedApps
+                    if (isVpnActive()) startVpn()
+                }
             }
         } else if (
             requestCode == START_VPN_REQUEST &&
