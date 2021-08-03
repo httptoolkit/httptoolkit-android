@@ -40,6 +40,7 @@ const val START_VPN_REQUEST = 123
 const val INSTALL_CERT_REQUEST = 456
 const val SCAN_REQUEST = 789
 const val PICK_APPS_REQUEST = 499
+const val PICK_PORTS_REQUEST = 443
 
 enum class MainState {
     DISCONNECTED,
@@ -268,7 +269,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         proxyConfig,
                         totalAppCount,
                         interceptedAppsCount,
-                        ::chooseApps
+                        ::chooseApps,
+                        app.interceptedPorts,
+                        ::choosePorts
                     )
                 )
 
@@ -434,12 +437,21 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         launchBrowser("httptoolkit.tech/docs/guides/android")
     }
 
-    private fun chooseApps(){
+    private fun chooseApps() {
         startActivityForResult(
-            Intent(this,ApplicationListActivity::class.java).apply {
+            Intent(this, ApplicationListActivity::class.java).apply {
                 putExtra(UNSELECTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
             },
             PICK_APPS_REQUEST
+        )
+    }
+
+    private fun choosePorts() {
+        startActivityForResult(
+            Intent(this, PortListActivity::class.java).apply {
+                putExtra(SELECTED_PORTS_EXTRA, app.interceptedPorts.toIntArray())
+            },
+            PICK_PORTS_REQUEST
         )
     }
 
@@ -493,6 +505,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             INSTALL_CERT_REQUEST -> "install-cert"
             SCAN_REQUEST -> "scan-request"
             PICK_APPS_REQUEST -> "pick-apps"
+            PICK_PORTS_REQUEST -> "pick-ports"
             else -> requestCode.toString()
         })
 
@@ -516,6 +529,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 val unselectedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
                 if (unselectedApps != app.uninterceptedApps) {
                     app.uninterceptedApps = unselectedApps
+                    if (isVpnActive()) startVpn()
+                }
+            } else if (requestCode == PICK_PORTS_REQUEST) {
+                app.trackEvent("Setup", "picked-ports")
+                val selectedPorts = data!!.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!.toSet()
+                if (selectedPorts != app.interceptedPorts) {
+                    app.interceptedPorts = selectedPorts
                     if (isVpnActive()) startVpn()
                 }
             }
@@ -553,6 +573,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             action = START_VPN_ACTION
             putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
             putExtra(UNINTERCEPTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
+            putExtra(INTERCEPTED_PORTS_EXTRA, app.interceptedPorts.toIntArray())
         })
     }
 

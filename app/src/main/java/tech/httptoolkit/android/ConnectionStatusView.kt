@@ -18,7 +18,9 @@ class ConnectionStatusView(
     proxyConfig: ProxyConfig,
     totalAppCount: Int,
     interceptedAppCount: Int,
-    changeApps: () -> Unit
+    changeApps: () -> Unit,
+    interceptedPorts: Set<Int>,
+    changePorts: () -> Unit
 ) : LinearLayout(context) {
 
     init {
@@ -50,7 +52,7 @@ class ConnectionStatusView(
             )
         }
 
-        val appInterceptionStatus = findViewById<MaterialCardView>(R.id.appInterceptionStatus)
+        val appInterceptionStatus = findViewById<MaterialCardView>(R.id.interceptedAppsButton)
         appInterceptionStatus.setOnClickListener { _ ->
             if (!isLineageOs) {
                 changeApps()
@@ -76,14 +78,30 @@ class ConnectionStatusView(
             }
         }
 
-        val appInterceptionStatusText = findViewById<TextView>(R.id.appInterceptionStatusText)
+        val appInterceptionStatusText = findViewById<TextView>(R.id.interceptedAppsStatus)
         appInterceptionStatusText.text = context.getString(
             when {
-                totalAppCount == interceptedAppCount -> R.string.intercepting_all
-                interceptedAppCount > 10 -> R.string.intercepting_selected
-                else -> R.string.intercepting_few
-            }
-        , interceptedAppCount, if (interceptedAppCount != 1) "s" else "")
+                totalAppCount == interceptedAppCount -> R.string.all_apps
+                interceptedAppCount > 10 -> R.string.selected_apps
+                else -> R.string.few_apps
+            },
+            interceptedAppCount,
+            if (interceptedAppCount != 1) "s" else ""
+        )
+
+        val portInterceptionStatus = findViewById<MaterialCardView>(R.id.interceptedPortsButton)
+        portInterceptionStatus.setOnClickListener { _ -> changePorts() }
+
+        val portInterceptionStatusText = findViewById<TextView>(R.id.interceptedPortsStatus)
+        portInterceptionStatusText.text = context.getString(
+            when {
+                (interceptedPorts == DEFAULT_PORTS) -> R.string.default_ports
+                interceptedPorts.size > 10 -> R.string.selected_ports
+                else -> R.string.few_ports
+            },
+            interceptedPorts.size,
+            if (interceptedPorts.size != 1) "s" else ""
+        )
     }
 
 }

@@ -30,6 +30,7 @@ const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAS
 
 const val PROXY_CONFIG_EXTRA = "tech.httptoolkit.android.PROXY_CONFIG"
 const val UNINTERCEPTED_APPS_EXTRA = "tech.httptoolkit.android.UNINTERCEPTED_APPS"
+const val INTERCEPTED_PORTS_EXTRA = "tech.httptoolkit.android.INTERCEPTED_PORTS"
 
 private var currentService: ProxyVpnService? = null
 fun isVpnActive(): Boolean {
@@ -78,11 +79,12 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         if (intent.action == START_VPN_ACTION) {
             val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)!!
             val uninterceptedApps = intent.getStringArrayExtra(UNINTERCEPTED_APPS_EXTRA)!!.toSet()
+            val interceptedPorts = intent.getIntArrayExtra(INTERCEPTED_PORTS_EXTRA)!!.toSet()
 
             val vpnStarted = if (isActive())
-                restartVpn(proxyConfig, uninterceptedApps)
+                restartVpn(proxyConfig, uninterceptedApps, interceptedPorts)
             else
-                startVpn(proxyConfig, uninterceptedApps)
+                startVpn(proxyConfig, uninterceptedApps, interceptedPorts)
 
             if (vpnStarted) {
                 // If the system briefly kills us for some reason (memory, the user, whatever) whilst
@@ -143,7 +145,11 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     }
 
-    private fun startVpn(proxyConfig: ProxyConfig, uninterceptedApps: Set<String>): Boolean {
+    private fun startVpn(
+        proxyConfig: ProxyConfig,
+        uninterceptedApps: Set<String>,
+        interceptedPorts: Set<Int>
+    ): Boolean {
         this.proxyConfig = proxyConfig
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
@@ -239,11 +245,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             vpnInterface,
             proxyConfig.ip,
             proxyConfig.port,
-            intArrayOf(
-                80, // HTTP
-                443, // HTTPS
-                8000, 8001, 8080, 8888, 9000 // Common local dev ports
-            )
+            interceptedPorts.toIntArray()
         )
         Thread(vpnRunnable, "Vpn thread").start()
 
@@ -251,7 +253,11 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         return true
     }
 
-    private fun restartVpn(proxyConfig: ProxyConfig, uninterceptedApps: Set<String>): Boolean {
+    private fun restartVpn(
+        proxyConfig: ProxyConfig,
+        uninterceptedApps: Set<String>,
+        interceptedPorts: Set<Int>
+    ): Boolean {
         Log.i(TAG, "VPN stopping for restart...")
 
         if (vpnRunnable != null) {
@@ -268,7 +274,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         }
 
         stopForeground(true)
-        return startVpn(proxyConfig, uninterceptedApps)
+        return startVpn(proxyConfig, uninterceptedApps, interceptedPorts)
     }
 
     private fun stopVpn() {

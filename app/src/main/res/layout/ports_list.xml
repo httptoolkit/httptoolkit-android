@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+    <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="2dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true">
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+            <EditText
+                    android:layout_width="0dp"
+                    android:id="@+id/ports_list_input"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="@string/add_port_prompt"
+                    android:padding="16dp"
+                    android:textSize="18sp"
+                    android:importantForAutofill="no"
+                    android:inputType="number" />
+            <ImageView
+                    android:id="@+id/ports_list_add_button"
+                    style="@style/Widget.AppCompat.ActionButton"
+                    android:padding="16dp"
+                    android:src="@drawable/ic_add"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/ports_list_recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_port_row" />
+</LinearLayout>

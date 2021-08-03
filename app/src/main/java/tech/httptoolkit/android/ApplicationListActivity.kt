@@ -11,7 +11,7 @@ import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import kotlinx.android.synthetic.main.activity_app_list.*
+import kotlinx.android.synthetic.main.apps_list.*
 import kotlinx.coroutines.*
 import java.util.*
 import kotlin.collections.ArrayList
@@ -33,10 +33,9 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_app_list)
+        setContentView(R.layout.apps_list)
 
-        blockedPackages = intent.getStringArrayExtra(UNSELECTED_APPS_EXTRA)?.toHashSet()
-            ?: HashSet()
+        blockedPackages = intent.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toHashSet()
 
         apps_list_recyclerView.adapter =
             ApplicationListAdapter(
@@ -164,12 +163,10 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     }
 
     override fun onBackPressed() {
-        setResult(RESULT_OK, Intent().let { intent ->
-            intent.putExtra(
-                UNSELECTED_APPS_EXTRA,
-                blockedPackages.toTypedArray()
-            )
-        })
+        setResult(RESULT_OK, Intent().putExtra(
+            UNSELECTED_APPS_EXTRA,
+            blockedPackages.toTypedArray()
+        ))
         finish()
     }
 }

@@ -201,6 +201,18 @@ class HttpToolkitApplication : Application() {
             prefs.edit().putStringSet("unintercepted-packages", packageNames).apply()
         }
 
+    var interceptedPorts: Set<Int>
+        get() {
+            val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+            val portsSet = prefs.getStringSet("intercepted-ports", null)
+            return portsSet?.map(String::toInt)?.toSortedSet()
+                ?: DEFAULT_PORTS
+        }
+        set(ports) {
+            val prefs = getSharedPreferences("tech.httptoolkit.android", MODE_PRIVATE)
+            prefs.edit().putStringSet("intercepted-ports", ports.map(Int::toString).toSet()).apply()
+        }
+
     fun trackScreen(name: String) {
         ga?.setScreenName(name)
         ga?.send(HitBuilders.EventBuilder().build())

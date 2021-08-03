@@ -1,18 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge xmlns:android="http://schemas.android.com/apk/res/android">
+<merge xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <com.google.android.material.card.MaterialCardView
-            style="@style/ConnectionStatusButton"
-            android:id="@+id/appInterceptionStatus"
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/interceptionOptionsContainer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:clipToPadding="false">
 
-        <TextView
-                android:id="@+id/appInterceptionStatusText"
-                style="@style/ConnectionStatusHeading"
-                android:drawableStart="@drawable/ic_settings"
-                android:text="@string/intercepting_all" />
+        <com.google.android.material.card.MaterialCardView
+                android:id="@+id/interceptedAppsButton"
+                style="@style/ConnectionStatusButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/interceptedPortsButton"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
-    </com.google.android.material.card.MaterialCardView>
+            <TextView
+                    android:id="@+id/interceptedAppsStatus"
+                    style="@style/ConnectionStatusButtonText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:drawableStart="@drawable/ic_settings"
+                    android:text="@string/all_apps" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+                android:id="@+id/interceptedPortsButton"
+                style="@style/ConnectionStatusButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/interceptedAppsButton"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                    android:id="@+id/interceptedPortsStatus"
+                    style="@style/ConnectionStatusButtonText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawableStart="@drawable/ic_settings"
+                    android:text="@string/default_ports" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </merge>

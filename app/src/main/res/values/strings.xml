@@ -43,7 +43,12 @@
     <string name="enable_all">Enable all apps</string>
     <string name="disable_all">Disable all apps</string>
 
-    <string name="intercepting_all">Intercepting all apps</string>
-    <string name="intercepting_selected">Intercepting selected apps</string>
-    <string name="intercepting_few">Intercepting %s app%s</string>
+    <string name="all_apps">All apps</string>
+    <string name="selected_apps">Selected apps</string>
+    <string name="few_apps">%s app%s</string>
+
+    <string name="default_ports">Default ports</string>
+    <string name="selected_ports">Custom ports</string>
+    <string name="few_ports">%s port%s</string>
+    <string name="add_port_prompt">Add another port</string>
 </resources>
