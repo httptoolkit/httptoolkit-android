@@ -11,7 +11,7 @@ import kotlinx.coroutines.*
 val DEFAULT_PORTS = setOf(
     80, // HTTP
     443, // HTTPS
-    8000, 8001, 8080, 8888, 9000 // Common local dev ports
+    8000, 8080, 8888, 9000 // Common local dev ports
 )
 
 const val MIN_PORT = 1

@@ -8,14 +8,16 @@ import kotlinx.android.synthetic.main.item_port_row.view.*
 
 val PORT_DESCRIPTIONS = mapOf(
     80 to "Standard HTTP port",
-    81 to "Alternate HTTP port",
+    81 to "Alternative HTTP port",
     443 to "Standard HTTPS port",
-    8000 to "Popular local development port",
-    8001 to "Popular local development port",
-    8080 to "Popular local development port",
-    8090 to "Popular local development port",
-    8888 to "Popular local development port",
-    9000 to "Popular local development port"
+    8000 to "Popular local development HTTP port",
+    8001 to "Popular local development HTTP port",
+    8008 to "Alternative HTTP port",
+    8080 to "Popular local development HTTP port",
+    8090 to "Popular local development HTTP port",
+    8433 to "Alternative HTTPS port",
+    8888 to "Popular local development HTTP port",
+    9000 to "Popular local development HTTP port"
 )
 
 class PortListAdapter(
