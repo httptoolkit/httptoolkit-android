@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
 import kotlinx.android.synthetic.main.ports_list.*
 import kotlinx.coroutines.*
+import java.util.*
 
 val DEFAULT_PORTS = setOf(
     80, // HTTP
@@ -22,13 +23,14 @@ const val SELECTED_PORTS_EXTRA = "tech.httptoolkit.android.SELECTED_PORTS_EXTRA"
 
 class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
-    private lateinit var ports: MutableSet<Int>
+    private lateinit var ports: TreeSet<Int> // TreeSet = Mutable + Sorted
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.ports_list)
 
-        ports = intent.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!.toMutableSet()
+        ports = intent.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!
+            .toCollection(TreeSet())
 
         ports_list_recyclerView.adapter =
             PortListAdapter(
