@@ -2,15 +2,11 @@ package tech.httptoolkit.android
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.KeyEvent
-import android.widget.TextView
+import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
-import kotlinx.android.synthetic.main.item_port_row.view.*
 import kotlinx.android.synthetic.main.ports_list.*
 import kotlinx.coroutines.*
-import java.util.HashSet
-import kotlin.collections.ArrayList
 
 val DEFAULT_PORTS = setOf(
     80, // HTTP
@@ -42,15 +38,39 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         ports_list_input.filters = arrayOf(MinMaxInputFilter(MIN_PORT, MAX_PORT))
 
+        // Match the UI enabled state to the input field contents:
         ports_list_add_button.isEnabled = false
         ports_list_input.doAfterTextChanged {
             ports_list_add_button.isEnabled = isValidInput(it.toString())
         }
 
+        // Add ports when enter/+ is pressed/clicked:
         ports_list_add_button.setOnClickListener { addEnteredPort() }
         ports_list_input.setOnEditorActionListener { _, _, _ ->
             addEnteredPort()
             return@setOnEditorActionListener true
+        }
+
+        // Show the menu, and listen for clicks:
+        ports_list_more_menu.setOnClickListener {
+            PopupMenu(this, ports_list_more_menu).apply {
+                this.inflate(R.menu.menu_ports_list)
+
+                this.menu.findItem(R.id.action_reset_ports).isEnabled =
+                    ports != DEFAULT_PORTS
+
+                this.setOnMenuItemClickListener {
+                    when (it.itemId) {
+                        R.id.action_reset_ports -> {
+                            ports.clear()
+                            ports.addAll(DEFAULT_PORTS)
+                            updateList()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            }.show()
         }
     }
 
