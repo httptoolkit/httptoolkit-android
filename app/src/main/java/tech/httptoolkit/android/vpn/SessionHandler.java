@@ -424,6 +424,18 @@ public class SessionHandler {
 		final ICMPPacket requestPacket = ICMPPacketFactory.parseICMPPacket(clientPacketData);
 		Log.d(TAG, "Got an ICMP ping packet, type " + requestPacket.toString());
 
+		if (requestPacket.type == ICMPPacket.DESTINATION_UNREACHABLE_TYPE) {
+			// This is a packet from the phone, telling somebody that a destination is unreachable.
+			// Might be caused by issues on our end, but it's unclear what kind of issues. Regardless,
+			// we can't send ICMP messages ourselves or react usefully, so we drop these silently.
+			return;
+		} else if (requestPacket.type != ICMPPacket.ECHO_REQUEST_TYPE) {
+			// We only actually support outgoing ping packets. Loudly drop anything else:
+			throw new PacketHeaderException(
+				"Unknown ICMP type (" + requestPacket.type + "). Only echo requests are supported"
+			);
+		}
+
 		pingThreadpool.execute(new Runnable() {
 			@Override
 			public void run() {

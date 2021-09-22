@@ -3,10 +3,16 @@ package tech.httptoolkit.android.vpn.transport.icmp;
 import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
 
 public class ICMPPacket {
+    // Two ICMP packets we can handle: simple ping & pong
     public static final byte ECHO_REQUEST_TYPE = 8;
     public static final byte ECHO_SUCCESS_TYPE = 0;
 
-    final byte type;
+    // One very common packet we ignore: connection rejection. Unclear why this happens,
+    // random incoming connections that the phone tries to reply to? Nothing we can do though,
+    // as we can't forward ICMP onwards, and we can't usefully respond or react.
+    public static final byte DESTINATION_UNREACHABLE_TYPE = 3;
+
+    public final byte type;
     final byte code; // 0 for request, 0 for success, 0 - 15 for error subtypes
 
     final int checksum;
@@ -23,10 +29,6 @@ public class ICMPPacket {
         int sequenceNumber,
         byte[] data
     ) throws PacketHeaderException {
-        if (type != ECHO_REQUEST_TYPE && type != ECHO_SUCCESS_TYPE) {
-            throw new PacketHeaderException("ICMP packet with id must be request or response");
-        }
-
         this.type = (byte) type;
         this.code = (byte) code;
         this.checksum = checksum;

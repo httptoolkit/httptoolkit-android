@@ -241,6 +241,10 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         SocketProtector.getInstance().setProtector(this)
 
+
+
+        // TODO: Should we support *?
+
         vpnRunnable = ProxyVpnRunnable(
             vpnInterface,
             proxyConfig.ip,

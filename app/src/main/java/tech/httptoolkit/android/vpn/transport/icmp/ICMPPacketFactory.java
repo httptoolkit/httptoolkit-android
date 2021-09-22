@@ -24,11 +24,7 @@ public class ICMPPacketFactory {
         final byte[] data = new byte[stream.remaining()];
         stream.get(data);
 
-        if (type == 8) {
-            return new ICMPPacket(type, code, checksum, identifier, sequenceNumber, data);
-        } else {
-            throw new PacketHeaderException("Unknown ICMP type (" + type + "). Only echo requests are supported");
-        }
+        return new ICMPPacket(type, code, checksum, identifier, sequenceNumber, data);
     }
 
     public static ICMPPacket buildSuccessPacket(ICMPPacket requestPacket) throws PacketHeaderException {
