@@ -26,7 +26,7 @@
                     style="@style/ConnectionStatusButtonText"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:drawableStart="@drawable/ic_settings"
+                    android:drawableStart="@drawable/ic_apps_24"
                     android:text="@string/all_apps" />
 
         </com.google.android.material.card.MaterialCardView>
@@ -47,7 +47,7 @@
                     style="@style/ConnectionStatusButtonText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:drawableStart="@drawable/ic_settings"
+                    android:drawableStart="@drawable/ic_network_ports_24"
                     android:text="@string/default_ports" />
 
         </com.google.android.material.card.MaterialCardView>
