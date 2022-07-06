@@ -562,7 +562,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // required so this is just reshowing the instructions, or it was automated but that's not
             // working for some reason, in which case manual setup is a best-effort fallback.
             app.trackEvent("Setup", "cert-install-failed")
-            launch { promptToManuallyInstallCert(currentProxyConfig!!.certificate) }
+            launch { promptToManuallyInstallCert(currentProxyConfig!!.certificate, repeatPrompt = true) }
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
@@ -660,30 +660,33 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private suspend fun promptToManuallyInstallCert(cert: Certificate) {
-        // Get ready to save the cert to downloads:
-        val downloadsUri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    private suspend fun promptToManuallyInstallCert(cert: Certificate, repeatPrompt: Boolean = false) {
+        if (!repeatPrompt) {
+            // Get ready to save the cert to downloads:
+            val downloadsUri =
+                MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
 
-        val contentDetails = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, "HTTP Toolkit Certificate.crt")
-            put(MediaStore.Downloads.MIME_TYPE, "application/x-x509-ca-cert")
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-
-        val certUri = contentResolver.insert(downloadsUri, contentDetails)
-            ?: throw RuntimeException("Could not get download cert URI")
-
-        // Write cert contents to a file:
-        withContext(Dispatchers.IO) {
-            contentResolver.openFileDescriptor(certUri, "w", null).use { f ->
-                ParcelFileDescriptor.AutoCloseOutputStream(f).write(cert.encoded)
+            val contentDetails = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, "HTTP Toolkit Certificate.crt")
+                put(MediaStore.Downloads.MIME_TYPE, "application/x-x509-ca-cert")
+                put(MediaStore.Downloads.IS_PENDING, 1)
             }
-        }
 
-        // All done, mark it as such:
-        contentDetails.clear()
-        contentDetails.put(MediaStore.Downloads.IS_PENDING, 0)
-        contentResolver.update(certUri, contentDetails, null, null)
+            val certUri = contentResolver.insert(downloadsUri, contentDetails)
+                ?: throw RuntimeException("Could not get download cert URI")
+
+            // Write cert contents to a file:
+            withContext(Dispatchers.IO) {
+                contentResolver.openFileDescriptor(certUri, "w", null).use { f ->
+                    ParcelFileDescriptor.AutoCloseOutputStream(f).write(cert.encoded)
+                }
+            }
+
+            // All done, mark it as such:
+            contentDetails.clear()
+            contentDetails.put(MediaStore.Downloads.IS_PENDING, 0)
+            contentResolver.update(certUri, contentDetails, null, null)
+        }
 
         withContext(Dispatchers.Main) {
             MaterialAlertDialogBuilder(this@MainActivity)
