@@ -706,7 +706,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                                 """
                                 <li>&nbsp; Open "<b>${
                                     // Slightly different UI for Android 12 and 13:
-                                    if (Build.VERSION.SDK_INT == 31) "Advanced Settings" else "More security settings"
+                                    if (Build.VERSION.SDK_INT < 33) "Advanced Settings" else "More security settings"
                                 }</b>" in your security settings</li>
                                 <li>&nbsp; Open "<b>Encryption & Credentials</b>"</li>
                                 """
