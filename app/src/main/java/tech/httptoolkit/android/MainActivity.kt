@@ -14,6 +14,7 @@ import android.provider.Settings
 import android.security.KeyChain
 import android.security.KeyChain.EXTRA_CERTIFICATE
 import android.security.KeyChain.EXTRA_NAME
+import android.text.Html
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -552,6 +553,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // Then go back to the disconnected state:
             mainState = MainState.DISCONNECTED
             updateUi()
+        } else if (
+            requestCode == INSTALL_CERT_REQUEST &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q // Required for promptToManuallyInstallCert
+        ) {
+            // Certificate install failed. Could be manual (failed to follow instructions) or automated
+            // via prompt. We redo the manual step regardless: either (on modern Android) manual is
+            // required so this is just reshowing the instructions, or it was automated but that's not
+            // working for some reason, in which case manual setup is a best-effort fallback.
+            app.trackEvent("Setup", "cert-install-failed")
+            launch { promptToManuallyInstallCert(currentProxyConfig!!.certificate) }
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
@@ -679,19 +690,40 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 .setTitle("Manual setup required")
                 .setIcon(R.drawable.ic_exclamation_triangle)
                 .setMessage(
+                    Html.fromHtml(
                     """
-                    Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup.
-
-                    To allow HTTP Toolkit to intercept HTTPS traffic:
-
-                    - Open "Encryption & Credentials" in your security settings
-                    - Select "Install a certificate", and then "CA Certificate"
-                    - Select the HTTP Toolkit certificate
-                    """.trimIndent()
+                        <p>
+                            Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup.
+                        </p>
+                        <p>
+                            To allow HTTP Toolkit to intercept HTTPS traffic:
+                        </p>
+                        <ul>
+                            ${if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) // Android 12+
+                                """
+                                <li>&nbsp; Open "<b>${
+                                    // Slightly different UI for Android 12 and 13:
+                                    if (Build.VERSION.SDK_INT == 31) "Advanced Settings" else "More security settings"
+                                }</b>" in your security settings</li>
+                                <li>&nbsp; Open "<b>Encryption & Credentials</b>"</li>
+                                """
+                            else
+                                """
+                                <li>&nbsp; Open "<b>Encryption & Credentials</b>" in your security settings</li>
+                                """
+                            }
+                            <li>&nbsp; Select "<b>Install a certificate</b>", then "<b>CA Certificate</b>"</li>
+                            <li>&nbsp; <b>Select the HTTP Toolkit certificate in your Downloads folder</b></li>
+                        </ul>
+                    """,0)
                 )
-                .setPositiveButton("Open security settings now") { _, _ ->
+                .setPositiveButton("Open security settings") { _, _ ->
                     startActivityForResult(Intent(Settings.ACTION_SECURITY_SETTINGS), INSTALL_CERT_REQUEST)
                 }
+                .setNegativeButton("Cancel") { _, _ ->
+                    disconnect()
+                }
+                .setCancelable(false)
                 .show()
         }
     }
