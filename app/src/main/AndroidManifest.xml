@@ -30,7 +30,8 @@
             android:largeHeap="true">
         <service
             android:name=".ProxyVpnService"
-            android:permission="android.permission.BIND_VPN_SERVICE">
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.net.VpnService"/>
                 <action android:name="tech.httptoolkit.android.ProxyVpnService"/>
@@ -39,8 +40,8 @@
 
         <activity
                 android:name=".MainActivity"
-                android:label="@string/app_name"
-                android:launchMode="singleTask">
+                android:launchMode="singleTask"
+                android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -69,7 +70,8 @@
         <activity-alias
                 android:name=".RemoteControlMainActivity"
                 android:targetActivity=".MainActivity"
-                android:permission="android.permission.INJECT_EVENTS">
+                android:permission="android.permission.INJECT_EVENTS"
+                android:exported="true">
             <intent-filter>
                 <action android:name="tech.httptoolkit.android.ACTIVATE" />
                 <category android:name="android.intent.category.DEFAULT" />

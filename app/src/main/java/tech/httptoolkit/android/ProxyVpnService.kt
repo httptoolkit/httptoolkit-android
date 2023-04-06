@@ -111,15 +111,19 @@ class ProxyVpnService : VpnService(), IProtectSocket {
     }
 
     private fun showServiceNotification() {
+        val intentFlags = // Required because IMMUTABLE isn't available in older versions
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE
+            else 0
+
         val pendingActivityIntent: PendingIntent =
             Intent(this, MainActivity::class.java).let { notificationIntent ->
-                PendingIntent.getActivity(this, 0, notificationIntent, 0)
+                PendingIntent.getActivity(this, 0, notificationIntent, intentFlags)
             }
 
         val pendingServiceIntent: PendingIntent =
             Intent(this, ProxyVpnService::class.java).let { notificationIntent ->
                 notificationIntent.action = STOP_VPN_ACTION
-                PendingIntent.getService(this, 1, notificationIntent, 0)
+                PendingIntent.getService(this, 1, notificationIntent, intentFlags)
             }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
