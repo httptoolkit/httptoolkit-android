@@ -105,7 +105,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
     override fun onRevoke() {
         super.onRevoke()
-        app.trackEvent("VPN", "vpn-revoked")
         Log.i(TAG, "onRevoke called")
         stopVpn()
     }
@@ -166,8 +165,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         if (this.vpnInterface != null) return false // Already running, do nothing
 
-        app.pauseEvents() // Try not to send events while the VPN is active, it's unnecessary noise
-        app.trackEvent("VPN", "vpn-started")
         val vpnInterface = Builder()
             .addAddress(VPN_IP_ADDRESS, 32)
             .addRoute(ALL_ROUTES, 0)
@@ -269,7 +266,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         Log.i(TAG, "VPN stopping for restart...")
 
         if (vpnRunnable != null) {
-            app.trackEvent("VPN", "vpn-stopped-for-restart")
             vpnRunnable!!.stop()
             vpnRunnable = null
         }
@@ -289,9 +285,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         Log.i(TAG, "VPN stopping...")
 
         if (vpnRunnable != null) {
-            app.trackEvent("VPN", "vpn-stopped")
-            app.resumeEvents()
-
             vpnRunnable!!.stop()
             vpnRunnable = null
         }

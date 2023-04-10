@@ -140,13 +140,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume")
-        app.trackScreen("Main")
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "onPause")
-        app.clearScreen()
         this.lastPauseTime = System.currentTimeMillis()
     }
 
@@ -169,7 +167,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // ACTION_VIEW means that somebody had the app installed, and scanned the barcode with
             // a separate barcode app anyway (or opened the QR code URL in a browser)
             intent.action == Intent.ACTION_VIEW -> {
-                app.trackEvent("Setup", "action-view")
                 if (app.lastProxy != null && isVpnConfigured()) {
                     Log.i(TAG, "Showing prompt for ACTION_VIEW intent")
 
@@ -201,17 +198,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // RC setup API, used by ADB to enable/disable without prompts.
             // Permission required, checked for via activity-alias in the manifest
             isRCIntent && intent.action == ACTIVATE_INTENT -> {
-                app.trackEvent("Setup", "rc-activate")
                 launch { connectToVpnFromUrl(intent.data!!) }
             }
             isRCIntent && intent.action == DEACTIVATE_INTENT -> {
-                app.trackEvent("Setup", "rc-deactivate")
                 disconnect()
             }
 
             intent.action == "android.intent.action.MAIN" -> {
                 // The app is being opened - nothing to do here
-                app.trackEvent("Setup", "ui-opened")
             }
 
             else -> Log.w(TAG, "Ignoring unknown intent. Action ${
@@ -320,7 +314,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun scanCode() {
-        app.trackEvent("Button", "scan-code")
         startActivityForResult(Intent(this, ScanActivity::class.java), SCAN_REQUEST)
     }
 
@@ -332,7 +325,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         withContext(Dispatchers.Main) { updateUi() }
 
-        app.trackEvent("Button", "start-vpn")
         val vpnIntent = VpnService.prepare(this)
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
         val vpnNotConfigured = vpnIntent != null
@@ -382,15 +374,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         mainState = MainState.DISCONNECTING
         updateUi()
 
-        app.trackEvent("Button", "stop-vpn")
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = STOP_VPN_ACTION
         })
     }
 
     private suspend fun reconnect(lastProxy: ProxyConfig) {
-        app.trackEvent("Button", "reconnect")
-
         withContext(Dispatchers.Main) {
             mainState = MainState.CONNECTING
             updateUi()
@@ -414,7 +403,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             e.printStackTrace()
 
             withContext(Dispatchers.Main) {
-                app.trackEvent("Setup", "reconnect-failed")
                 mainState = MainState.FAILED
                 updateUi()
             }
@@ -427,14 +415,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun resetAfterFailure() {
-        app.trackEvent("Button", "try-again")
         currentProxyConfig = null
         mainState = MainState.DISCONNECTED
         updateUi()
     }
 
     private fun openDocs() {
-        app.trackEvent("Button", "open-docs")
         launchBrowser("httptoolkit.tech/docs/guides/android")
     }
 
@@ -457,8 +443,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun testInterception() {
-        app.trackEvent("Button", "test-interception")
-
         val certIsSystemTrusted = whereIsCertTrusted(
             this.currentProxyConfig!! // Safe!! because you can only run tests while connected
         ) == "system"
@@ -520,20 +504,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 Log.i(TAG, "Installing cert")
                 ensureCertificateTrusted(currentProxyConfig!!)
             } else if (requestCode == INSTALL_CERT_REQUEST) {
-                app.trackEvent("Setup", "installed-cert-successfully")
                 startVpn()
             } else if (requestCode == SCAN_REQUEST && data != null) {
                 val url = data.getStringExtra(SCANNED_URL_EXTRA)!!
                 launch { connectToVpnFromUrl(url) }
             } else if (requestCode == PICK_APPS_REQUEST) {
-                app.trackEvent("Setup", "picked-apps")
                 val unselectedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
                 if (unselectedApps != app.uninterceptedApps) {
                     app.uninterceptedApps = unselectedApps
                     if (isVpnActive()) startVpn()
                 }
             } else if (requestCode == PICK_PORTS_REQUEST) {
-                app.trackEvent("Setup", "picked-ports")
                 val selectedPorts = data!!.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!.toSet()
                 if (selectedPorts != app.interceptedPorts) {
                     app.interceptedPorts = selectedPorts
@@ -561,7 +542,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // via prompt. We redo the manual step regardless: either (on modern Android) manual is
             // required so this is just reshowing the instructions, or it was automated but that's not
             // working for some reason, in which case manual setup is a best-effort fallback.
-            app.trackEvent("Setup", "cert-install-failed")
             launch { promptToManuallyInstallCert(currentProxyConfig!!.certificate, repeatPrompt = true) }
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
@@ -613,7 +593,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 e.printStackTrace()
 
                 withContext(Dispatchers.Main) {
-                    app.trackEvent("Setup", "connect-failed")
                     mainState = MainState.FAILED
                     updateUi()
                 }
@@ -633,11 +612,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun ensureCertificateTrusted(proxyConfig: ProxyConfig) {
         val existingTrust = whereIsCertTrusted(proxyConfig)
         if (existingTrust == null) {
-            app.trackEvent("Setup", "installing-cert")
             Log.i(TAG, "Certificate not trusted, prompting to install")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                app.trackEvent("Setup", "installing-cert-manually")
                 // Android 11+, with no trusted cert: we need to download the cert to Downloads and
                 // then tell the user how to install it manually:
                 launch { promptToManuallyInstallCert(proxyConfig.certificate) }
@@ -646,14 +623,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 // CA store. Notably, if the cert is already installed as a system cert but
                 // disabled, this will get triggered, and will enable the cert, rather than adding
                 // a normal user cert.
-                app.trackEvent("Setup", "installing-cert-automatically")
                 val certInstallIntent = KeyChain.createInstallIntent()
                 certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
                 certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
                 startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
             }
         } else {
-            app.trackEvent("Setup", "existing-$existingTrust-cert")
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
         }

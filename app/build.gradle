@@ -15,7 +15,6 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "SENTRY_DSN", "null"
-        buildConfigField "String", "GA_ID", "null"
     }
 
     buildTypes {
@@ -23,7 +22,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField "String", "SENTRY_DSN", "\"https://6943ce7476d54485a5998ad45289a9bc@sentry.io/1809979\""
-            buildConfigField "String", "GA_ID", "\"UA-117670723-3\""
         }
     }
     lintOptions {
@@ -53,7 +51,7 @@ dependencies {
     implementation 'net.swiftzer.semver:semver:1.1.1'
     implementation 'io.sentry:sentry-android:1.7.27'
     implementation 'org.slf4j:slf4j-nop:1.7.25'
-    implementation 'com.google.android.gms:play-services-analytics:10.2.4'
+    implementation 'com.google.android.gms:play-services-base:10.2.4'
     implementation 'com.android.installreferrer:installreferrer:1.1'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'

@@ -39,7 +39,6 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
     public override fun onResume() {
         super.onResume()
 
-        app!!.trackScreen("Scan")
         scannerView!!.setResultHandler(this)
         scannerView!!.startCamera()
     }
@@ -47,7 +46,6 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
     public override fun onPause() {
         super.onPause()
 
-        app!!.clearScreen()
         scannerView!!.stopCamera()
     }
 
@@ -76,7 +74,6 @@ class ScanActivity : AppCompatActivity(), ZXingScannerView.ResultHandler {
         }
 
         Log.v(TAG, "Scanned $url")
-        app!!.trackEvent("Setup", "tag-scanned")
 
         setResult(RESULT_OK, Intent().let { intent ->
             intent.putExtra(SCANNED_URL_EXTRA, url)
