@@ -1,8 +1,11 @@
 package tech.httptoolkit.android
 
+import android.Manifest
 import android.app.Activity
+import android.app.NotificationManager
 import android.content.*
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
@@ -20,17 +23,19 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ContextThemeWrapper
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.common.GooglePlayServicesUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.sentry.Sentry
 import kotlinx.coroutines.*
-import java.lang.RuntimeException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.security.cert.Certificate
@@ -42,6 +47,7 @@ const val INSTALL_CERT_REQUEST = 456
 const val SCAN_REQUEST = 789
 const val PICK_APPS_REQUEST = 499
 const val PICK_PORTS_REQUEST = 443
+const val ENABLE_NOTIFICATIONS_REQUEST = 101
 
 enum class MainState {
     DISCONNECTED,
@@ -484,26 +490,34 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        Log.i(TAG, "onActivityResult")
-        Log.i(TAG, when (requestCode) {
-            START_VPN_REQUEST -> "start-vpn"
-            INSTALL_CERT_REQUEST -> "install-cert"
-            SCAN_REQUEST -> "scan-request"
-            PICK_APPS_REQUEST -> "pick-apps"
-            PICK_PORTS_REQUEST -> "pick-ports"
-            else -> requestCode.toString()
-        })
-
-        Log.i(TAG, if (resultCode == RESULT_OK) "ok" else resultCode.toString())
-
         val resultOk = resultCode == RESULT_OK ||
-            (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null)
+            (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null) ||
+            (requestCode == ENABLE_NOTIFICATIONS_REQUEST && areNotificationsEnabled())
+
+        Log.i(TAG, "onActivityResult: " + (
+                when (requestCode) {
+                    START_VPN_REQUEST -> "start-vpn"
+                    INSTALL_CERT_REQUEST -> "install-cert"
+                    SCAN_REQUEST -> "scan-request"
+                    PICK_APPS_REQUEST -> "pick-apps"
+                    PICK_PORTS_REQUEST -> "pick-ports"
+                    ENABLE_NOTIFICATIONS_REQUEST -> "enable-notifications"
+                    else -> requestCode.toString()
+                }
+            ) + " - result: " + (
+                if (resultOk) "ok" else resultCode.toString()
+            )
+        )
 
         if (resultOk) {
             if (requestCode == START_VPN_REQUEST && currentProxyConfig != null) {
-                Log.i(TAG, "Installing cert")
+                Log.i(TAG, "Installing cert...")
                 ensureCertificateTrusted(currentProxyConfig!!)
             } else if (requestCode == INSTALL_CERT_REQUEST) {
+                Log.i(TAG ,"Cert installed, checking notification perms...")
+                ensureNotificationsEnabled()
+            } else if (requestCode == ENABLE_NOTIFICATIONS_REQUEST) {
+                Log.i(TAG ,"Notifications OK, starting VPN...")
                 startVpn()
             } else if (requestCode == SCAN_REQUEST && data != null) {
                 val url = data.getStringExtra(SCANNED_URL_EXTRA)!!
@@ -542,7 +556,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // via prompt. We redo the manual step regardless: either (on modern Android) manual is
             // required so this is just reshowing the instructions, or it was automated but that's not
             // working for some reason, in which case manual setup is a best-effort fallback.
-            launch { promptToManuallyInstallCert(currentProxyConfig!!.certificate, repeatPrompt = true) }
+            launch {
+                promptToManuallyInstallCert(
+                    currentProxyConfig!!.certificate,
+                    repeatPrompt = true
+                )
+            }
+        } else if (requestCode == ENABLE_NOTIFICATIONS_REQUEST) {
+            // If we tried to enable notifications, and it didn't work (the user
+            // ignored us) then try try again.
+            requestNotificationPermission(true)
         } else {
             Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
@@ -703,6 +726,115 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 }
                 .setCancelable(false)
                 .show()
+        }
+    }
+
+    private fun ensureNotificationsEnabled() {
+        if (areNotificationsEnabled()) {
+            onActivityResult(ENABLE_NOTIFICATIONS_REQUEST, RESULT_OK, null)
+        } else {
+            // This should only be called on the first attempt, generally, so we assume we
+            // haven't been rejected yet:
+            requestNotificationPermission(false)
+        }
+    }
+
+    private fun areNotificationsEnabled(): Boolean {
+        // In Android 13+ notification permissions are blocked (even for foreground services) until
+        // we specifically request them.
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PERMISSION_GRANTED
+        ) {
+            return false
+        }
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val appNotificationsEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            notificationManager.areNotificationsEnabled()
+        } else {
+            true
+        }
+
+        if (!appNotificationsEnabled) return false
+
+        // For Android < 26 you can only enable/disable notifications globally:
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+
+        // For Android 26+ you can disable individual channels: here we check our VPN notification
+        // channel is not disabled (if it's already been created).
+        val channel = notificationManager.getNotificationChannel(VPN_NOTIFICATION_CHANNEL_ID)
+        return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    private fun requestNotificationPermission(previouslyRejected: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val shouldExplain = ActivityCompat.shouldShowRequestPermissionRationale(
+                this@MainActivity,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+
+            if (shouldExplain) {
+                // ShouldExplain means that we've asked before, but been rejected, but we are
+                // still allowed to ask again. Be more insistent, and do so:
+                showNotificationPermissionRequiredPrompt() { ->
+                    Log.i(TAG ,"Asking for POST_NOTIFICATIONS after prompt")
+                    notificationPermissionHandler.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                return
+            } else if (!previouslyRejected) {
+                // This means we're asking for the first time - no detailed rationale and no
+                // fallbacks required, just ask for permission:
+                Log.i(TAG ,"Asking for POST_NOTIFICATIONS directly")
+                notificationPermissionHandler.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+            // Otherwise, continue to the non-Tiramisu settings approach:
+        }
+
+        // Pre-Tiramisu, we can't use POST_NOTIFICATIONS. Alternatively, if Tiramisu but we've
+        // been completely rejected already, we can't show a normal prompt. Either way, we need
+        // to send the user to the settings page to fix this manually.
+
+        // But if we have to send you to settings, we always want to show a prompt first:
+        showNotificationPermissionRequiredPrompt { ->
+            Log.i(TAG ,"Sending to settings to fix notification permissions")
+            val intent = Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", packageName, null)
+            )
+            startActivityForResult(intent, ENABLE_NOTIFICATIONS_REQUEST)
+        }
+    }
+
+    private fun showNotificationPermissionRequiredPrompt(nextStep: () -> Unit) {
+        Log.i(TAG ,"Showing notifications-required prompt")
+        launch {
+            withContext(Dispatchers.Main) {
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("Notification permission is required")
+                    .setIcon(R.drawable.ic_exclamation_triangle)
+                    .setMessage(
+                        "Please allow notifications to use HTTP Toolkit. This is used " +
+                        "exclusively for VPN connection status indicators."
+                    )
+                    .setPositiveButton("Ok") { _, _ -> }
+                    .setOnDismissListener { _ ->
+                        // Dismiss is called on both click-away and 'Ok'
+                        nextStep()
+                    }
+                    .show()
+            }
+        }
+    }
+
+    private val notificationPermissionHandler = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted && areNotificationsEnabled()) { // Note permission might be accepted but channels disabled
+            Log.i(TAG, "Notifications permission prompt accepted")
+            onActivityResult(ENABLE_NOTIFICATIONS_REQUEST, RESULT_OK, null)
+        } else {
+            Log.w(TAG, "Notifications permission prompt rejected")
+            requestNotificationPermission(true)
         }
     }
 

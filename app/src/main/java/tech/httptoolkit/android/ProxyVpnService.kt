@@ -20,7 +20,7 @@ private const val ALL_ROUTES = "0.0.0.0"
 private const val VPN_IP_ADDRESS = "169.254.61.43" // Random link-local IP, this will be the tunnel's IP
 
 private const val NOTIFICATION_ID = 45456
-private const val NOTIFICATION_CHANNEL_ID = "vpn-notifications"
+const val VPN_NOTIFICATION_CHANNEL_ID = "vpn-notifications"
 
 const val START_VPN_ACTION = "tech.httptoolkit.android.START_VPN_ACTION"
 const val STOP_VPN_ACTION = "tech.httptoolkit.android.STOP_VPN_ACTION"
@@ -128,14 +128,14 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             val notificationChannel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
+                VPN_NOTIFICATION_CHANNEL_ID,
                 "VPN Status",
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             notificationManager.createNotificationChannel(notificationChannel)
         }
 
-        val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        val notification: Notification = NotificationCompat.Builder(this, VPN_NOTIFICATION_CHANNEL_ID)
             .setContentIntent(pendingActivityIntent)
             .setContentTitle(getString(R.string.vpn_active_notification_title))
             .setContentText(getString(R.string.vpn_active_notification_content))
@@ -145,7 +145,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
-
     }
 
     private fun startVpn(
@@ -241,8 +240,6 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         )
 
         SocketProtector.getInstance().setProtector(this)
-
-
 
         // TODO: Should we support *?
 
