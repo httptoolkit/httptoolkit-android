@@ -31,6 +31,7 @@ private val isProbablyEmulator =
         Build.FINGERPRINT.startsWith("generic")
         || Build.FINGERPRINT.startsWith("unknown")
         || Build.MODEL.contains("google_sdk")
+        || Build.MODEL.contains("sdk_gphone")
         || Build.MODEL.contains("Emulator")
         || Build.MODEL.contains("Android SDK built for x86")
         || Build.BOARD == "QC_Reference_Phone"
@@ -89,7 +90,10 @@ class HttpToolkitApplication : Application() {
      */
     fun popVpnKilledState(): Boolean {
         return vpnWasKilled
-            .also { this.vpnWasKilled = false }
+            .also {
+                this.vpnWasKilled = false
+                this.vpnShouldBeRunning = false
+            }
     }
 
     /**
