@@ -141,6 +141,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             .setContentText(getString(R.string.vpn_active_notification_content))
             .setSmallIcon(R.drawable.ic_transparent_icon)
             .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.ic_transparent_icon))
+            .setOngoing(true) // Mark as not dismissable
             .addAction(0, getString(R.string.vpn_active_notification_action), pendingServiceIntent)
             .build()
 
