@@ -26,16 +26,13 @@ import org.jetbrains.annotations.NotNull;
 import tech.httptoolkit.android.TagKt;
 import tech.httptoolkit.android.vpn.socket.DataConst;
 import tech.httptoolkit.android.vpn.socket.ICloseSession;
-import tech.httptoolkit.android.vpn.socket.SocketNIODataService;
 import tech.httptoolkit.android.vpn.socket.SocketProtector;
 import tech.httptoolkit.android.vpn.util.PacketUtil;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
@@ -59,8 +56,13 @@ public class SessionManager implements ICloseSession {
 	 */
 	public void keepSessionAlive(Session session) {
 		if(session != null){
-			String key = Session.getSessionKey(session.getDestIp(), session.getDestPort(),
-					session.getSourceIp(), session.getSourcePort());
+			String key = Session.getSessionKey(
+				session.getProtocol(),
+				session.getDestIp(),
+				session.getDestPort(),
+				session.getSourceIp(),
+				session.getSourcePort()
+			);
 			table.put(key, session);
 		}
 	}
@@ -77,8 +79,8 @@ public class SessionManager implements ICloseSession {
 		return session.setSendingData(buffer);
 	}
 
-	public Session getSession(int ip, int port, int srcIp, int srcPort) {
-		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
+	public Session getSession(SessionProtocol protocol, int ip, int port, int srcIp, int srcPort) {
+		String key = Session.getSessionKey(protocol, ip, port, srcIp, srcPort);
 
 		return getSessionByKey(key);
 	}
@@ -99,8 +101,8 @@ public class SessionManager implements ICloseSession {
 	 * @param srcIp Source IP Address
 	 * @param srcPort Source Port
 	 */
-	public void closeSession(int ip, int port, int srcIp, int srcPort){
-		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
+	public void closeSession(SessionProtocol protocol, int ip, int port, int srcIp, int srcPort){
+		String key = Session.getSessionKey(protocol, ip, port, srcIp, srcPort);
 		Session session = table.remove(key);
 
 		if(session != null){
@@ -117,21 +119,21 @@ public class SessionManager implements ICloseSession {
 	}
 
 	public void closeSession(@NonNull Session session){
-		closeSession(session.getDestIp(),
+		closeSession(session.getProtocol(), session.getDestIp(),
 				session.getDestPort(), session.getSourceIp(),
 				session.getSourcePort());
 	}
 
 	@NotNull
 	public Session createNewUDPSession(int ip, int port, int srcIp, int srcPort) throws IOException {
-		String keys = Session.getSessionKey(ip, port, srcIp, srcPort);
+		String keys = Session.getSessionKey(SessionProtocol.UDP, ip, port, srcIp, srcPort);
 
 		// For TCP, we freak out if you try to create an already existing session.
 		// With UDP though, it's totally fine:
 		Session existingSession = table.get(keys);
 		if (existingSession != null) return existingSession;
 
-		Session session = new Session(srcIp, srcPort, ip, port, this);
+		Session session = new Session(SessionProtocol.UDP, srcIp, srcPort, ip, port, this);
 
 		DatagramChannel channel;
 
@@ -160,7 +162,7 @@ public class SessionManager implements ICloseSession {
 
 	@NotNull
 	public Session createNewTCPSession(int ip, int port, int srcIp, int srcPort) throws IOException {
-		String key = Session.getSessionKey(ip, port, srcIp, srcPort);
+		String key = Session.getSessionKey(SessionProtocol.TCP, ip, port, srcIp, srcPort);
 
 		Session existingSession = table.get(key);
 
@@ -169,7 +171,7 @@ public class SessionManager implements ICloseSession {
 		// We return the initialized session, which will be reacked to indicate rejection.
 		if (existingSession != null) return existingSession;
 
-		Session session = new Session(srcIp, srcPort, ip, port, this);
+		Session session = new Session(SessionProtocol.TCP, srcIp, srcPort, ip, port, this);
 
 		SocketChannel channel;
 		channel = SocketChannel.open();

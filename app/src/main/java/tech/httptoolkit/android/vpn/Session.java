@@ -40,6 +40,8 @@ public class Session {
 	private final String TAG = "Session";
 
 	private AbstractSelectableChannel channel;
+
+	private final SessionProtocol protocol;
 	
 	private final int destIp;
 	private final int destPort;
@@ -107,6 +109,7 @@ public class Session {
 	private final ICloseSession sessionCloser;
 	
 	Session(
+		SessionProtocol protocol,
 		int sourceIp,
 		int sourcePort,
 		int destinationIp,
@@ -116,6 +119,7 @@ public class Session {
 		receivingStream = new ByteArrayOutputStream();
 		sendingStream = new ByteArrayOutputStream();
 
+		this.protocol = protocol;
 		this.sourceIp = sourceIp;
 		this.sourcePort = sourcePort;
 		this.destIp = destinationIp;
@@ -191,6 +195,10 @@ public class Session {
 	 */
 	public boolean hasDataToSend(){
 		return sendingStream.size() > 0;
+	}
+
+	public SessionProtocol getProtocol() {
+		return this.protocol;
 	}
 
 	public int getDestIp() {
@@ -363,12 +371,14 @@ public class Session {
 	}
 
 	public String getSessionKey() {
-		return Session.getSessionKey(this.destIp, this.destPort, this.sourceIp, this.sourcePort);
+		return Session.getSessionKey(this.protocol, this.destIp, this.destPort, this.sourceIp, this.sourcePort);
 	}
 
-	public static String getSessionKey(int destIp, int destPort, int sourceIp, int sourcePort) {
-		return PacketUtil.intToIPAddress(sourceIp) + ":" + sourcePort + "->" +
-				PacketUtil.intToIPAddress(destIp) + ":" + destPort;
+	public static String getSessionKey(SessionProtocol protocol, int destIp, int destPort, int sourceIp, int sourcePort) {
+		return protocol.name() + "|" +
+			PacketUtil.intToIPAddress(sourceIp) + ":" + sourcePort +
+			"->" +
+			PacketUtil.intToIPAddress(destIp) + ":" + destPort;
 	}
 
 	public String toString() {

@@ -98,8 +98,11 @@ public class SessionHandler {
 		UDPHeader udpheader = UDPPacketFactory.createUDPHeader(clientPacketData);
 
 		Session session = manager.getSession(
-			ipHeader.getDestinationIP(), udpheader.getDestinationPort(),
-			ipHeader.getSourceIP(), udpheader.getSourcePort()
+			SessionProtocol.UDP,
+			ipHeader.getDestinationIP(),
+			udpheader.getDestinationPort(),
+			ipHeader.getSourceIP(),
+			udpheader.getSourcePort()
 		);
 
 		boolean newSession = session == null;
@@ -140,7 +143,7 @@ public class SessionHandler {
 			// 3-way handshake + create new session
 			replySynAck(ipHeader,tcpheader);
 		} else if(tcpheader.isACK()) {
-			String key = Session.getSessionKey(destinationIP, destinationPort, sourceIP, sourcePort);
+			String key = Session.getSessionKey(SessionProtocol.TCP, destinationIP, destinationPort, sourceIP, sourcePort);
 			Session session = manager.getSessionByKey(key);
 
 			if (session == null) {
@@ -176,7 +179,7 @@ public class SessionHandler {
 						sendFinAck(ipHeader, tcpheader, session);
 					} else if (session.isAckedToFin() && !tcpheader.isFIN()) {
 						//the last ACK from client after FIN-ACK flag was sent
-						manager.closeSession(destinationIP, destinationPort, sourceIP, sourcePort);
+						manager.closeSession(SessionProtocol.TCP, destinationIP, destinationPort, sourceIP, sourcePort);
 						Log.d(TAG, "got last ACK after FIN, session is now closed.");
 					}
 				}
@@ -190,7 +193,7 @@ public class SessionHandler {
 					Log.d(TAG, "FIN from vpn client, will ack it.");
 					ackFinAck(ipHeader, tcpheader, session);
 				} else if (tcpheader.isRST()) {
-					resetConnection(ipHeader, tcpheader);
+					resetTCPConnection(ipHeader, tcpheader);
 				}
 
 				if (!session.isAbortingConnection()) {
@@ -199,14 +202,14 @@ public class SessionHandler {
 			}
 		} else if(tcpheader.isFIN()){
 			//case client sent FIN without ACK
-			Session session = manager.getSession(destinationIP, destinationPort, sourceIP, sourcePort);
+			Session session = manager.getSession(SessionProtocol.TCP, destinationIP, destinationPort, sourceIP, sourcePort);
 			if(session == null)
 				ackFinAck(ipHeader, tcpheader, null);
 			else
 				manager.keepSessionAlive(session);
 
 		} else if(tcpheader.isRST()){
-			resetConnection(ipHeader, tcpheader);
+			resetTCPConnection(ipHeader, tcpheader);
 		} else {
 			Log.d(TAG,"unknown TCP flag");
 			String str1 = PacketUtil.getOutput(ipHeader, tcpheader, clientPacketData.array());
@@ -364,8 +367,9 @@ public class SessionHandler {
 	 * @param ip IP
 	 * @param tcp TCP
 	 */
-	private void resetConnection(IPv4Header ip, TCPHeader tcp){
+	private void resetTCPConnection(IPv4Header ip, TCPHeader tcp){
 		Session session = manager.getSession(
+			SessionProtocol.TCP,
 			ip.getDestinationIP(), tcp.getDestinationPort(),
 			ip.getSourceIP(), tcp.getSourcePort()
 		);
