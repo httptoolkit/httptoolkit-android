@@ -179,8 +179,9 @@ fun whereIsCertTrusted(proxyConfig: ProxyConfig): String? {
     val aliases = keyStore.aliases()
 
     val proxyCertAliases = aliases.toList().filter { alias ->
-        val storedCertData = keyStore.getCertificate(alias).encoded
-        return@filter storedCertData != null && storedCertData.contentEquals(proxyCertData)
+        val storedCert = keyStore.getCertificate(alias)
+        val certData = storedCert?.encoded
+        return@filter certData != null && certData.contentEquals(proxyCertData)
     }
 
     Log.i(TAG, "Proxy cert aliases: $proxyCertAliases")
