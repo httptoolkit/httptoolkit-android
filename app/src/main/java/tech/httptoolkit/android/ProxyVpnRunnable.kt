@@ -85,7 +85,13 @@ class ProxyVpnRunnable(
 
                         val isIgnorable =
                             (e is ConnectException && errorMessage == "Permission denied") ||
+                            // Nothing we can do if the internet goes down:
                             (e is ConnectException && errorMessage == "Network is unreachable") ||
+                            (e is ConnectException && errorMessage.contains("ENETUNREACH")) ||
+                            // Too many open files - can't make more sockets, not much we can do:
+                            (e is ConnectException && errorMessage == "Too many open files") ||
+                            (e is ConnectException && errorMessage.contains("EMFILE")) ||
+                            // IPv6 is not supported here yet:
                             (e is PacketHeaderException && errorMessage.contains("IP version should be 4 but was 6"))
 
                         if (!isIgnorable) {
