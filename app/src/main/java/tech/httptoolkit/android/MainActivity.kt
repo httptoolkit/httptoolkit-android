@@ -105,6 +105,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         Log.i(TAG, "Main activity created")
 
+        if (
+            // Should the real value later on
+            Build.VERSION.RELEASE == "14" ||
+            Build.VERSION.RELEASE == "15" || // Reasonable guess for the future
+            // Or, while it's still in beta:
+            Build.VERSION.RELEASE_OR_CODENAME == "UpsideDownCake"
+        ) {
+            val hasSeenWarningAlready = app.popAndroid14WarningState()
+            if (!hasSeenWarningAlready) showAndroid14Alert()
+        }
+
         // Are we being opened by an intent? I.e. a barcode scan/URL elsewhere on the device
         if (intent != null) {
             onNewIntent(intent)
@@ -934,6 +945,22 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
                 }
             }
+            .show()
+    }
+
+    private fun showAndroid14Alert() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("System interception is not available on Android 14+")
+            .setIcon(R.drawable.ic_exclamation_triangle)
+            .setMessage(
+                "Android 14 includes some changes which make system interception impossible." +
+                "\n\n" +
+                "This is a general issue that blocks system interception by HTTP Toolkit and all " +
+                "similar tools." +
+                "\n\n" +
+                "To use system interception, you will need to use Android 13 or older."
+            )
+            .setNeutralButton("Ok") { _, _ -> }
             .show()
     }
 
