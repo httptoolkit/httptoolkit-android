@@ -106,11 +106,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, "Main activity created")
 
         if (
-            // Should the real value later on
+            // Should be the real value later on
             Build.VERSION.RELEASE == "14" ||
             Build.VERSION.RELEASE == "15" || // Reasonable guess for the future
-            // Or, while it's still in beta:
-            Build.VERSION.RELEASE_OR_CODENAME == "UpsideDownCake"
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                // Or, while it's still in beta:
+                Build.VERSION.RELEASE_OR_CODENAME == "UpsideDownCake"
+            )
         ) {
             val hasSeenWarningAlready = app.popAndroid14WarningState()
             if (!hasSeenWarningAlready) showAndroid14Alert()
