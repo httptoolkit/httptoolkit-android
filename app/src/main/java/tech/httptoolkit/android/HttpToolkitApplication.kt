@@ -26,7 +26,6 @@ private const val VPN_START_TIME_PREF = "vpn-start-time"
 private const val LAST_UPDATE_CHECK_TIME_PREF = "update-check-time"
 private const val APP_CRASHED_PREF = "app-crashed"
 private const val FIRST_RUN_PREF = "is-first-run"
-private const val SEEN_ANDROID_14_WARNING_PREF = "seen-android-14-warning"
 
 private val isProbablyEmulator =
         Build.FINGERPRINT.startsWith("generic")
@@ -95,17 +94,6 @@ class HttpToolkitApplication : Application() {
                 this.vpnWasKilled = false
                 this.vpnShouldBeRunning = false
             }
-    }
-
-    /**
-     * Check if the Android 14 warning has already been seen. This returns the value,
-     * and sets it to true if it was not already, so this will only return 'false'
-     * the first time it is ever called.
-     */
-    fun popAndroid14WarningState(): Boolean {
-        val hasSeenWarning = prefs.getBoolean(SEEN_ANDROID_14_WARNING_PREF, false)
-        prefs.edit().putBoolean(SEEN_ANDROID_14_WARNING_PREF, true).apply()
-        return hasSeenWarning
     }
 
     /**
