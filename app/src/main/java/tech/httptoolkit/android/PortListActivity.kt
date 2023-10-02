@@ -12,7 +12,7 @@ import java.util.*
 val DEFAULT_PORTS = setOf(
     80, // HTTP
     443, // HTTPS
-    8000, 8080, 8888, 9000 // Common local dev ports
+    4443, 8000, 8080, 8443, 8888, 9000 // Common local dev/testing ports
 )
 
 const val MIN_PORT = 1
