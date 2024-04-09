@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="guide_line_percent" format="float" type="integer">0.06</item>
+</resources>
