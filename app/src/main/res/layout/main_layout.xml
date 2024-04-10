@@ -11,7 +11,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.18" />
+            app:layout_constraintGuide_percent="@integer/guide_line_percent" />
 
     <ImageView
             android:id="@+id/logoImage"
@@ -36,10 +36,9 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"/>
 
-    <LinearLayout
-            android:id="@+id/statusDetailContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_marginTop="16dp"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
@@ -47,7 +46,15 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/statusText"
-            android:orientation="vertical" />
+            app:layout_constraintBottom_toTopOf="@+id/materialCardView">
+
+        <LinearLayout
+                android:id="@+id/statusDetailContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+    </ScrollView>
 
     <com.google.android.material.card.MaterialCardView
             android:id="@+id/materialCardView"
