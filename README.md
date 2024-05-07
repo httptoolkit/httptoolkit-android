@@ -1,6 +1,6 @@
 # httptoolkit-android
 
-Automatic interception of Android HTTP with [HTTP Toolkit](https://httptoolkit.tech/android), for inspection, debugging & mocking.
+Automatic interception of Android HTTP with [HTTP Toolkit](https://httptoolkit.com/android), for inspection, debugging & mocking.
 
 Looking to file bugs, request features or send feedback? File an issue or vote on existing ones at [github.com/httptoolkit/feedback](https://github.com/httptoolkit/feedback).
 

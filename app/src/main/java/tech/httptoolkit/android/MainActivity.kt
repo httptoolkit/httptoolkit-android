@@ -427,7 +427,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun openDocs() {
-        launchBrowser("httptoolkit.tech/docs/guides/android")
+        launchBrowser("httptoolkit.com/docs/guides/android")
     }
 
     private fun chooseApps() {

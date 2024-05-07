@@ -25,7 +25,7 @@
     <string name="pre_v7_connection_status_enabled_heading">Certificate trusted</string>
 
     <string name="none_connection_status_details">Your HTTP Toolkit certificate is not trusted on this device, so HTTPS traffic will only be available from apps that individually include and trust it.\n\nDisconnect and reconnect to rerun HTTPS certificate setup.</string>
-    <string name="user_connection_status_details">HTTPS interception will only be available for apps that are configured to trust user-installed certificates (<a href="https://httptoolkit.tech/docs/guides/android#intercepting-traffic-from-your-own-android-app">How?</a>)</string>
+    <string name="user_connection_status_details">HTTPS interception will only be available for apps that are configured to trust user-installed certificates (<a href="https://httptoolkit.com/docs/guides/android#intercepting-traffic-from-your-own-android-app">How?</a>)</string>
     <string name="system_connection_status_details">Traffic from all intercepted applications will be available, except those using explicit certificate pinning.</string>
     <string name="pre_v7_connection_status_details">Traffic from all intercepted applications will be available, except those using explicit certificate pinning.</string>
 
