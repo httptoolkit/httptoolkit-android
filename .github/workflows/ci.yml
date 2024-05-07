@@ -36,8 +36,15 @@ jobs:
           name: unsigned-app.apk
           path: .
 
-      - uses: r0adkll/sign-android-release@v1
-        name: Sign the APK
+      - name: Detect latest build tool version
+        shell: bash
+        run: |
+          BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
+          echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
+          echo Latest build tool version is: $BUILD_TOOL_VERSION
+
+      - name: Sign the APK
+        uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
           releaseDirectory: .
@@ -45,6 +52,8 @@ jobs:
           alias: ${{ secrets.SIGNING_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
 
       - name: Publish the APK to GitHub Releases
         uses: svenstaro/upload-release-action@v2
