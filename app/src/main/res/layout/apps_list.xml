@@ -11,7 +11,8 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="16dp"
             android:layout_marginRight="16dp"
-            app:cardBackgroundColor="#FFFFFF"
+
+            app:cardBackgroundColor="@color/textInputBackground"
             app:cardCornerRadius="2dp"
             app:cardElevation="4dp"
             app:cardUseCompatPadding="true">
@@ -26,6 +27,8 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
+                    android:textColor="@color/textInputColor"
+                    android:textColorHint="@color/textInputPlaceholderColor"
                     android:hint="@string/all_applications"
                     android:padding="16dp"
                     android:textSize="18sp"
@@ -37,6 +40,7 @@
                     android:layout_height="wrap_content"
                     android:id="@+id/apps_list_more_menu"
                     android:padding="16dp"
+                    app:tint="@color/textInputColor"
                     app:srcCompat="@drawable/ic_baseline_more_vert_24"
                     tools:ignore="ContentDescription" />
         </LinearLayout>

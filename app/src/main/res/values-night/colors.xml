@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="textColor">#1e2028</color>
+    <color name="textColor">#ffffff</color>
     <color name="popColor">#e1421f</color>
-    <color name="lowLightColor">#818490</color>
+    <color name="lowLightColor">#9a9da8</color>
 
     <color name="successColor">#4caf7d</color>
     <color name="warningColor">#f1971f</color>
 
-    <color name="containerBackground">#e4e8ed</color>
-    <color name="mainBackground">#fafafa</color>
+    <color name="containerBackground">#1e2028</color>
+    <color name="mainBackground">#32343b</color>
 
     <color name="primaryInputBackground">#2d4cbd</color>
     <color name="primaryInputColor">#ffffff</color>
 
-    <color name="textInputBackground">#ffffff</color>
-    <color name="textInputColor">#1e2028</color>
-    <color name="textInputPlaceholderColor">#53565e</color>
+    <color name="textInputBackground">#16181e</color>
+    <color name="textInputColor">#ffffff</color>
+    <color name="textInputPlaceholderColor">#818490</color>
 
     <color name="transparent">#00000000</color>
 </resources>
