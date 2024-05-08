@@ -14,7 +14,7 @@
     <color name="primaryInputBackground">#2d4cbd</color>
     <color name="primaryInputColor">#ffffff</color>
 
-    <color name="textInputBackground">#ffffff</color>
+    <color name="textInputBackground">#fafafa</color>
     <color name="textInputColor">#1e2028</color>
     <color name="textInputPlaceholderColor">#53565e</color>
 
