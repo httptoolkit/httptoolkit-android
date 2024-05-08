@@ -24,6 +24,7 @@
             android:layout_toEndOf="@id/row_app_icon_image"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
+            android:textColor="@color/textColor"
             tools:text="@tools:sample/full_names" />
 
     <TextView
@@ -37,6 +38,7 @@
             android:maxLines="2"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
+            android:textColor="@color/textColor"
             tools:text="@tools:sample/lorem/random" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial

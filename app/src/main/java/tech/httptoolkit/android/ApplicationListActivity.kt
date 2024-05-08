@@ -9,6 +9,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.widget.doAfterTextChanged
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import kotlinx.android.synthetic.main.apps_list.*
@@ -146,7 +147,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.apps_list_more_menu -> {
-                PopupMenu(this, apps_list_more_menu).apply {
+                PopupMenu(ContextThemeWrapper(this, R.style.PopupMenu), apps_list_more_menu).apply {
                     this.inflate(R.menu.menu_app_list)
                     this.menu.findItem(R.id.action_show_system).isChecked = showSystem
                     this.menu.findItem(R.id.action_show_enabled).isChecked = showEnabledOnly

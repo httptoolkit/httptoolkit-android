@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.widget.doAfterTextChanged
 import kotlinx.android.synthetic.main.ports_list.*
 import kotlinx.coroutines.*
@@ -55,7 +56,7 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         // Show the menu, and listen for clicks:
         ports_list_more_menu.setOnClickListener {
-            PopupMenu(this, ports_list_more_menu).apply {
+            PopupMenu(ContextThemeWrapper(this, R.style.PopupMenu), ports_list_more_menu).apply {
                 this.inflate(R.menu.menu_ports_list)
 
                 this.menu.findItem(R.id.action_reset_ports).isEnabled =
