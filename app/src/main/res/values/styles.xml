@@ -1,21 +1,33 @@
 <resources>
 
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:textColor">@color/textColor</item>
-        <item name="android:windowBackground">@color/containerBackground</item>
+        <item name="android:textColorLink">@color/linkTextColor</item>
 
-        <item name="android:fontFamily">@font/lato</item>
+        <item name="android:windowBackground">@color/containerBackground</item>
+        <item name="android:colorBackground">@color/mainBackground</item>
+        <item name="android:statusBarColor">@color/containerBackground</item>
+        <item name="colorSurface">@color/containerBackground</item>
+
+        <item name="colorPrimary">@color/primaryInputBackground</item>
+        <item name="colorPrimaryDark">@color/primaryInputBackground</item>
+        <item name="colorPrimaryVariant">@color/primaryInputBackground</item>
+
+        <item name="colorOnPrimary">@color/primaryInputColor</item>
+        <item name="colorOnBackground">@color/textColor</item>
+        <item name="colorOnSurface">@color/textColor</item>
+
+        <item name="android:fontFamily">@font/dmsans</item>
         <item name="android:textStyle">normal</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0</item>
-
-        <item name="colorPrimary">@color/primaryInputBackground</item>
-        <item name="android:statusBarColor">@color/containerBackground</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogTheme</item>
     </style>
 
     <style name="StatusText" parent="@android:style/Widget.TextView">
         <item name="android:textSize">40sp</item>
-        <item name="android:fontFamily">@font/lato_bold</item>
+        <item name="android:fontFamily">@font/dmsans_bold</item>
+        <item name="android:letterSpacing">-0.05</item>
     </style>
 
     <style name="DetailText" parent="@android:style/Widget.TextView">
@@ -53,7 +65,7 @@
     <style name="PrimaryButton" parent="@style/Widget.MaterialComponents.Button">
         <item name="android:radius">10dp</item>
         <item name="android:textColor">@color/primaryInputColor</item>
-        <item name="android:fontFamily">@font/lato_bold</item>
+        <item name="android:fontFamily">@font/dmsans_bold</item>
 
         <item name="android:paddingTop">10dp</item>
         <item name="android:paddingBottom">10dp</item>
@@ -74,13 +86,14 @@
     </style>
 
     <style name="ConnectionStatusCard" parent="@style/Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/mainBackground</item>
         <item name="cardElevation">0dp</item>
         <item name="contentPadding">10dp</item>
         <item name="android:layout_marginBottom">10dp</item>
     </style>
 
     <style name="ConnectionStatusButton" parent="@style/ConnectionStatusCard">
-        <item name="cardBackgroundColor">@color/transparent</item>
+        <item name="cardBackgroundColor">@color/containerBackground</item>
         <item name="strokeWidth">1dp</item>
         <item name="strokeColor">@color/lowLightColor</item>
         <item name="android:textSize">12sp</item>
@@ -102,7 +115,7 @@
         <item name="android:gravity">center</item>
         <item name="android:drawablePadding">10dp</item>
         <item name="android:textSize">14sp</item>
-        <item name="android:fontFamily">@font/lato_bold</item>
+        <item name="android:fontFamily">@font/dmsans_bold</item>
         <item name="android:textAlignment">textStart</item>
         <item name="android:textAllCaps">true</item>
         <item name="android:textColor">@color/lowLightColor</item>
@@ -116,6 +129,15 @@
 
     <style name="ConnectionStatusButtonText" parent="@style/ConnectionStatusHeading">
         <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="AlertDialogTheme" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="colorPrimary">@color/textColor</item>
+    </style>
+
+    <style name="PopupMenu" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:background">@color/mainBackground</item>
+        <item name="android:textColor">@color/textColor</item>
     </style>
 
 </resources>
