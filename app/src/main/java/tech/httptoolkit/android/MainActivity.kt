@@ -361,6 +361,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                             onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
                         }
                     }
+                    .setNegativeButton("Continue without certificate") { _, _ ->
+                        onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
+                    }
                     .show()
             }
         } else if (vpnNotConfigured) {
