@@ -9,8 +9,8 @@ android {
         applicationId "tech.httptoolkit.android.v1"
         minSdkVersion 21
         targetSdkVersion 33
-        versionCode 33
-        versionName "1.4.0"
+        versionCode 34
+        versionName "1.4.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
