@@ -43,6 +43,7 @@ import java.security.cert.X509Certificate
 
 
 const val START_VPN_REQUEST = 123
+const val START_VPN_REQUEST_NO_CERT = 124
 const val INSTALL_CERT_REQUEST = 456
 const val SCAN_REQUEST = 789
 const val PICK_APPS_REQUEST = 499
@@ -361,6 +362,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                             onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
                         }
                     }
+                    .setNegativeButton("Continue without certificate") { _, _ ->
+                        if (vpnNotConfigured) {
+                            startActivityForResult(vpnIntent, START_VPN_REQUEST_NO_CERT)
+                        } else {
+                            onActivityResult(START_VPN_REQUEST_NO_CERT, RESULT_OK, null)
+                        }
+                    }
                     .show()
             }
         } else if (vpnNotConfigured) {
@@ -497,6 +505,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, "onActivityResult: " + (
                 when (requestCode) {
                     START_VPN_REQUEST -> "start-vpn"
+                    START_VPN_REQUEST_NO_CERT -> "start-vpn-nocrt"
                     INSTALL_CERT_REQUEST -> "install-cert"
                     SCAN_REQUEST -> "scan-request"
                     PICK_APPS_REQUEST -> "pick-apps"
@@ -513,6 +522,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             if (requestCode == START_VPN_REQUEST && currentProxyConfig != null) {
                 Log.i(TAG, "Installing cert...")
                 ensureCertificateTrusted(currentProxyConfig!!)
+            } else if (requestCode == START_VPN_REQUEST_NO_CERT && currentProxyConfig != null) {
+                Log.i(TAG, "Ignore cert...")
+                onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
             } else if (requestCode == INSTALL_CERT_REQUEST) {
                 Log.i(TAG ,"Cert installed, checking notification perms...")
                 ensureNotificationsEnabled()
