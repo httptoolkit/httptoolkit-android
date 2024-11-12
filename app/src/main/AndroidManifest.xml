@@ -33,7 +33,8 @@
             android:supportsRtl="true"
             android:theme="@style/AppTheme"
             tools:targetApi="m" android:usesCleartextTraffic="true"
-            android:largeHeap="true">
+            android:largeHeap="true"
+            android:banner="@drawable/ic_tv_banner">
         <service
             android:name=".ProxyVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"
