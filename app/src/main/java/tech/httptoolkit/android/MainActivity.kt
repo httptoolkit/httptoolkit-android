@@ -238,11 +238,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         when (mainState) {
             MainState.DISCONNECTED -> {
                 statusText.setText(R.string.disconnected_status)
-
-                detailContainer.addView(detailText(R.string.disconnected_details))
-
                 buttonContainer.visibility = View.VISIBLE
-                buttonContainer.addView(primaryButton(R.string.scan_button, ::scanCode))
+
+                val hasCamera = this.packageManager
+                    .hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+
+                if (hasCamera) {
+                    detailContainer.addView(detailText(R.string.disconnected_details))
+                    val scanQrButton = primaryButton(R.string.scan_button, ::scanCode)
+                    buttonContainer.addView(scanQrButton)
+                } else {
+                    detailContainer.addView(detailText(R.string.disconnected_no_camera_details))
+                }
 
                 val lastProxy = app.lastProxy
                 if (lastProxy != null) {
