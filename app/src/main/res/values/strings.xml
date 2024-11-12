@@ -11,8 +11,8 @@
     <string name="connected_status">Connected</string>
     <string name="failed_status">Oh no!</string>
 
-    <string name="disconnected_details">To intercept this device, start HTTP Toolkit on your computer, and activate Android interception there via QR code or using ADB.
-    </string>
+    <string name="disconnected_details">To intercept this device, start HTTP Toolkit on your computer, and activate Android interception there via QR code or using ADB.</string>
+    <string name="disconnected_no_camera_details">To intercept this device, start HTTP Toolkit on your computer, and activate Android interception there using the ADB or Frida options.</string>
 
     <string name="connected_details">to %s on port %d</string>
     <string name="connected_tunnel_details">via ADB tunnel</string>
