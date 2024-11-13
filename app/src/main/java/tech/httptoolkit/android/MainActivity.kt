@@ -237,11 +237,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         when (mainState) {
             MainState.DISCONNECTED -> {
                 statusText.setText(R.string.disconnected_status)
-
-                detailContainer.addView(detailText(R.string.disconnected_details))
-
                 buttonContainer.visibility = View.VISIBLE
-                buttonContainer.addView(primaryButton(R.string.scan_button, ::scanCode))
+
+                val hasCamera = this.packageManager
+                    .hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+
+                if (hasCamera) {
+                    detailContainer.addView(detailText(R.string.disconnected_details))
+                    val scanQrButton = primaryButton(R.string.scan_button, ::scanCode)
+                    buttonContainer.addView(scanQrButton)
+                } else {
+                    detailContainer.addView(detailText(R.string.disconnected_no_camera_details))
+                }
 
                 val lastProxy = app.lastProxy
                 if (lastProxy != null) {
@@ -335,41 +342,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
         val vpnNotConfigured = vpnIntent != null
 
-        if (whereIsCertTrusted(config) == null && PROMPTED_CERT_SETUP_SUPPORTED) {
-            // The cert isn't trusted, and the VPN may need setup, so there'll be a series of prompts
-            // here. Explain them beforehand, so users understand what's going on.
-            withContext(Dispatchers.Main) {
-                MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle("Enable interception")
-                    .setIcon(R.drawable.ic_info_circle)
-                    .setMessage(
-                        "To intercept traffic from this device, you need to " +
-                        (if (vpnNotConfigured) "activate HTTP Toolkit's VPN and " else "") +
-                        "trust your HTTP Toolkit's certificate authority. " +
-                        "\n\n" +
-                        "Please accept the following prompts to allow this." +
-                        if (!isDeviceSecured(applicationContext))
-                            "\n\n" +
-                            "Due to Android security requirements, trusting the certificate will " +
-                            "require you to set a PIN, password or pattern for this device."
-                        else " To trust the certificate, your device PIN will be required."
-                    )
-                    .setPositiveButton("Ok") { _, _ ->
-                        if (vpnNotConfigured) {
-                            startActivityForResult(vpnIntent, START_VPN_REQUEST)
-                        } else {
-                            onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
-                        }
-                    }
-                    .show()
-            }
-        } else if (vpnNotConfigured) {
-            // In this case the VPN needs setup, but the cert is trusted already, so it's
-            // a single confirmation. Pretty clear, no need to explain. This happens if the
-            // VPN/app was removed from the device in the past, or when using injected system certs.
+        if (vpnNotConfigured) {
+            // Show the 'Enable the VPN' prompt
             startActivityForResult(vpnIntent, START_VPN_REQUEST)
         } else {
-            // VPN is trusted & cert setup already, lets get to it.
+            // VPN is trusted already, continue
             onActivityResult(START_VPN_REQUEST, RESULT_OK, null)
         }
 
@@ -637,23 +614,53 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         if (existingTrust == null) {
             Log.i(TAG, "Certificate not trusted, prompting to install")
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // Android 11+, with no trusted cert: we need to download the cert to Downloads and
-                // then tell the user how to install it manually:
-                launch { promptToManuallyInstallCert(proxyConfig.certificate) }
-            } else {
+            if (PROMPTED_CERT_SETUP_SUPPORTED) {
                 // Up until Android 11, we can prompt the user to install the CA cert into the user
                 // CA store. Notably, if the cert is already installed as a system cert but
                 // disabled, this will get triggered, and will enable the cert, rather than adding
                 // a normal user cert.
-                val certInstallIntent = KeyChain.createInstallIntent()
-                certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
-                certInstallIntent.putExtra(EXTRA_CERTIFICATE, proxyConfig.certificate.encoded)
-                startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
+                launch { promptToAutoInstallCert(proxyConfig.certificate) }
+            } else {
+                // Android 11+, with no trusted cert: we need to download the cert to Downloads and
+                // then tell the user how to install it manually:
+                launch { promptToManuallyInstallCert(proxyConfig.certificate) }
             }
         } else {
             Log.i(TAG, "Certificate already trusted, continuing")
             onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
+        }
+    }
+
+    private suspend fun promptToAutoInstallCert(certificate: Certificate) {
+        withContext(Dispatchers.Main) {
+            MaterialAlertDialogBuilder(this@MainActivity)
+                .setTitle("Enable HTTPS interception")
+                .setIcon(R.drawable.ic_info_circle)
+                .setMessage(
+                    "To intercept HTTPS traffic from this device, you need to " +
+                    "trust your HTTP Toolkit's certificate authority. " +
+                    "\n\n" +
+                    "Please accept the following prompts to allow this." +
+                    if (!isDeviceSecured(applicationContext))
+                        "\n\n" +
+                        "Due to Android security requirements, trusting the certificate will " +
+                        "require you to set a PIN, password or pattern for this device."
+                    else " To trust the certificate, your device PIN will be required."
+                )
+                .setPositiveButton("Install") { _, _ ->
+                    val certInstallIntent = KeyChain.createInstallIntent()
+                    certInstallIntent.putExtra(EXTRA_NAME, "HTTP Toolkit CA")
+                    certInstallIntent.putExtra(EXTRA_CERTIFICATE, certificate.encoded)
+                    startActivityForResult(certInstallIntent, INSTALL_CERT_REQUEST)
+                }
+                .setNeutralButton("Skip") { _, _ ->
+                    onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
+                }
+                .setNegativeButton("Cancel") { _, _ ->
+                    disconnect()
+                }
+                .setCancelable(false)
+                .show()
         }
     }
 
@@ -694,7 +701,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     Html.fromHtml(
                     """
                         <p>
-                            Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup.
+                            ${
+                                if (PROMPTED_CERT_SETUP_SUPPORTED)
+                                    "Automatic certificate installation failed, so it must be done manually."
+                                else
+                                    "Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup."
+                            }
                         </p>
                         <p>
                             To allow HTTP Toolkit to intercept HTTPS traffic:
@@ -720,6 +732,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 )
                 .setPositiveButton("Open security settings") { _, _ ->
                     startActivityForResult(Intent(Settings.ACTION_SECURITY_SETTINGS), INSTALL_CERT_REQUEST)
+                }
+                .setNeutralButton("Skip") { _, _ ->
+                    onActivityResult(INSTALL_CERT_REQUEST, RESULT_OK, null)
                 }
                 .setNegativeButton("Cancel") { _, _ ->
                     disconnect()
