@@ -16,13 +16,22 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Build release
+      - name: Build release APK
         run: ./gradlew assembleRelease
+
+      - name: Build release AAB
+        run: ./gradlew bundleRelease
 
       - uses: actions/upload-artifact@v4
         with:
           name: unsigned-app.apk
           path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-app.aab
+          path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
   deploy:
@@ -37,6 +46,13 @@ jobs:
           name: unsigned-app.apk
           path: .
 
+
+      - name: Get the AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: unsigned-app.aab
+          path: .
+
       - name: Detect latest build tool version
         shell: bash
         run: |
@@ -44,7 +60,7 @@ jobs:
           echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
           echo Latest build tool version is: $BUILD_TOOL_VERSION
 
-      - name: Sign the APK
+      - name: Sign the APK & AAB
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
@@ -56,19 +72,27 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
 
-      - name: Publish the APK to GitHub Releases
+      - name: List release files
+        run: ls -l
+
+      - name: Rename release files
+        run: |
+          mv ./app-release-unsigned-signed.apk ./httptoolkit.apk
+          mv ./app-release.aab ./httptoolkit.aab
+
+      - name: Publish the APK & AAB to GitHub Releases
         uses: svenstaro/upload-release-action@v2
         with:
           prerelease: true
-          asset_name: httptoolkit.apk
-          file: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          file: ./httptoolkit{.apk,.aab}
+          file_glob: true
           tag: ${{ github.ref }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish the APK to Google Play
-        uses: r0adkll/upload-google-play@v1.0.15
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: tech.httptoolkit.android.v1
-          releaseFiles: ${{ steps.sign_app.outputs.signedReleaseFile }}
-          track: production
+      # - name: Publish the AAB to Google Play
+      #   uses: r0adkll/upload-google-play@v1.0.15
+      #   with:
+      #     serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      #     packageName: tech.httptoolkit.android.v1
+      #     releaseFiles: ${{ steps.sign_app.outputs.signedReleaseFile1 }}
+      #     track: production
