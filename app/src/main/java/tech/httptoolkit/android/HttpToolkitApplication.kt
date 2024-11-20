@@ -10,7 +10,6 @@ import com.android.installreferrer.api.InstallReferrerClient.InstallReferrerResp
 import com.android.installreferrer.api.InstallReferrerStateListener
 import com.beust.klaxon.Klaxon
 import io.sentry.Sentry
-import io.sentry.android.AndroidSentryClientFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.swiftzer.semver.SemVer
@@ -67,17 +66,13 @@ class HttpToolkitApplication : Application() {
             prefs.edit().putBoolean(APP_CRASHED_PREF, true).apply()
         }
 
-        if (BuildConfig.SENTRY_DSN != null) {
-            Sentry.init(BuildConfig.SENTRY_DSN, AndroidSentryClientFactory(this))
-        }
-
         // Check if we've been recreated unexpectedly, with no crashes in the meantime:
         val appCrashed = prefs.getBoolean(APP_CRASHED_PREF, false)
         prefs.edit().putBoolean(APP_CRASHED_PREF, false).apply()
 
         vpnWasKilled = vpnShouldBeRunning && !isVpnActive() && !appCrashed && !isProbablyEmulator
         if (vpnWasKilled) {
-            Sentry.capture("VPN killed in the background")
+            Sentry.captureMessage("VPN killed in the background")
             // The UI will show an alert next time the MainActivity is created.
         }
 
@@ -293,7 +288,7 @@ private fun tryParseSemver(version: String?): SemVer? = try {
 
 private fun getInstalledVersion(context: Context): SemVer {
     return SemVer.parse(
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName!!
     )
 }
 

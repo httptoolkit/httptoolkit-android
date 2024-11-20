@@ -8,12 +8,13 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
 import android.widget.PopupMenu
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.widget.doAfterTextChanged
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import kotlinx.android.synthetic.main.apps_list.*
 import kotlinx.coroutines.*
+import tech.httptoolkit.android.databinding.AppsListBinding
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -22,6 +23,8 @@ const val UNSELECTED_APPS_EXTRA = "tech.httptoolkit.android.UNSELECTED_APPS_EXTR
 
 class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefreshListener,
     CoroutineScope by MainScope(), PopupMenu.OnMenuItemClickListener, View.OnClickListener {
+
+    private lateinit var binding: AppsListBinding
 
     private val allApps = ArrayList<PackageInfo>()
     private val filteredApps = ArrayList<PackageInfo>()
@@ -34,31 +37,43 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.apps_list)
 
         blockedPackages = intent.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toHashSet()
 
-        apps_list_recyclerView.adapter =
+        binding = AppsListBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.appsListRecyclerView.adapter =
             ApplicationListAdapter(
                 filteredApps,
                 ::isAppEnabled,
                 ::setAppEnabled
             )
-        apps_list_swipeRefreshLayout.setOnRefreshListener(this)
-        apps_list_more_menu.setOnClickListener(this)
+        binding.appsListSwipeRefreshLayout.setOnRefreshListener(this)
+        binding.appsListMoreMenu.setOnClickListener(this)
 
-        apps_list_filterEditText.doAfterTextChanged {
+        binding.appsListFilterEditText.doAfterTextChanged {
             textFilter = it.toString()
             applyFilters()
         }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                setResult(RESULT_OK, Intent().putExtra(
+                    UNSELECTED_APPS_EXTRA,
+                    blockedPackages.toTypedArray()
+                ))
+                finish()
+            }
+        })
 
         onRefresh()
     }
 
     override fun onRefresh() {
         launch(Dispatchers.Main) {
-            if (apps_list_swipeRefreshLayout.isRefreshing.not()) {
-                apps_list_swipeRefreshLayout.isRefreshing = true
+            if (binding.appsListSwipeRefreshLayout.isRefreshing.not()) {
+                binding.appsListSwipeRefreshLayout.isRefreshing = true
             }
 
             val apps = loadAllApps()
@@ -66,18 +81,18 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
             allApps.addAll(apps)
             applyFilters()
 
-            apps_list_swipeRefreshLayout.isRefreshing = false
+            binding.appsListSwipeRefreshLayout.isRefreshing = false
         }
     }
 
     private fun applyFilters() {
         filteredApps.clear()
         filteredApps.addAll(allApps.filter(::matchesFilters))
-        apps_list_recyclerView.adapter?.notifyDataSetChanged()
+        binding.appsListRecyclerView.adapter?.notifyDataSetChanged()
     }
 
     private fun matchesFilters(app: PackageInfo): Boolean {
-        val appInfo = app.applicationInfo
+        val appInfo = app.applicationInfo ?: return false
         val appLabel = AppLabelCache.getAppLabel(packageManager, appInfo)
         val isSystemApp = appInfo.flags and ApplicationInfo.FLAG_SYSTEM == 1
 
@@ -103,13 +118,14 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
 
     private suspend fun loadAllApps(): List<PackageInfo> =
         withContext(Dispatchers.IO) {
-            return@withContext packageManager.getInstalledPackages(PackageManager.GET_META_DATA).apply {
-                sortBy { pkg ->
-                    AppLabelCache.getAppLabel(packageManager, pkg.applicationInfo).toUpperCase(
+            return@withContext packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+                .filter { pkg ->
+                    pkg.applicationInfo != null
+                }.sortedBy { pkg ->
+                    AppLabelCache.getAppLabel(packageManager, pkg.applicationInfo!!).toUpperCase(
                         Locale.getDefault()
                     )
                 }
-            }
         }
 
     override fun onMenuItemClick(item: MenuItem?): Boolean {
@@ -136,7 +152,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                 if (showEnabledOnly) {
                     applyFilters()
                 } else {
-                    apps_list_recyclerView.adapter?.notifyDataSetChanged()
+                    binding.appsListRecyclerView.adapter?.notifyDataSetChanged()
                 }
                 true
             }
@@ -147,7 +163,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.apps_list_more_menu -> {
-                PopupMenu(ContextThemeWrapper(this, R.style.PopupMenu), apps_list_more_menu).apply {
+                PopupMenu(ContextThemeWrapper(this, R.style.PopupMenu), binding.appsListMoreMenu).apply {
                     this.inflate(R.menu.menu_app_list)
                     this.menu.findItem(R.id.action_show_system).isChecked = showSystem
                     this.menu.findItem(R.id.action_show_enabled).isChecked = showEnabledOnly
@@ -161,13 +177,5 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                 }.show()
             }
         }
-    }
-
-    override fun onBackPressed() {
-        setResult(RESULT_OK, Intent().putExtra(
-            UNSELECTED_APPS_EXTRA,
-            blockedPackages.toTypedArray()
-        ))
-        finish()
     }
 }

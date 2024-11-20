@@ -2,22 +2,23 @@ package tech.httptoolkit.android
 
 import android.content.pm.PackageInfo
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.android.synthetic.main.item_app_row.view.*
+import tech.httptoolkit.android.databinding.ItemAppRowBinding
 
 class ApplicationListAdapter(
     private val data: MutableList<PackageInfo>,
     private val isAppWhitelisted: (PackageInfo) -> Boolean,
     private val onCheckChanged: (PackageInfo, Boolean) -> Unit
-) :
-    RecyclerView.Adapter<ApplicationListAdapter.AppsViewHolder>() {
+) : RecyclerView.Adapter<ApplicationListAdapter.AppsViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppsViewHolder {
-        return AppsViewHolder(
-            LayoutInflater.from(parent.context).inflate(R.layout.item_app_row, parent, false)
+        val binding = ItemAppRowBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
         )
+        return AppsViewHolder(binding)
     }
 
     override fun getItemCount() = data.size
@@ -26,23 +27,25 @@ class ApplicationListAdapter(
         holder.bind(data[position])
     }
 
-    inner class AppsViewHolder(v: View) : RecyclerView.ViewHolder(v) {
+    inner class AppsViewHolder(
+        private val binding: ItemAppRowBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
         private val packageManager by lazy {
             itemView.context.packageManager
         }
 
         init {
-            itemView.row_app_switch.setOnCheckedChangeListener { _, isChecked ->
+            binding.rowAppSwitch.setOnCheckedChangeListener { _, isChecked ->
                 onCheckChanged(data[layoutPosition], isChecked)
             }
         }
 
         fun bind(packageInfo: PackageInfo) {
-            val appInfo = packageInfo.applicationInfo
-            itemView.row_app_icon_image.setImageDrawable(appInfo.loadIcon(packageManager))
-            itemView.row_app_name.text = AppLabelCache.getAppLabel(packageManager, appInfo)
-            itemView.row_app_package_name.text = packageInfo.packageName
-            itemView.row_app_switch.isChecked = isAppWhitelisted(packageInfo)
+            val appInfo = packageInfo.applicationInfo!!
+            binding.rowAppIconImage.setImageDrawable(appInfo.loadIcon(packageManager))
+            binding.rowAppName.text = AppLabelCache.getAppLabel(packageManager, appInfo)
+            binding.rowAppPackageName.text = packageInfo.packageName
+            binding.rowAppSwitch.isChecked = isAppWhitelisted(packageInfo)
         }
     }
 }

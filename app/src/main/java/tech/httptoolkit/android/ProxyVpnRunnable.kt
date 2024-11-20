@@ -95,7 +95,7 @@ class ProxyVpnRunnable(
                             (e is PacketHeaderException && errorMessage.contains("IP version should be 4 but was 6"))
 
                         if (!isIgnorable) {
-                            Sentry.capture(e)
+                            Sentry.captureException(e)
                         }
                     }
 

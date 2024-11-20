@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
         xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"
-        package="tech.httptoolkit.android">
+        xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
             tools:ignore="QueryAllPackagesPermission" />
@@ -19,9 +19,14 @@
             android:name="android.permission.WRITE_EXTERNAL_STORAGE"
             tools:node="remove" />
 
-    <uses-feature android:name="android.software.leanback"
+    <uses-feature
+            android:name="android.software.leanback"
             android:required="false" />
-    <uses-feature android:name="android.hardware.touchscreen"
+    <uses-feature
+            android:name="android.hardware.touchscreen"
+            android:required="false" />
+    <uses-feature
+            android:name="android.hardware.camera"
             android:required="false" />
 
     <application
@@ -37,6 +42,7 @@
             android:banner="@drawable/ic_tv_banner">
         <service
             android:name=".ProxyVpnService"
+            android:foregroundServiceType="dataSync"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -104,5 +110,8 @@
         <activity android:name=".PortListActivity" />
 
         <meta-data android:name="search-engine" android:resource="@xml/noindex" />
+
+        <meta-data android:name="io.sentry.enabled" android:value="${sentryEnabled}" />
+        <meta-data android:name="io.sentry.dsn" android:value="${sentryDsn}" />
     </application>
 </manifest>

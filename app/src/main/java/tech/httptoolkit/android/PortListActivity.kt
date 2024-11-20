@@ -3,11 +3,12 @@ package tech.httptoolkit.android
 import android.content.Intent
 import android.os.Bundle
 import android.widget.PopupMenu
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.widget.doAfterTextChanged
-import kotlinx.android.synthetic.main.ports_list.*
 import kotlinx.coroutines.*
+import tech.httptoolkit.android.databinding.PortsListBinding
 import java.util.*
 
 val DEFAULT_PORTS = setOf(
@@ -26,37 +27,41 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     private lateinit var ports: TreeSet<Int> // TreeSet = Mutable + Sorted
 
+    private lateinit var binding: PortsListBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.ports_list)
+
+        binding = PortsListBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         ports = intent.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!
             .toCollection(TreeSet())
 
-        ports_list_recyclerView.adapter =
+        binding.portsListRecyclerView.adapter =
             PortListAdapter(
                 ports,
                 ::deletePort
             )
 
-        ports_list_input.filters = arrayOf(MinMaxInputFilter(MIN_PORT, MAX_PORT))
+        binding.portsListInput.filters = arrayOf(MinMaxInputFilter(MIN_PORT, MAX_PORT))
 
         // Match the UI enabled state to the input field contents:
-        ports_list_add_button.isEnabled = false
-        ports_list_input.doAfterTextChanged {
-            ports_list_add_button.isEnabled = isValidInput(it.toString())
+        binding.portsListAddButton.isEnabled = false
+        binding.portsListInput.doAfterTextChanged {
+            binding.portsListAddButton.isEnabled = isValidInput(it.toString())
         }
 
         // Add ports when enter/+ is pressed/clicked:
-        ports_list_add_button.setOnClickListener { addEnteredPort() }
-        ports_list_input.setOnEditorActionListener { _, _, _ ->
+        binding.portsListAddButton.setOnClickListener { addEnteredPort() }
+        binding.portsListInput.setOnEditorActionListener { _, _, _ ->
             addEnteredPort()
             return@setOnEditorActionListener true
         }
 
         // Show the menu, and listen for clicks:
-        ports_list_more_menu.setOnClickListener {
-            PopupMenu(ContextThemeWrapper(this, R.style.PopupMenu), ports_list_more_menu).apply {
+        binding.portsListMoreMenu.setOnClickListener {
+            PopupMenu(ContextThemeWrapper(this, R.style.PopupMenu), binding.portsListMoreMenu).apply {
                 this.inflate(R.menu.menu_ports_list)
 
                 this.menu.findItem(R.id.action_reset_ports).isEnabled =
@@ -75,6 +80,16 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 }
             }.show()
         }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                setResult(RESULT_OK, Intent().putExtra(
+                    SELECTED_PORTS_EXTRA,
+                    ports.toIntArray()
+                ))
+                finish()
+            }
+        })
     }
 
     private fun isValidInput(input: String): Boolean =
@@ -82,10 +97,10 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         !ports.contains(input.toInt())
 
     private fun addEnteredPort() {
-        if (!isValidInput(ports_list_input.text.toString())) return
+        if (!isValidInput(binding.portsListInput.text.toString())) return
 
-        ports.add(ports_list_input.text.toString().toInt())
-        ports_list_input.text.clear()
+        ports.add(binding.portsListInput.text.toString().toInt())
+        binding.portsListInput.text.clear()
         updateList()
     }
 
@@ -95,14 +110,6 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun updateList() {
-        ports_list_recyclerView.adapter?.notifyDataSetChanged()
-    }
-
-    override fun onBackPressed() {
-        setResult(RESULT_OK, Intent().putExtra(
-            SELECTED_PORTS_EXTRA,
-            ports.toIntArray()
-        ))
-        finish()
+        binding.portsListRecyclerView.adapter?.notifyDataSetChanged()
     }
 }

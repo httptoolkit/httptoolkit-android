@@ -277,7 +277,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             vpnInterface?.close()
             vpnInterface = null
         } catch (e: IOException) {
-            Sentry.capture(e)
+            Sentry.captureException(e)
         }
 
         stopForeground(true)
@@ -296,7 +296,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
             vpnInterface?.close()
             vpnInterface = null
         } catch (e: IOException) {
-            Sentry.capture(e)
+            Sentry.captureException(e)
         }
 
         stopForeground(true)

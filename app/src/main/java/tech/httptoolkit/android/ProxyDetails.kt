@@ -2,11 +2,10 @@ package tech.httptoolkit.android
 
 import android.os.Parcelable
 import android.util.Base64
-import android.util.Log
 import com.beust.klaxon.Converter
 import com.beust.klaxon.Json
 import com.beust.klaxon.JsonValue
-import kotlinx.android.parcel.Parcelize
+import kotlinx.parcelize.Parcelize
 import java.io.ByteArrayInputStream
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory

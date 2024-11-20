@@ -392,7 +392,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
             // We report errors only that aren't simple connection failures
             if (e !is SocketTimeoutException && e !is ConnectException) {
-                Sentry.capture(e)
+                Sentry.captureException(e)
             }
         }
     }
@@ -544,7 +544,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             // ignored us) then try try again.
             requestNotificationPermission(true)
         } else {
-            Sentry.capture("Non-OK result $resultCode for requestCode $requestCode")
+            Sentry.captureMessage("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
             updateUi()
         }
@@ -599,7 +599,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
                 // We report errors only that aren't simple connection failures
                 if (e !is SocketTimeoutException && e !is ConnectException) {
-                    Sentry.capture(e)
+                    Sentry.captureException(e)
                 }
             }
         }

@@ -191,7 +191,7 @@ fun whereIsCertTrusted(proxyConfig: ProxyConfig): String? {
         proxyCertAliases.any { alias -> alias.startsWith("system:") } -> "system"
         proxyCertAliases.any { alias -> alias.startsWith("user:") } -> "user"
         else -> {
-            Sentry.capture("Cert has no recognizable aliases")
+            Sentry.captureMessage("Cert has no recognizable aliases")
             return "unknown-store"
         }
     }
