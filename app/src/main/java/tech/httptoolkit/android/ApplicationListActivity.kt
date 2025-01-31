@@ -16,10 +16,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import kotlinx.coroutines.*
 import tech.httptoolkit.android.databinding.AppsListBinding
 import java.util.*
-import kotlin.collections.ArrayList
-
-// Used to both to send and return the current list of selected apps
-const val UNSELECTED_APPS_EXTRA = "tech.httptoolkit.android.UNSELECTED_APPS_EXTRA"
 
 class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefreshListener,
     CoroutineScope by MainScope(), PopupMenu.OnMenuItemClickListener, View.OnClickListener {
@@ -38,8 +34,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        blockedPackages = intent.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toHashSet()
-
+        blockedPackages = intent.getStringArrayExtra(IntentExtras.UNSELECTED_APPS_EXTRA)!!.toHashSet()
         binding = AppsListBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -60,7 +55,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 setResult(RESULT_OK, Intent().putExtra(
-                    UNSELECTED_APPS_EXTRA,
+                    IntentExtras.UNSELECTED_APPS_EXTRA,
                     blockedPackages.toTypedArray()
                 ))
                 finish()

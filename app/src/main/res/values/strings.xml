@@ -54,4 +54,7 @@
     <string name="add_port_prompt">Add another port</string>
     <string name="reset_to_default_ports">Reset to default ports</string>
     <string name="port_config_explanation">HTTP Toolkit sets the device\'s HTTP proxy configuration, to capture traffic from all apps on any port, but some apps may ignore this.\n\nYou can add ports here to forcibly redirect all outgoing traffic to that port, but be careful, as this will interfere with any non-HTTP traffic on these ports.</string>
+    <string name="cancel">Cancel</string>
+    <string name="proceed">Proceed</string>
+    <string name="open_settings">Open Settings</string>
 </resources>

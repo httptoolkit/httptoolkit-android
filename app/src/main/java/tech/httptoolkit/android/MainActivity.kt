@@ -1,7 +1,6 @@
 package tech.httptoolkit.android
 
 import android.Manifest
-import android.app.Activity
 import android.app.NotificationManager
 import android.content.*
 import android.content.pm.PackageManager
@@ -44,9 +43,6 @@ import java.security.cert.X509Certificate
 
 const val START_VPN_REQUEST = 123
 const val INSTALL_CERT_REQUEST = 456
-const val SCAN_REQUEST = 789
-const val PICK_APPS_REQUEST = 499
-const val PICK_PORTS_REQUEST = 443
 const val ENABLE_NOTIFICATIONS_REQUEST = 101
 
 enum class MainState {
@@ -71,7 +67,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == VPN_STARTED_BROADCAST) {
                 mainState = MainState.CONNECTED
-                currentProxyConfig = intent.getParcelableExtra(PROXY_CONFIG_EXTRA)
+                currentProxyConfig = intent.getParcelableExtra(IntentExtras.PROXY_CONFIG_EXTRA)
                 updateUi()
             } else if (intent.action == VPN_STOPPED_BROADCAST) {
                 mainState = MainState.DISCONNECTED
@@ -88,7 +84,76 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
     // Used to track extremely fast VPN setup failures, indicating setup issues (rather than
     // manual user cancellation). Doesn't matter that it's not properly persistent.
-    private var lastPauseTime = -1L;
+    private var lastPauseTime = -1L
+
+    val pickAppsContract = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            Log.i(TAG, "Pick apps result: OK")
+            val unselectedApps = result.data!!.getStringArrayExtra(IntentExtras.UNSELECTED_APPS_EXTRA)!!.toSet()
+            if (unselectedApps != app.uninterceptedApps) {
+                app.uninterceptedApps = unselectedApps
+                if (isVpnActive()) startVpn()
+            }
+        } else {
+            Log.i(TAG, "Pick apps result: ${result.resultCode}")
+        }
+    }
+
+    val pickPortsContract = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            Log.i(TAG, "Pick ports result: OK")
+            val selectedPorts = result.data!!.getIntArrayExtra(IntentExtras.SELECTED_PORTS_EXTRA)!!.toSet()
+            if (selectedPorts != app.interceptedPorts) {
+                app.interceptedPorts = selectedPorts
+                if (isVpnActive()) startVpn()
+            }
+        } else {
+            Log.i(TAG, "Pick ports result: ${result.resultCode}")
+        }
+    }
+
+    private val barcodeLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val url = result.data!!.getStringExtra(IntentExtras.SCANNED_URL_EXTRA)!!
+                launch { connectToVpnFromUrl(url) }
+            }
+        }
+
+    private val cameraPermissionsFromSettings =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            checkCameraPermission()
+        }
+
+    private val cameraPermissionHandler =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Log.i(TAG, "Camera permissions granted")
+                scanQRCode()
+            } else {
+                Log.i(TAG, "Camera permissions rejected")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Camera permission required")
+                        .setMessage("To scan QR codes, you need to allow camera access.")
+                        .setPositiveButton(getString(R.string.proceed)) { _, _ -> checkCameraPermission() }
+                        .setNegativeButton(getString(R.string.cancel)) { _, _ -> }
+                        .show()
+                } else {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Camera permission required")
+                        .setMessage("To scan QR codes, you need to allow camera access in your device settings.")
+                        .setPositiveButton(getString(R.string.open_settings)) { _, _ ->
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            val uri = Uri.fromParts("package", packageName, null)
+                            intent.data = uri
+                            cameraPermissionsFromSettings.launch(intent)
+                        }
+                        .setNegativeButton(getString(R.string.cancel)) { _, _ -> }
+                        .show()
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -184,8 +249,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         .setIcon(R.drawable.ic_exclamation_triangle)
                         .setMessage(
                             "Do you want to share all this device's HTTP traffic with HTTP Toolkit?" +
-                            "\n\n" +
-                            "Only accept this if you trust the source."
+                                    "\n\n" +
+                                    "Only accept this if you trust the source."
                         )
                         .setPositiveButton("Enable") { _, _ ->
                             Log.i(TAG, "Prompt confirmed")
@@ -206,6 +271,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             isRCIntent && intent.action == ACTIVATE_INTENT -> {
                 launch { connectToVpnFromUrl(intent.data!!) }
             }
+
             isRCIntent && intent.action == DEACTIVATE_INTENT -> {
                 disconnect()
             }
@@ -214,13 +280,15 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 // The app is being opened - nothing to do here
             }
 
-            else -> Log.w(TAG, "Ignoring unknown intent. Action ${
-                intent.action
-            }, data: ${
-                intent.data
-            }${
-                if (isRCIntent) " (RC)" else ""
-            }")
+            else -> Log.w(
+                TAG, "Ignoring unknown intent. Action ${
+                    intent.action
+                }, data: ${
+                    intent.data
+                }${
+                    if (isRCIntent) " (RC)" else ""
+                }"
+            )
         }
     }
 
@@ -244,7 +312,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
                 if (hasCamera) {
                     detailContainer.addView(detailText(R.string.disconnected_details))
-                    val scanQrButton = primaryButton(R.string.scan_button, ::scanCode)
+                    val scanQrButton = primaryButton(R.string.scan_button, ::checkCameraPermission)
                     buttonContainer.addView(scanQrButton)
                 } else {
                     detailContainer.addView(detailText(R.string.disconnected_no_camera_details))
@@ -257,10 +325,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     })
                 }
             }
+
             MainState.CONNECTING -> {
                 statusText.setText(R.string.connecting_status)
                 buttonContainer.visibility = View.GONE
             }
+
             MainState.CONNECTED -> {
                 val proxyConfig = this.currentProxyConfig!!
                 val totalAppCount = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
@@ -287,10 +357,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
                 buttonContainer.addView(secondaryButton(R.string.test_button, ::testInterception))
             }
+
             MainState.DISCONNECTING -> {
                 statusText.setText(R.string.disconnecting_status)
                 buttonContainer.visibility = View.GONE
             }
+
             MainState.FAILED -> {
                 statusText.setText(R.string.failed_status)
 
@@ -326,8 +398,17 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         return text
     }
 
-    private fun scanCode() {
-        startActivityForResult(Intent(this, ScanActivity::class.java), SCAN_REQUEST)
+    private fun checkCameraPermission() {
+        val canUseCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+        if (canUseCamera == PERMISSION_GRANTED) {
+            scanQRCode()
+        } else {
+            cameraPermissionHandler.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun scanQRCode() {
+        barcodeLauncher.launch(Intent(this, QRScanActivity::class.java))
     }
 
     private suspend fun connectToVpn(config: ProxyConfig) {
@@ -408,20 +489,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun chooseApps() {
-        startActivityForResult(
+        pickAppsContract.launch(
             Intent(this, ApplicationListActivity::class.java).apply {
-                putExtra(UNSELECTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
-            },
-            PICK_APPS_REQUEST
+                putExtra(IntentExtras.UNSELECTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
+            }
         )
     }
 
     private fun choosePorts() {
-        startActivityForResult(
+        pickPortsContract.launch(
             Intent(this, PortListActivity::class.java).apply {
-                putExtra(SELECTED_PORTS_EXTRA, app.interceptedPorts.toIntArray())
-            },
-            PICK_PORTS_REQUEST
+                putExtra(IntentExtras.SELECTED_PORTS_EXTRA, app.interceptedPorts.toIntArray())
+            }
         )
     }
 
@@ -446,9 +525,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse((
-                        if (canUseHttps) "https" else "http"
-                    ) + "://" + uri)
+                    Uri.parse(
+                        (
+                                if (canUseHttps) "https" else "http"
+                                ) + "://" + uri
+                    )
                 ).apply {
                     if (browserPackage != null) setPackage(browserPackage)
                 }
@@ -468,22 +549,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         super.onActivityResult(requestCode, resultCode, data)
 
         val resultOk = resultCode == RESULT_OK ||
-            (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null) ||
-            (requestCode == ENABLE_NOTIFICATIONS_REQUEST && areNotificationsEnabled())
+                (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null) ||
+                (requestCode == ENABLE_NOTIFICATIONS_REQUEST && areNotificationsEnabled())
 
-        Log.i(TAG, "onActivityResult: " + (
-                when (requestCode) {
-                    START_VPN_REQUEST -> "start-vpn"
-                    INSTALL_CERT_REQUEST -> "install-cert"
-                    SCAN_REQUEST -> "scan-request"
-                    PICK_APPS_REQUEST -> "pick-apps"
-                    PICK_PORTS_REQUEST -> "pick-ports"
-                    ENABLE_NOTIFICATIONS_REQUEST -> "enable-notifications"
-                    else -> requestCode.toString()
-                }
-            ) + " - result: " + (
-                if (resultOk) "ok" else resultCode.toString()
-            )
+        Log.i(
+            TAG, "onActivityResult: " + (
+                    when (requestCode) {
+                        START_VPN_REQUEST -> "start-vpn"
+                        INSTALL_CERT_REQUEST -> "install-cert"
+                        ENABLE_NOTIFICATIONS_REQUEST -> "enable-notifications"
+                        else -> requestCode.toString()
+                    }
+                    ) + " - result: " + (
+                    if (resultOk) "ok" else resultCode.toString()
+                    )
         )
 
         if (resultOk) {
@@ -491,31 +570,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 Log.i(TAG, "Installing cert...")
                 ensureCertificateTrusted(currentProxyConfig!!)
             } else if (requestCode == INSTALL_CERT_REQUEST) {
-                Log.i(TAG ,"Cert installed, checking notification perms...")
+                Log.i(TAG, "Cert installed, checking notification perms...")
                 ensureNotificationsEnabled()
             } else if (requestCode == ENABLE_NOTIFICATIONS_REQUEST) {
-                Log.i(TAG ,"Notifications OK, starting VPN...")
+                Log.i(TAG, "Notifications OK, starting VPN...")
                 startVpn()
-            } else if (requestCode == SCAN_REQUEST && data != null) {
-                val url = data.getStringExtra(SCANNED_URL_EXTRA)!!
-                launch { connectToVpnFromUrl(url) }
-            } else if (requestCode == PICK_APPS_REQUEST) {
-                val unselectedApps = data!!.getStringArrayExtra(UNSELECTED_APPS_EXTRA)!!.toSet()
-                if (unselectedApps != app.uninterceptedApps) {
-                    app.uninterceptedApps = unselectedApps
-                    if (isVpnActive()) startVpn()
-                }
-            } else if (requestCode == PICK_PORTS_REQUEST) {
-                val selectedPorts = data!!.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!.toSet()
-                if (selectedPorts != app.interceptedPorts) {
-                    app.interceptedPorts = selectedPorts
-                    if (isVpnActive()) startVpn()
-                }
             }
         } else if (
             requestCode == START_VPN_REQUEST &&
             System.currentTimeMillis() - lastPauseTime < 200 && // On Pixel 4a it takes < 50ms
-            resultCode == Activity.RESULT_CANCELED
+            resultCode == RESULT_CANCELED
         ) {
             // If another always-on VPN is active, VPN start requests fail instantly as cancelled.
             // We can't check that the VPN is always-on, but given an instant failure that's
@@ -562,9 +626,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = START_VPN_ACTION
-            putExtra(PROXY_CONFIG_EXTRA, currentProxyConfig)
-            putExtra(UNINTERCEPTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
-            putExtra(INTERCEPTED_PORTS_EXTRA, app.interceptedPorts.toIntArray())
+            putExtra(IntentExtras.PROXY_CONFIG_EXTRA, currentProxyConfig)
+            putExtra(IntentExtras.UNINTERCEPTED_APPS_EXTRA, app.uninterceptedApps.toTypedArray())
+            putExtra(IntentExtras.INTERCEPTED_PORTS_EXTRA, app.interceptedPorts.toIntArray())
         })
     }
 
@@ -638,14 +702,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 .setIcon(R.drawable.ic_info_circle)
                 .setMessage(
                     "To intercept HTTPS traffic from this device, you need to " +
-                    "trust your HTTP Toolkit's certificate authority. " +
-                    "\n\n" +
-                    "Please accept the following prompts to allow this." +
-                    if (!isDeviceSecured(applicationContext))
-                        "\n\n" +
-                        "Due to Android security requirements, trusting the certificate will " +
-                        "require you to set a PIN, password or pattern for this device."
-                    else " To trust the certificate, your device PIN will be required."
+                            "trust your HTTP Toolkit's certificate authority. " +
+                            "\n\n" +
+                            "Please accept the following prompts to allow this." +
+                            if (!isDeviceSecured(applicationContext))
+                                "\n\n" +
+                                        "Due to Android security requirements, trusting the certificate will " +
+                                        "require you to set a PIN, password or pattern for this device."
+                            else " To trust the certificate, your device PIN will be required."
                 )
                 .setPositiveButton("Install") { _, _ ->
                     val certInstallIntent = KeyChain.createInstallIntent()
@@ -699,20 +763,21 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 .setIcon(R.drawable.ic_exclamation_triangle)
                 .setMessage(
                     Html.fromHtml(
-                    """
+                        """
                         <p>
                             ${
-                                if (PROMPTED_CERT_SETUP_SUPPORTED)
-                                    "Automatic certificate installation failed, so it must be done manually."
-                                else
-                                    "Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup."
-                            }
+                            if (PROMPTED_CERT_SETUP_SUPPORTED)
+                                "Automatic certificate installation failed, so it must be done manually."
+                            else
+                                "Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup."
+                        }
                         </p>
                         <p>
                             To allow HTTP Toolkit to intercept HTTPS traffic:
                         </p>
                         <ul>
-                            ${if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) // Android 12+
+                            ${
+                            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) // Android 12+
                                 """
                                 <li>&nbsp; Open "<b>${
                                     // Slightly different UI for Android 12 and 13:
@@ -724,11 +789,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                                 """
                                 <li>&nbsp; Open "<b>Encryption & Credentials</b>" in your security settings</li>
                                 """
-                            }
+                        }
                             <li>&nbsp; Select "<b>Install a certificate</b>", then "<b>CA Certificate</b>"</li>
                             <li>&nbsp; <b>Select the HTTP Toolkit certificate in your Downloads folder</b></li>
                         </ul>
-                    """,0)
+                    """, 0
+                    )
                 )
                 .setPositiveButton("Open security settings") { _, _ ->
                     startActivityForResult(Intent(Settings.ACTION_SECURITY_SETTINGS), INSTALL_CERT_REQUEST)
@@ -793,14 +859,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 // ShouldExplain means that we've asked before, but been rejected, but we are
                 // still allowed to ask again. Be more insistent, and do so:
                 showNotificationPermissionRequiredPrompt() { ->
-                    Log.i(TAG ,"Asking for POST_NOTIFICATIONS after prompt")
+                    Log.i(TAG, "Asking for POST_NOTIFICATIONS after prompt")
                     notificationPermissionHandler.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 return
             } else if (!previouslyRejected) {
                 // This means we're asking for the first time - no detailed rationale and no
                 // fallbacks required, just ask for permission:
-                Log.i(TAG ,"Asking for POST_NOTIFICATIONS directly")
+                Log.i(TAG, "Asking for POST_NOTIFICATIONS directly")
                 notificationPermissionHandler.launch(Manifest.permission.POST_NOTIFICATIONS)
                 return
             }
@@ -813,7 +879,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
         // But if we have to send you to settings, we always want to show a prompt first:
         showNotificationPermissionRequiredPrompt { ->
-            Log.i(TAG ,"Sending to settings to fix notification permissions")
+            Log.i(TAG, "Sending to settings to fix notification permissions")
             val intent = Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 Uri.fromParts("package", packageName, null)
@@ -823,7 +889,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private fun showNotificationPermissionRequiredPrompt(nextStep: () -> Unit) {
-        Log.i(TAG ,"Showing notifications-required prompt")
+        Log.i(TAG, "Showing notifications-required prompt")
         launch {
             withContext(Dispatchers.Main) {
                 MaterialAlertDialogBuilder(this@MainActivity)
@@ -831,7 +897,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     .setIcon(R.drawable.ic_exclamation_triangle)
                     .setMessage(
                         "Please allow notifications to use HTTP Toolkit. This is used " +
-                        "exclusively for VPN connection status indicators."
+                                "exclusively for VPN connection status indicators."
                     )
                     .setPositiveButton("Ok") { _, _ -> }
                     .setOnDismissListener { _ ->
@@ -843,15 +909,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
-    private val notificationPermissionHandler = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted && areNotificationsEnabled()) { // Note permission might be accepted but channels disabled
-            Log.i(TAG, "Notifications permission prompt accepted")
-            onActivityResult(ENABLE_NOTIFICATIONS_REQUEST, RESULT_OK, null)
-        } else {
-            Log.w(TAG, "Notifications permission prompt rejected")
-            requestNotificationPermission(true)
+    private val notificationPermissionHandler =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted && areNotificationsEnabled()) { // Note permission might be accepted but channels disabled
+                Log.i(TAG, "Notifications permission prompt accepted")
+                onActivityResult(ENABLE_NOTIFICATIONS_REQUEST, RESULT_OK, null)
+            } else {
+                Log.w(TAG, "Notifications permission prompt rejected")
+                requestNotificationPermission(true)
+            }
         }
-    }
 
     private suspend fun promptToUpdate() {
         withContext(Dispatchers.Main) {
@@ -880,9 +947,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setIcon(R.drawable.ic_exclamation_triangle)
             .setMessage(
                 "HTTP Toolkit interception was shut down automatically by Android. " +
-                "This is usually caused by overly strict power management of background processes. " +
-                "\n\n" +
-                "To fix this, disable battery optimization for HTTP Toolkit in your settings."
+                        "This is usually caused by overly strict power management of background processes. " +
+                        "\n\n" +
+                        "To fix this, disable battery optimization for HTTP Toolkit in your settings."
             )
             .setNegativeButton("Ignore") { _, _ -> }
             .setPositiveButton("Go to settings") { _, _ ->
@@ -922,9 +989,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setIcon(R.drawable.ic_exclamation_triangle)
             .setMessage(
                 "HTTP Toolkit could not open a browser on this device. " +
-                "This usually means you don't have any browser installed. To visit " +
-                uri +
-                " please install a browser app."
+                        "This usually means you don't have any browser installed. To visit " +
+                        uri +
+                        " please install a browser app."
             )
             .setNeutralButton("OK") { _, _ -> }
             .show()
@@ -936,10 +1003,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setIcon(R.drawable.ic_exclamation_triangle)
             .setMessage(
                 "HTTP Toolkit could not be configured as a VPN on your device." +
-                "\n\n" +
-                "This usually means you have an always-on VPN configured, which blocks " +
-                "installation of other VPNs. To activate HTTP Toolkit you'll need to " +
-                "deactivate that VPN first."
+                        "\n\n" +
+                        "This usually means you have an always-on VPN configured, which blocks " +
+                        "installation of other VPNs. To activate HTTP Toolkit you'll need to " +
+                        "deactivate that VPN first."
             )
             .setNegativeButton("Cancel") { _, _ -> }
             .setPositiveButton("Open VPN Settings") { _, _ ->
