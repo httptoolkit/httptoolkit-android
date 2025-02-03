@@ -7,7 +7,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.widget.doAfterTextChanged
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 import tech.httptoolkit.android.databinding.PortsListBinding
 import java.util.*
 
@@ -19,9 +20,6 @@ val DEFAULT_PORTS = setOf(
 
 const val MIN_PORT = 1
 const val MAX_PORT = 65535
-
-// Used to both to send and return the current list of selected ports
-const val SELECTED_PORTS_EXTRA = "tech.httptoolkit.android.SELECTED_PORTS_EXTRA"
 
 class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
@@ -35,7 +33,7 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         binding = PortsListBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ports = intent.getIntArrayExtra(SELECTED_PORTS_EXTRA)!!
+        ports = intent.getIntArrayExtra(IntentExtras.SELECTED_PORTS_EXTRA)!!
             .toCollection(TreeSet())
 
         binding.portsListRecyclerView.adapter =
@@ -84,7 +82,7 @@ class PortListActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 setResult(RESULT_OK, Intent().putExtra(
-                    SELECTED_PORTS_EXTRA,
+                    IntentExtras.SELECTED_PORTS_EXTRA,
                     ports.toIntArray()
                 ))
                 finish()

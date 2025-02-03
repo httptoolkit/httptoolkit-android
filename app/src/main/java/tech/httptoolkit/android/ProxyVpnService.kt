@@ -1,20 +1,20 @@
 package tech.httptoolkit.android
 
-import android.net.VpnService
-import android.content.Intent
 import android.app.*
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.ProxyInfo
+import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import io.sentry.Sentry
 import tech.httptoolkit.android.vpn.socket.IProtectSocket
 import tech.httptoolkit.android.vpn.socket.SocketProtector
-import io.sentry.Sentry
-import java.io.*
+import java.io.IOException
 
 private const val ALL_ROUTES = "0.0.0.0"
 private const val VPN_IP_ADDRESS = "169.254.61.43" // Random link-local IP, this will be the tunnel's IP
@@ -27,10 +27,6 @@ const val STOP_VPN_ACTION = "tech.httptoolkit.android.STOP_VPN_ACTION"
 
 const val VPN_STARTED_BROADCAST = "tech.httptoolkit.android.VPN_STARTED_BROADCAST"
 const val VPN_STOPPED_BROADCAST = "tech.httptoolkit.android.VPN_STOPPED_BROADCAST"
-
-const val PROXY_CONFIG_EXTRA = "tech.httptoolkit.android.PROXY_CONFIG"
-const val UNINTERCEPTED_APPS_EXTRA = "tech.httptoolkit.android.UNINTERCEPTED_APPS"
-const val INTERCEPTED_PORTS_EXTRA = "tech.httptoolkit.android.INTERCEPTED_PORTS"
 
 private var currentService: ProxyVpnService? = null
 fun isVpnActive(): Boolean {
@@ -77,9 +73,9 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         app = this.application as HttpToolkitApplication
 
         if (intent.action == START_VPN_ACTION) {
-            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(PROXY_CONFIG_EXTRA)!!
-            val uninterceptedApps = intent.getStringArrayExtra(UNINTERCEPTED_APPS_EXTRA)!!.toSet()
-            val interceptedPorts = intent.getIntArrayExtra(INTERCEPTED_PORTS_EXTRA)!!.toSet()
+            val proxyConfig = intent.getParcelableExtra<ProxyConfig>(IntentExtras.PROXY_CONFIG_EXTRA)!!
+            val uninterceptedApps = intent.getStringArrayExtra(IntentExtras.UNINTERCEPTED_APPS_EXTRA)!!.toSet()
+            val interceptedPorts = intent.getIntArrayExtra(IntentExtras.INTERCEPTED_PORTS_EXTRA)!!.toSet()
 
             val vpnStarted = if (isActive())
                 restartVpn(proxyConfig, uninterceptedApps, interceptedPorts)
@@ -241,7 +237,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
         showServiceNotification()
         localBroadcastManager!!.sendBroadcast(
             Intent(VPN_STARTED_BROADCAST).apply {
-                putExtra(PROXY_CONFIG_EXTRA, proxyConfig)
+                putExtra(IntentExtras.PROXY_CONFIG_EXTRA, proxyConfig)
             }
         )
 
