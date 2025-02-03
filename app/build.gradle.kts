@@ -12,8 +12,8 @@ android {
         applicationId = "tech.httptoolkit.android.v1"
         minSdk = 21
         targetSdk = 34
-        versionCode = 34
-        versionName = "1.5.0"
+        versionCode = 35
+        versionName = "1.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
