@@ -280,8 +280,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 // The app is being opened - nothing to do here
             }
 
-            else -> Log.w(
-                TAG, "Ignoring unknown intent. Action ${
+            else -> Log.w(TAG,
+                "Ignoring unknown intent. Action ${
                     intent.action
                 }, data: ${
                     intent.data
@@ -525,11 +525,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse(
-                        (
-                                if (canUseHttps) "https" else "http"
-                                ) + "://" + uri
-                    )
+                    Uri.parse((
+                        if (canUseHttps) "https" else "http"
+                    ) + "://" + uri)
                 ).apply {
                     if (browserPackage != null) setPackage(browserPackage)
                 }
@@ -549,20 +547,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         super.onActivityResult(requestCode, resultCode, data)
 
         val resultOk = resultCode == RESULT_OK ||
-                (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null) ||
-                (requestCode == ENABLE_NOTIFICATIONS_REQUEST && areNotificationsEnabled())
+            (requestCode == INSTALL_CERT_REQUEST && whereIsCertTrusted(currentProxyConfig!!) != null) ||
+            (requestCode == ENABLE_NOTIFICATIONS_REQUEST && areNotificationsEnabled())
 
-        Log.i(
-            TAG, "onActivityResult: " + (
-                    when (requestCode) {
-                        START_VPN_REQUEST -> "start-vpn"
-                        INSTALL_CERT_REQUEST -> "install-cert"
-                        ENABLE_NOTIFICATIONS_REQUEST -> "enable-notifications"
-                        else -> requestCode.toString()
-                    }
-                    ) + " - result: " + (
-                    if (resultOk) "ok" else resultCode.toString()
-                    )
+        Log.i(TAG,
+            "onActivityResult: " + (
+                when (requestCode) {
+                    START_VPN_REQUEST -> "start-vpn"
+                    INSTALL_CERT_REQUEST -> "install-cert"
+                    ENABLE_NOTIFICATIONS_REQUEST -> "enable-notifications"
+                    else -> requestCode.toString()
+                }
+            ) + " - result: " + (
+                if (resultOk) "ok" else resultCode.toString()
+            )
         )
 
         if (resultOk) {
@@ -702,14 +700,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 .setIcon(R.drawable.ic_info_circle)
                 .setMessage(
                     "To intercept HTTPS traffic from this device, you need to " +
-                            "trust your HTTP Toolkit's certificate authority. " +
-                            "\n\n" +
-                            "Please accept the following prompts to allow this." +
-                            if (!isDeviceSecured(applicationContext))
-                                "\n\n" +
-                                        "Due to Android security requirements, trusting the certificate will " +
-                                        "require you to set a PIN, password or pattern for this device."
-                            else " To trust the certificate, your device PIN will be required."
+                    "trust your HTTP Toolkit's certificate authority. " +
+                    "\n\n" +
+                    "Please accept the following prompts to allow this." +
+                    if (!isDeviceSecured(applicationContext))
+                        "\n\n" +
+                        "Due to Android security requirements, trusting the certificate will " +
+                        "require you to set a PIN, password or pattern for this device."
+                    else " To trust the certificate, your device PIN will be required."
                 )
                 .setPositiveButton("Install") { _, _ ->
                     val certInstallIntent = KeyChain.createInstallIntent()
@@ -766,35 +764,34 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                         """
                         <p>
                             ${
-                            if (PROMPTED_CERT_SETUP_SUPPORTED)
-                                "Automatic certificate installation failed, so it must be done manually."
-                            else
-                                "Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup."
-                        }
+                                if (PROMPTED_CERT_SETUP_SUPPORTED)
+                                    "Automatic certificate installation failed, so it must be done manually."
+                                else
+                                    "Android ${Build.VERSION.RELEASE} doesn't allow automatic certificate setup."
+                            }
                         </p>
                         <p>
                             To allow HTTP Toolkit to intercept HTTPS traffic:
                         </p>
                         <ul>
                             ${
-                            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) // Android 12+
-                                """
-                                <li>&nbsp; Open "<b>${
-                                    // Slightly different UI for Android 12 and 13:
-                                    if (Build.VERSION.SDK_INT < 33) "Advanced Settings" else "More security settings"
-                                }</b>" in your security settings</li>
-                                <li>&nbsp; Open "<b>Encryption & Credentials</b>"</li>
-                                """
-                            else
-                                """
-                                <li>&nbsp; Open "<b>Encryption & Credentials</b>" in your security settings</li>
-                                """
-                        }
+                                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) // Android 12+
+                                    """
+                                    <li>&nbsp; Open "<b>${
+                                        // Slightly different UI for Android 12 and 13:
+                                        if (Build.VERSION.SDK_INT < 33) "Advanced Settings" else "More security settings"
+                                    }</b>" in your security settings</li>
+                                    <li>&nbsp; Open "<b>Encryption & Credentials</b>"</li>
+                                    """
+                                else
+                                    """
+                                    <li>&nbsp; Open "<b>Encryption & Credentials</b>" in your security settings</li>
+                                    """
+                            }
                             <li>&nbsp; Select "<b>Install a certificate</b>", then "<b>CA Certificate</b>"</li>
                             <li>&nbsp; <b>Select the HTTP Toolkit certificate in your Downloads folder</b></li>
                         </ul>
-                    """, 0
-                    )
+                    """, 0)
                 )
                 .setPositiveButton("Open security settings") { _, _ ->
                     startActivityForResult(Intent(Settings.ACTION_SECURITY_SETTINGS), INSTALL_CERT_REQUEST)
@@ -897,7 +894,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     .setIcon(R.drawable.ic_exclamation_triangle)
                     .setMessage(
                         "Please allow notifications to use HTTP Toolkit. This is used " +
-                                "exclusively for VPN connection status indicators."
+                        "exclusively for VPN connection status indicators."
                     )
                     .setPositiveButton("Ok") { _, _ -> }
                     .setOnDismissListener { _ ->
@@ -947,9 +944,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setIcon(R.drawable.ic_exclamation_triangle)
             .setMessage(
                 "HTTP Toolkit interception was shut down automatically by Android. " +
-                        "This is usually caused by overly strict power management of background processes. " +
-                        "\n\n" +
-                        "To fix this, disable battery optimization for HTTP Toolkit in your settings."
+                "This is usually caused by overly strict power management of background processes. " +
+                "\n\n" +
+                "To fix this, disable battery optimization for HTTP Toolkit in your settings."
             )
             .setNegativeButton("Ignore") { _, _ -> }
             .setPositiveButton("Go to settings") { _, _ ->
@@ -989,9 +986,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setIcon(R.drawable.ic_exclamation_triangle)
             .setMessage(
                 "HTTP Toolkit could not open a browser on this device. " +
-                        "This usually means you don't have any browser installed. To visit " +
-                        uri +
-                        " please install a browser app."
+                "This usually means you don't have any browser installed. To visit " +
+                uri +
+                " please install a browser app."
             )
             .setNeutralButton("OK") { _, _ -> }
             .show()
@@ -1003,10 +1000,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             .setIcon(R.drawable.ic_exclamation_triangle)
             .setMessage(
                 "HTTP Toolkit could not be configured as a VPN on your device." +
-                        "\n\n" +
-                        "This usually means you have an always-on VPN configured, which blocks " +
-                        "installation of other VPNs. To activate HTTP Toolkit you'll need to " +
-                        "deactivate that VPN first."
+                "\n\n" +
+                "This usually means you have an always-on VPN configured, which blocks " +
+                "installation of other VPNs. To activate HTTP Toolkit you'll need to " +
+                "deactivate that VPN first."
             )
             .setNegativeButton("Cancel") { _, _ -> }
             .setPositiveButton("Open VPN Settings") { _, _ ->
