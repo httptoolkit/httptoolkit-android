@@ -44,7 +44,7 @@ class QRScanActivity : Activity() {
         barcodeView!!.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
         barcodeView!!.initializeFromIntent(intent)
         barcodeView!!.decodeContinuous(callback)
-        barcodeView!!.setStatusText("Scan HTTPToolkit QR code to connect")
+        barcodeView!!.setStatusText("Scan HTTP Toolkit QR code to connect")
     }
 
     override fun onResume() {

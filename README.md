@@ -8,7 +8,7 @@ Looking to file bugs, request features or send feedback? File an issue or vote o
 
 HTTP Toolkit is primarily a desktop application. This repo contains the Android app, which connects to that desktop application, and forwards HTTP traffic there.
 
-The Android itself is effectively two parts:
+The Android app itself is effectively two parts:
 
 * An outer wrapper, which shows the UI, scans QR codes, retrieves proxy config from HTTP Toolkit, ensures the device trusts HTTP Toolkit's CA certificate, and starts and stops a VPN.
 * A VPN, which receives every IP packet sent by the device, parses them, rewrites some of them to go to HTTP Toolkit, and then sends the parsed requests on via the real network (and forwards responses back)

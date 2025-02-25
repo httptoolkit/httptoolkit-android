@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "tech.httptoolkit.android"
-    compileSdk =  35
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "tech.httptoolkit.android.v1"
