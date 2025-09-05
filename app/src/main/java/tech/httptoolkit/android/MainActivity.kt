@@ -39,6 +39,8 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.security.cert.Certificate
 import java.security.cert.X509Certificate
+import androidx.core.view.isVisible
+import androidx.core.net.toUri
 
 
 const val START_VPN_REQUEST = 123
@@ -373,7 +375,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             }
         }
 
-        if (buttonContainer.visibility == View.VISIBLE) {
+        if (buttonContainer.isVisible) {
             buttonContainer.addView(secondaryButton(R.string.docs_button, ::openDocs))
         }
     }
@@ -525,9 +527,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse((
-                        if (canUseHttps) "https" else "http"
-                    ) + "://" + uri)
+                    ((if (canUseHttps) "https" else "http") + "://" + uri).toUri()
                 ).apply {
                     if (browserPackage != null) setPackage(browserPackage)
                 }
@@ -631,7 +631,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private suspend fun connectToVpnFromUrl(url: String) {
-        connectToVpnFromUrl(Uri.parse(url))
+        connectToVpnFromUrl(url.toUri())
     }
 
     private suspend fun connectToVpnFromUrl(uri: Uri) {
@@ -930,7 +930,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     // it is imminent, and installing from play means it'll update fully later.
                     startActivity(
                         Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("market://details?id=tech.httptoolkit.android.v1")
+                            data = "market://details?id=tech.httptoolkit.android.v1".toUri()
                         }
                     )
                 }
@@ -1036,7 +1036,7 @@ private fun isPackageAvailable(context: Context, packageName: String) = try {
 }
 
 private fun getDefaultBrowserPackage(context: Context): String? {
-    val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://example.com"))
+    val browserIntent = Intent("android.intent.action.VIEW", "http://example.com".toUri())
     val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
     return resolveInfo?.activityInfo?.packageName
 }
