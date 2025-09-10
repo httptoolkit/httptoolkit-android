@@ -10,6 +10,7 @@ import androidx.core.content.edit
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerClient.InstallReferrerResponse
 import com.android.installreferrer.api.InstallReferrerStateListener
+import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
@@ -288,8 +289,11 @@ private fun firstInstallTime(context: Context): Long {
 }
 
 private data class GithubRelease(
+    @Json(name = "tag_name")
     val tagName: String?,
+    @Json(name = "name")
     val name: String?,
+    @Json(name = "published_at")
     val publishedAt: String,
 )
 
