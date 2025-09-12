@@ -298,7 +298,7 @@ private data class GithubRelease(
 )
 
 private fun tryParseSemver(version: String?): SemVer? = try {
-    if (version == null) null
+    if (version == null || version == "") null
     else SemVer.parse(
         // Strip leading 'v'
         version.replace(Regex("^v"), "")
