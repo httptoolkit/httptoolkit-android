@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.core.net.toUri
 
 private val isLineageOs = Build.HOST.startsWith("lineage")
 
@@ -71,7 +72,7 @@ class ConnectionStatusView(
                     .setPositiveButton("View the bug") { _, _ ->
                         context.startActivity(Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse("https://gitlab.com/LineageOS/issues/android/-/issues/1706")
+                            "https://gitlab.com/LineageOS/issues/android/-/issues/1706".toUri()
                         ))
                     }
                     .show()
