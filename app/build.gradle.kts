@@ -11,7 +11,7 @@ android {
     defaultConfig {
         applicationId = "tech.httptoolkit.android.v1"
         minSdk = 21
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 35
         versionName = "1.5.1"
 
