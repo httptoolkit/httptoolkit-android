@@ -117,7 +117,7 @@ class ApplicationListActivity : AppCompatActivity(), SwipeRefreshLayout.OnRefres
                 .filter { pkg ->
                     pkg.applicationInfo != null
                 }.sortedBy { pkg ->
-                    AppLabelCache.getAppLabel(packageManager, pkg.applicationInfo!!).toUpperCase(
+                    AppLabelCache.getAppLabel(packageManager, pkg.applicationInfo!!).uppercase(
                         Locale.getDefault()
                     )
                 }
