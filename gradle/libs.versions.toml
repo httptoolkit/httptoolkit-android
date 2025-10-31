@@ -24,6 +24,7 @@ sentryAndroid = "8.0.0"
 slf4jNop = "1.7.25"
 zxingAndroidEmbedded = "4.3.0"
 swiperefreshlayout = "1.1.0"
+foundation = "1.9.4"
 
 [libraries]
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist" }
@@ -56,6 +57,7 @@ sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentryAnd
 slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4jNop" }
 swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
+foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

@@ -43,6 +43,7 @@ import androidx.core.view.isVisible
 import androidx.core.net.toUri
 import tech.httptoolkit.android.appselection.ApplicationListActivity
 import tech.httptoolkit.android.portfilter.PortListActivity
+import tech.httptoolkit.android.qrscan.QRScanActivity
 
 
 const val START_VPN_REQUEST = 123

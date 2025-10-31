@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
     implementation(libs.activity.compose)
     implementation(libs.accompanist.drawablepainter)
+    implementation(libs.foundation)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.core.ktx)
     implementation(libs.constraintlayout)
