@@ -5,6 +5,7 @@ import android.util.Log;
 
 import tech.httptoolkit.android.vpn.ClientPacketWriter;
 import tech.httptoolkit.android.vpn.Session;
+import tech.httptoolkit.android.vpn.capture.ProxyProtocolHandler;
 import tech.httptoolkit.android.vpn.transport.ip.IPPacketFactory;
 import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.transport.PacketHeaderException;
@@ -95,7 +96,9 @@ class SocketChannelReader {
 			do {
 				len = channel.read(buffer);
 				if (len > 0) { //-1 mean it reach the end of stream
-					sendToRequester(buffer, len, session);
+					buffer.limit(len);
+					buffer.flip();
+					sendToRequester(buffer, session);
 					buffer.clear();
 				} else if (len == -1) {
 					Log.d(TAG,"End of data from remote server, will send FIN to client");
@@ -116,21 +119,40 @@ class SocketChannelReader {
 		}
 	}
 	
-	private void sendToRequester(ByteBuffer buffer, int dataSize, @NonNull Session session){
-		// Last piece of data is usually smaller than MAX_RECEIVE_BUFFER_SIZE. We use this as a
-		// trigger to set PSH on the resulting TCP packet that goes to the VPN.
-		if (dataSize < DataConst.MAX_RECEIVE_BUFFER_SIZE) {
-			session.setHasReceivedLastSegment(true);
-		} else {
-			session.setHasReceivedLastSegment(false);
+	private void sendToRequester(ByteBuffer buffer, @NonNull Session session) {
+		ProxyProtocolHandler proxyHandler = session.getProxySetupHandler();
+
+		if (proxyHandler != null) {
+			while (proxyHandler.wantsHandshakeData()) {
+				proxyHandler.processHandshakeData(buffer);
+			}
+
+			// If the proxy handler now wants to write back, subscribe to do so:
+			if (proxyHandler.hasHandshakeDataToSend()) {
+				session.subscribeKey(SelectionKey.OP_WRITE);
+			}
+
+			if (proxyHandler.isPending() || !buffer.hasRemaining()) {
+				return;
+			}
+
+			// Proxy setup is done - if the client is ready to write, subscribe to do so:
+			if (session.hasDataToSend() && session.isDataForSendingReady()) {
+				session.subscribeKey(SelectionKey.OP_WRITE);
+			}
+
+			// If the setup handler is done and the buffer has data left, pass that on down
+			// to the client themselves like normal.
 		}
 
-		buffer.limit(dataSize);
-		buffer.flip();
-		// TODO should allocate new byte array?
-		byte[] data = new byte[dataSize];
-		System.arraycopy(buffer.array(), 0, data, 0, dataSize);
-		session.addReceivedData(data);
+		// Last piece of data is usually smaller than MAX_RECEIVE_BUFFER_SIZE. We use this as a
+		// trigger to set PSH on the resulting TCP packet that goes to the VPN.
+		session.setHasReceivedLastSegment(
+				buffer.remaining() < DataConst.MAX_RECEIVE_BUFFER_SIZE
+		);
+
+		session.addReceivedData(buffer); // Copies into the internal stream
+
 		//pushing all data to vpn client
 		while(session.hasReceivedData()){
 			pushDataToClient(session);

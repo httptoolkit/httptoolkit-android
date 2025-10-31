@@ -44,15 +44,27 @@ fun parseConnectUri(uri: Uri): ProxyInfo {
 }
 
 suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
+    val protocol = if (proxyInfo.proxyProtocols?.contains("SOCKS5") == true)
+        ProxyCaptureProtocol.SOCKS5
+    else
+        ProxyCaptureProtocol.RAW
+
     return withContext(Dispatchers.IO) {
         return@withContext supervisorScope {
             Log.v(TAG, "Validating proxy info $proxyInfo")
             val proxyTests = proxyInfo.addresses.map { address ->
                 async {
-                    testProxyAddress(
+                    val cert = testProxyAddress(
                         address,
                         proxyInfo.port,
                         proxyInfo.certFingerprint
+                    )
+
+                    ProxyConfig(
+                        address,
+                        proxyInfo.port,
+                        cert,
+                        protocol
                     )
                 }
             }
@@ -68,10 +80,17 @@ suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
 
                 // If all network connections fail, and we have a local ADB tunnel, fallback to
                 // using that connection instead.
-                return@supervisorScope testProxyAddress(
+                val cert = testProxyAddress(
                     "127.0.0.1",
                     proxyInfo.localTunnelPort,
                     proxyInfo.certFingerprint
+                )
+
+                return@supervisorScope ProxyConfig(
+                    "127.0.0.1",
+                    proxyInfo.port,
+                    cert,
+                    protocol
                 )
             }
         }
@@ -81,8 +100,8 @@ suspend fun getProxyConfig(proxyInfo: ProxyInfo): ProxyConfig {
 private suspend fun testProxyAddress(
     address: String,
     port: Int,
-    expectedFingerprint: String
-): ProxyConfig {
+    expectedFingerprint: String,
+): X509Certificate {
     return withContext(Dispatchers.IO) {
         val certFactory = CertificateFactory.getInstance("X.509")
 
@@ -112,11 +131,7 @@ private suspend fun testProxyAddress(
             val foundCertFingerprint = getCertificateFingerprint(foundCert)
 
             if (foundCertFingerprint == expectedFingerprint) {
-                ProxyConfig(
-                    address,
-                    port,
-                    foundCert
-                )
+                return@withContext foundCert
             } else {
                 throw CertificateException(
                     "Proxy returned mismatched certificate: '${

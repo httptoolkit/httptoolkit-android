@@ -24,6 +24,8 @@ import android.util.SparseArray;
 import org.jetbrains.annotations.NotNull;
 
 import tech.httptoolkit.android.TagKt;
+import tech.httptoolkit.android.vpn.capture.CaptureController;
+import tech.httptoolkit.android.vpn.capture.ProxyProtocolHandler;
 import tech.httptoolkit.android.vpn.socket.DataConst;
 import tech.httptoolkit.android.vpn.socket.ICloseSession;
 import tech.httptoolkit.android.vpn.socket.SocketProtector;
@@ -36,6 +38,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -49,6 +53,12 @@ public class SessionManager implements ICloseSession {
 	private final String TAG = TagKt.getTAG(this);
 	private final Map<String, Session> table = new ConcurrentHashMap<>();
 	private SocketProtector protector = SocketProtector.getInstance();
+
+	private final CaptureController captureController;
+
+	public SessionManager(CaptureController captureController) {
+		this.captureController = captureController;
+	}
 
 	/**
 	 * keep java garbage collector from collecting a session
@@ -133,7 +143,7 @@ public class SessionManager implements ICloseSession {
 		Session existingSession = table.get(keys);
 		if (existingSession != null) return existingSession;
 
-		Session session = new Session(SessionProtocol.UDP, srcIp, srcPort, ip, port, this);
+		Session session = new Session(SessionProtocol.UDP, srcIp, srcPort, ip, port, this, null);
 
 		DatagramChannel channel;
 
@@ -171,7 +181,17 @@ public class SessionManager implements ICloseSession {
 		// We return the initialized session, which will be reacked to indicate rejection.
 		if (existingSession != null) return existingSession;
 
-		Session session = new Session(SessionProtocol.TCP, srcIp, srcPort, ip, port, this);
+		String ips = PacketUtil.intToIPAddress(ip);
+		boolean shouldCapture = captureController.shouldCapture(ips, port);
+		SocketAddress socketAddress = shouldCapture
+				? captureController.getProxyAddress()
+				: new InetSocketAddress(ips, port);
+
+		ProxyProtocolHandler proxyHandler = shouldCapture
+				? captureController.getProxyHandler(ips, port)
+				: null;
+
+		Session session = new Session(SessionProtocol.TCP, srcIp, srcPort, ip, port, this, proxyHandler);
 
 		SocketChannel channel;
 		channel = SocketChannel.open();
@@ -181,7 +201,6 @@ public class SessionManager implements ICloseSession {
 		channel.socket().setReceiveBufferSize(DataConst.MAX_RECEIVE_BUFFER_SIZE);
 		channel.configureBlocking(false);
 
-		String ips = PacketUtil.intToIPAddress(ip);
 		Log.d(TAG,"created new SocketChannel for " + key);
 
 		protector.protect(channel.socket());
@@ -190,12 +209,6 @@ public class SessionManager implements ICloseSession {
 		session.setChannel(channel);
 
 		// Initiate connection straight away, to reduce latency
-		// We use the real address, unless tcpPortRedirection redirects us to a different
-		// target address for traffic on this port.
-		SocketAddress socketAddress = tcpPortRedirection.get(port) != null
-			? tcpPortRedirection.get(port)
-			: new InetSocketAddress(ips, port);
-
 		Log.d(TAG,"Initiate connecting to remote tcp server: " + socketAddress.toString());
 		boolean connected = channel.connect(socketAddress);
 		session.setConnected(connected);
@@ -205,9 +218,4 @@ public class SessionManager implements ICloseSession {
 		return session;
 	}
 
-	private SparseArray<InetSocketAddress> tcpPortRedirection = new SparseArray<>();
-
-	public void setTcpPortRedirections(SparseArray<InetSocketAddress> tcpPortRedirection) {
-		this.tcpPortRedirection = tcpPortRedirection;
-	}
 }

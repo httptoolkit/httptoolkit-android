@@ -2,16 +2,17 @@ package tech.httptoolkit.android
 
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import android.util.SparseArray
 import tech.httptoolkit.android.vpn.ClientPacketWriter
 import tech.httptoolkit.android.vpn.SessionHandler
 import tech.httptoolkit.android.vpn.SessionManager
 import tech.httptoolkit.android.vpn.socket.SocketNIODataService
 import io.sentry.Sentry
+import tech.httptoolkit.android.vpn.capture.CaptureController
+import tech.httptoolkit.android.vpn.capture.DirectHandler
+import tech.httptoolkit.android.vpn.capture.SOCKS5Handler
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InterruptedIOException
-import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 
 // The read buffer size. Must be >= VPN_MTU, so that every packet fits.
@@ -26,8 +27,7 @@ const val VPN_MTU = 1279
 
 class ProxyVpnRunnable(
     vpnInterface: ParcelFileDescriptor,
-    proxyHost: String,
-    proxyPort: Int,
+    proxyConfig: ProxyConfig,
     redirectPorts: IntArray
 ) : Runnable {
 
@@ -45,19 +45,12 @@ class ProxyVpnRunnable(
     private val nioService = SocketNIODataService(vpnPacketWriter)
     private val dataServiceThread = Thread(nioService, "Socket NIO thread")
 
-    private val manager = SessionManager()
+    private val captureController = CaptureController(proxyConfig, redirectPorts.toList())
+    private val manager = SessionManager(captureController)
     private val handler = SessionHandler(manager, nioService, vpnPacketWriter)
 
     // Allocate the buffer for a single packet.
     private val packet = ByteBuffer.allocate(MAX_PACKET_LEN)
-
-    // Our redirect rules, defining which traffic should be forwarded to what proxy address
-    private val portRedirections = SparseArray<InetSocketAddress>().apply {
-        val proxyAddress = InetSocketAddress(proxyHost, proxyPort)
-        redirectPorts.forEach {
-            append(it, proxyAddress)
-        }
-    }
 
     override fun run() {
         if (running) {
@@ -67,7 +60,6 @@ class ProxyVpnRunnable(
 
         Log.i(TAG, "Vpn thread starting")
 
-        manager.setTcpPortRedirections(portRedirections)
         dataServiceThread.start()
         vpnPacketWriterThread.start()
 
