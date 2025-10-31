@@ -39,6 +39,10 @@ class SocketChannelReader {
 
 	private final ClientPacketWriter writer;
 
+	// We're single-threaded, so we can just reuse a single max-size buffer
+	// over and over instead of endlessly reallocating it.
+	private final ByteBuffer readBuffer = ByteBuffer.allocate(DataConst.MAX_RECEIVE_BUFFER_SIZE);
+
 	public SocketChannelReader(ClientPacketWriter writer) {
 		this.writer = writer;
 	}
@@ -89,17 +93,16 @@ class SocketChannelReader {
 		}
 
 		SocketChannel channel = (SocketChannel) session.getChannel();
-		ByteBuffer buffer = ByteBuffer.allocate(DataConst.MAX_RECEIVE_BUFFER_SIZE);
 		int len;
 
 		try {
 			do {
-				len = channel.read(buffer);
+				len = channel.read(readBuffer);
 				if (len > 0) { //-1 mean it reach the end of stream
-					buffer.limit(len);
-					buffer.flip();
-					sendToRequester(buffer, session);
-					buffer.clear();
+					readBuffer.limit(len);
+					readBuffer.flip();
+					sendToRequester(readBuffer, session);
+					readBuffer.clear();
 				} else if (len == -1) {
 					Log.d(TAG,"End of data from remote server, will send FIN to client");
 					Log.d(TAG,"send FIN to: " + session);
@@ -206,7 +209,6 @@ class SocketChannelReader {
 
 	private void readUDP(Session session){
 		DatagramChannel channel = (DatagramChannel) session.getChannel();
-		ByteBuffer buffer = ByteBuffer.allocate(DataConst.MAX_RECEIVE_BUFFER_SIZE);
 		int len;
 
 		try {
@@ -215,23 +217,21 @@ class SocketChannelReader {
 					break;
 				}
 
-				len = channel.read(buffer);
+				len = channel.read(readBuffer);
 				if (len > 0) {
-					buffer.limit(len);
-					buffer.flip();
+					readBuffer.limit(len);
+					readBuffer.flip();
 
 					//create UDP packet
-					byte[] data = new byte[len];
-					System.arraycopy(buffer.array(),0, data, 0, len);
 					byte[] packetData = UDPPacketFactory.createResponsePacket(
-							session.getLastIpHeader(), session.getLastUdpHeader(), data);
+							session.getLastIpHeader(), session.getLastUdpHeader(), readBuffer);
+					readBuffer.clear();
 
 					//write to client
 					writer.write(packetData);
 
 					Log.d(TAG,"SDR: sent " + len + " bytes to UDP client, packetData.length: "
 							+ packetData.length);
-					buffer.clear();
 				}
 			} while(len > 0);
 		}catch(NotYetConnectedException ex){
