@@ -107,8 +107,8 @@
                 android:value=".MainActivity" />
         </activity>
 
-        <activity android:name=".ApplicationListActivity" />
-        <activity android:name=".PortListActivity" />
+        <activity android:name=".appselection.ApplicationListActivity" />
+        <activity android:name=".portfilter.PortListActivity" />
 
         <meta-data android:name="search-engine" android:resource="@xml/noindex" />
 

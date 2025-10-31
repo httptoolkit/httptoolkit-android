@@ -41,6 +41,8 @@ import java.security.cert.Certificate
 import java.security.cert.X509Certificate
 import androidx.core.view.isVisible
 import androidx.core.net.toUri
+import tech.httptoolkit.android.appselection.ApplicationListActivity
+import tech.httptoolkit.android.portfilter.PortListActivity
 
 
 const val START_VPN_REQUEST = 123

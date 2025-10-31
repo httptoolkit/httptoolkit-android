@@ -25,6 +25,7 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import tech.httptoolkit.android.portfilter.DEFAULT_PORTS
 
 private const val VPN_START_TIME_PREF = "vpn-start-time"
 private const val LAST_UPDATE_CHECK_TIME_PREF = "update-check-time"
