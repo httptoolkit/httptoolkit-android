@@ -76,10 +76,6 @@ public class SOCKS5Handler extends ProxyProtocolHandler {
     
     @Override
     public void processHandshakeData(ByteBuffer data) {
-        ByteBuffer view = data.asReadOnlyBuffer();
-        byte[] bytes = new byte[view.remaining()];
-        view.get(bytes);
-
         switch (socksState) {
             case AUTH_REQUEST_PENDING:
                 if (SOCKS5Protocol.parseAuthResponse(data)) {

@@ -34,12 +34,10 @@ public class UDPPacketFactory {
 	 * @param packetData packet data to be sent to client
 	 * @return array of byte
 	 */
-	public static byte[] createResponsePacket(IPv4Header ip, UDPHeader udp, byte[] packetData){
+	public static byte[] createResponsePacket(IPv4Header ip, UDPHeader udp, ByteBuffer packetData){
 		byte[] buffer;
 		int udpLen = 8;
-		if(packetData != null){
-			udpLen += packetData.length;
-		}
+		udpLen += packetData.remaining();
 		int srcPort = udp.getDestinationPort();
 		int destPort = udp.getSourcePort();
 		short checksum = 0;
@@ -90,8 +88,7 @@ public class UDPPacketFactory {
 		start += 2;
 		
 		//now copy udp data
-		if (packetData != null)
-			System.arraycopy(packetData, 0, buffer, start, packetData.length);
+		packetData.get(buffer, start, packetData.remaining());
 
 		return buffer;
 	}
