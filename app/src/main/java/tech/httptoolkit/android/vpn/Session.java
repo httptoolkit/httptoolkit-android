@@ -18,6 +18,9 @@ package tech.httptoolkit.android.vpn;
 
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
+import tech.httptoolkit.android.vpn.capture.ProxyProtocolHandler;
 import tech.httptoolkit.android.vpn.transport.ip.IPv4Header;
 import tech.httptoolkit.android.vpn.socket.ICloseSession;
 import tech.httptoolkit.android.vpn.transport.tcp.TCPHeader;
@@ -108,13 +111,18 @@ public class Session {
 
 	private final ICloseSession sessionCloser;
 	
+	// Proxy protocol handler - set only while the proxy connection
+	// is being established, then null afterwards.
+	private ProxyProtocolHandler proxyHandler;
+	
 	Session(
 		SessionProtocol protocol,
 		int sourceIp,
 		int sourcePort,
 		int destinationIp,
 		int destinationPort,
-		ICloseSession sessionCloser
+		ICloseSession sessionCloser,
+		ProxyProtocolHandler proxyHandler
 	) {
 		receivingStream = new ByteArrayOutputStream();
 		sendingStream = new ByteArrayOutputStream();
@@ -126,18 +134,27 @@ public class Session {
 		this.destPort = destinationPort;
 
 		this.sessionCloser = sessionCloser;
+		this.proxyHandler = proxyHandler;
+	}
+
+	@Nullable
+	public ProxyProtocolHandler getProxySetupHandler() {
+		if (this.proxyHandler == null) {
+			return null;
+		} else if (!this.proxyHandler.isPending()) {
+			this.proxyHandler = null;
+			return null;
+		} else {
+			return this.proxyHandler;
+		}
 	}
 
 	/**
 	 * append more data
 	 * @param data Data
 	 */
-	public synchronized void addReceivedData(byte[] data){
-		try {
-			receivingStream.write(data);
-		} catch (IOException e) {
-			Log.e(TAG, e.toString());
-		}
+	public synchronized void addReceivedData(ByteBuffer data){
+	   receivingStream.write(data.array(), data.position(), data.remaining());
 	}
 
 	/**
@@ -174,10 +191,6 @@ public class Session {
 		final int remaining = data.remaining();
 		sendingStream.write(data.array(), data.position(), data.remaining());
 		return remaining;
-	}
-
-	int getSendingDataSize(){
-		return sendingStream.size();
 	}
 
 	/**

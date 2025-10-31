@@ -458,7 +458,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     listOf(lastProxy.ip),
                     lastProxy.port,
                     null,
-                    getCertificateFingerprint(lastProxy.certificate as X509Certificate)
+                    getCertificateFingerprint(lastProxy.certificate as X509Certificate),
+                    if (lastProxy.captureProtocol != null) listOf(lastProxy.captureProtocol.toString()) else listOf()
                 )
             )
             connectToVpn(config)

@@ -247,8 +247,7 @@ class ProxyVpnService : VpnService(), IProtectSocket {
 
         vpnRunnable = ProxyVpnRunnable(
             vpnInterface,
-            proxyConfig.ip,
-            proxyConfig.port,
+            proxyConfig,
             interceptedPorts.toIntArray()
         )
         Thread(vpnRunnable, "Vpn thread").start()

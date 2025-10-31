@@ -40,7 +40,15 @@ data class ProxyInfo(
      * proxy, as part of validating the connection. This hash is included in QR codes to
      * protect against MitM of our MitM during setup.
      */
-    val certFingerprint: String
+    val certFingerprint: String,
+
+    /**
+     * Which protocols does the proxy say it supports? This is slightly broader than the 'real'
+     * set of protocols, since we may include things like RAW (direct packet redirection),
+     * and subtypes of SOCKS with custom metadata mechanisms etc.
+     */
+    @Json(serializeNull = false)
+    val proxyProtocols: List<String>?
 ) : Parcelable
 
 /**
@@ -73,8 +81,19 @@ data class ProxyConfig(
     /**
      * The HTTPS CA certificate of the proxy, obtained from the proxy itself during setup.
      */
-    val certificate: Certificate
+    val certificate: Certificate,
+
+    /**
+     * Preferred capture protocol for this proxy. If null, only the default RAW
+     * HTTP redirect behavior is supported.
+     */
+    val captureProtocol: ProxyCaptureProtocol?
 ) : Parcelable
+
+enum class ProxyCaptureProtocol {
+    RAW,
+    SOCKS5
+}
 
 val CertificateConverter = object: Converter {
     override fun canConvert(cls: Class<*>): Boolean {
