@@ -5,15 +5,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tech.httptoolkit.android.ProxyConfig
@@ -50,7 +51,7 @@ fun ConnectionStatusScreen(
             fontFamily = DmSansFontFamily,
             fontWeight = FontWeight.Normal,
             color = MaterialTheme.colorScheme.onBackground,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
@@ -117,9 +118,7 @@ fun ConnectionStatusScreen(
             InterceptionButton(
                 icon = R.drawable.ic_apps_24,
                 text = getAppStatusText(totalAppCount, interceptedAppCount),
-                onClick = {
-                    onChangeApps()
-                },
+                onClick = onChangeApps,
                 modifier = Modifier
                     .weight(1f)
             )

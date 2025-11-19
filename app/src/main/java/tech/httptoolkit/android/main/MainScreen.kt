@@ -22,26 +22,34 @@ import androidx.compose.ui.unit.sp
 import tech.httptoolkit.android.ProxyConfig
 import tech.httptoolkit.android.R
 import tech.httptoolkit.android.connection.ConnectionStatusScreen
-import tech.httptoolkit.android.main.MainState.*
+import tech.httptoolkit.android.main.ConnectionState.*
 import tech.httptoolkit.android.ui.DmSansFontFamily
+
+data class MainScreenState(
+    val connectionState: ConnectionState,
+    val proxyConfig: ProxyConfig?,
+    val hasCamera: Boolean,
+    val lastProxy: ProxyConfig?,
+    val totalAppCount: Int,
+    val interceptedAppCount: Int,
+    val interceptedPorts: Set<Int>
+)
+
+data class MainScreenActions(
+    val onScanQRCode: () -> Unit,
+    val onReconnect: () -> Unit,
+    val onDisconnect: () -> Unit,
+    val onRecoverAfterFailure: () -> Unit,
+    val onTestInterception: () -> Unit,
+    val onOpenDocs: () -> Unit,
+    val onChooseApps: () -> Unit,
+    val onChoosePorts: () -> Unit
+)
 
 @Composable
 fun MainScreen(
-    state: MainState,
-    proxyConfig: ProxyConfig?,
-    hasCamera: Boolean,
-    lastProxy: ProxyConfig?,
-    totalAppCount: Int,
-    interceptedAppCount: Int,
-    interceptedPorts: Set<Int>,
-    onScanQRCode: () -> Unit,
-    onReconnect: () -> Unit,
-    onDisconnect: () -> Unit,
-    onRecoverAfterFailure: () -> Unit,
-    onTestInterception: () -> Unit,
-    onOpenDocs: () -> Unit,
-    onChooseApps: () -> Unit,
-    onChoosePorts: () -> Unit,
+    screenState: MainScreenState,
+    actions: MainScreenActions,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -49,40 +57,14 @@ fun MainScreen(
 
     if (isLandscape) {
         LandscapeMainScreen(
-            state = state,
-            proxyConfig = proxyConfig,
-            hasCamera = hasCamera,
-            lastProxy = lastProxy,
-            totalAppCount = totalAppCount,
-            interceptedAppCount = interceptedAppCount,
-            interceptedPorts = interceptedPorts,
-            onScanQRCode = onScanQRCode,
-            onReconnect = onReconnect,
-            onDisconnect = onDisconnect,
-            onRecoverAfterFailure = onRecoverAfterFailure,
-            onTestInterception = onTestInterception,
-            onOpenDocs = onOpenDocs,
-            onChooseApps = onChooseApps,
-            onChoosePorts = onChoosePorts,
+            screenState = screenState,
+            actions = actions,
             modifier = modifier
         )
     } else {
         PortraitMainScreen(
-            state = state,
-            proxyConfig = proxyConfig,
-            hasCamera = hasCamera,
-            lastProxy = lastProxy,
-            totalAppCount = totalAppCount,
-            interceptedAppCount = interceptedAppCount,
-            interceptedPorts = interceptedPorts,
-            onScanQRCode = onScanQRCode,
-            onReconnect = onReconnect,
-            onDisconnect = onDisconnect,
-            onRecoverAfterFailure = onRecoverAfterFailure,
-            onTestInterception = onTestInterception,
-            onOpenDocs = onOpenDocs,
-            onChooseApps = onChooseApps,
-            onChoosePorts = onChoosePorts,
+            screenState = screenState,
+            actions = actions,
             modifier = modifier
         )
     }
@@ -90,21 +72,8 @@ fun MainScreen(
 
 @Composable
 private fun PortraitMainScreen(
-    state: MainState,
-    proxyConfig: ProxyConfig?,
-    hasCamera: Boolean,
-    lastProxy: ProxyConfig?,
-    totalAppCount: Int,
-    interceptedAppCount: Int,
-    interceptedPorts: Set<Int>,
-    onScanQRCode: () -> Unit,
-    onReconnect: () -> Unit,
-    onDisconnect: () -> Unit,
-    onRecoverAfterFailure: () -> Unit,
-    onTestInterception: () -> Unit,
-    onOpenDocs: () -> Unit,
-    onChooseApps: () -> Unit,
-    onChoosePorts: () -> Unit,
+    screenState: MainScreenState,
+    actions: MainScreenActions,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -118,7 +87,7 @@ private fun PortraitMainScreen(
         else -> 0.18f
     }
     val statusGuidelinePercent = if (!smallScreen) 0.32f else guidelinePercent + 0.08f
-    val postStatusSpacer = if (!smallScreen) 50.dp else 50.dp
+    val postStatusSpacer = 50.dp
 
     Box(modifier = modifier.fillMaxSize()) {
         if (smallScreen) { // On small screens, we move the logo to the background
@@ -148,9 +117,9 @@ private fun PortraitMainScreen(
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        when (state) {
+                        when (screenState.connectionState) {
                             DISCONNECTED -> {
-                                if (hasCamera) {
+                                if (screenState.hasCamera) {
                                     DetailText(
                                         text = stringResource(R.string.disconnected_details),
                                         modifier = Modifier.padding(top = 16.dp)
@@ -164,15 +133,15 @@ private fun PortraitMainScreen(
                             }
 
                             CONNECTED -> {
-                                if (proxyConfig != null) {
+                                if (screenState.proxyConfig != null) {
                                     Column(modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 4.dp)) {
                                         ConnectionStatusScreen(
-                                            proxyConfig = proxyConfig,
-                                            totalAppCount = totalAppCount,
-                                            interceptedAppCount = interceptedAppCount,
-                                            onChangeApps = onChooseApps,
-                                            interceptedPorts = interceptedPorts,
-                                            onChangePorts = onChoosePorts
+                                            proxyConfig = screenState.proxyConfig,
+                                            totalAppCount = screenState.totalAppCount,
+                                            interceptedAppCount = screenState.interceptedAppCount,
+                                            onChangeApps = actions.onChooseApps,
+                                            interceptedPorts = screenState.interceptedPorts,
+                                            onChangePorts = actions.onChoosePorts
                                         )
                                     }
                                 }
@@ -193,23 +162,23 @@ private fun PortraitMainScreen(
                 }
 
                 // Button container - only visible when not transitioning
-                if (state != CONNECTING && state != DISCONNECTING) {
+                if (screenState.connectionState != CONNECTING && screenState.connectionState != DISCONNECTING) {
                     ButtonCard(
                         isLandscape = false,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        when (state) {
+                        when (screenState.connectionState) {
                             DISCONNECTED -> {
-                                if (hasCamera) {
+                                if (screenState.hasCamera) {
                                     PrimaryButton(
                                         text = stringResource(R.string.scan_button),
-                                        onClick = onScanQRCode
+                                        onClick = actions.onScanQRCode
                                     )
                                 }
-                                if (lastProxy != null) {
+                                if (screenState.lastProxy != null) {
                                     SecondaryButton(
                                         text = stringResource(R.string.reconnect_button),
-                                        onClick = onReconnect
+                                        onClick = actions.onReconnect
                                     )
                                 }
                             }
@@ -217,18 +186,18 @@ private fun PortraitMainScreen(
                             CONNECTED -> {
                                 PrimaryButton(
                                     text = stringResource(R.string.disconnect_button),
-                                    onClick = onDisconnect
+                                    onClick = actions.onDisconnect
                                 )
                                 SecondaryButton(
                                     text = stringResource(R.string.test_button),
-                                    onClick = onTestInterception
+                                    onClick = actions.onTestInterception
                                 )
                             }
 
                             FAILED -> {
                                 PrimaryButton(
                                     text = stringResource(R.string.try_again_button),
-                                    onClick = onRecoverAfterFailure
+                                    onClick = actions.onRecoverAfterFailure
                                 )
                             }
 
@@ -238,7 +207,7 @@ private fun PortraitMainScreen(
                         // Docs button always shown
                         SecondaryButton(
                             text = stringResource(R.string.docs_button),
-                            onClick = onOpenDocs
+                            onClick = actions.onOpenDocs
                         )
                     }
                 }
@@ -256,7 +225,7 @@ private fun PortraitMainScreen(
 
             Text(
                 text = stringResource(
-                    when (state) {
+                    when (screenState.connectionState) {
                         DISCONNECTED -> R.string.disconnected_status
                         CONNECTING -> R.string.connecting_status
                         CONNECTED -> R.string.connected_status
@@ -281,21 +250,8 @@ private fun PortraitMainScreen(
 
 @Composable
 private fun LandscapeMainScreen(
-    state: MainState,
-    proxyConfig: ProxyConfig?,
-    hasCamera: Boolean,
-    lastProxy: ProxyConfig?,
-    totalAppCount: Int,
-    interceptedAppCount: Int,
-    interceptedPorts: Set<Int>,
-    onScanQRCode: () -> Unit,
-    onReconnect: () -> Unit,
-    onDisconnect: () -> Unit,
-    onRecoverAfterFailure: () -> Unit,
-    onTestInterception: () -> Unit,
-    onOpenDocs: () -> Unit,
-    onChooseApps: () -> Unit,
-    onChoosePorts: () -> Unit,
+    screenState: MainScreenState,
+    actions: MainScreenActions,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -313,7 +269,7 @@ private fun LandscapeMainScreen(
             // Status text
             Text(
                 text = stringResource(
-                    when (state) {
+                    when (screenState.connectionState) {
                         DISCONNECTED -> R.string.disconnected_status
                         CONNECTING -> R.string.connecting_status
                         CONNECTED -> R.string.connected_status
@@ -336,9 +292,9 @@ private fun LandscapeMainScreen(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                when (state) {
+                when (screenState.connectionState) {
                     DISCONNECTED -> {
-                        if (hasCamera) {
+                        if (screenState.hasCamera) {
                             DetailText(
                                 text = stringResource(R.string.disconnected_details),
                                 modifier = Modifier.padding(top = 16.dp)
@@ -352,15 +308,15 @@ private fun LandscapeMainScreen(
                     }
 
                     CONNECTED -> {
-                        if (proxyConfig != null) {
+                        if (screenState.proxyConfig != null) {
                             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)) {
                                 ConnectionStatusScreen(
-                                    proxyConfig = proxyConfig,
-                                    totalAppCount = totalAppCount,
-                                    interceptedAppCount = interceptedAppCount,
-                                    onChangeApps = onChooseApps,
-                                    interceptedPorts = interceptedPorts,
-                                    onChangePorts = onChoosePorts
+                                    proxyConfig = screenState.proxyConfig,
+                                    totalAppCount = screenState.totalAppCount,
+                                    interceptedAppCount = screenState.interceptedAppCount,
+                                    onChangeApps = actions.onChooseApps,
+                                    interceptedPorts = screenState.interceptedPorts,
+                                    onChangePorts = actions.onChoosePorts
                                 )
                             }
                         }
@@ -397,23 +353,23 @@ private fun LandscapeMainScreen(
                     .padding(bottom = 16.dp)
             )
 
-            if (state != CONNECTING && state != DISCONNECTING) {
+            if (screenState.connectionState != CONNECTING && screenState.connectionState != DISCONNECTING) {
                 ButtonCard(
                     isLandscape = true,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    when (state) {
+                    when (screenState.connectionState) {
                         DISCONNECTED -> {
-                            if (hasCamera) {
+                            if (screenState.hasCamera) {
                                 PrimaryButton(
                                     text = stringResource(R.string.scan_button),
-                                    onClick = onScanQRCode
+                                    onClick = actions.onScanQRCode
                                 )
                             }
-                            if (lastProxy != null) {
+                            if (screenState.lastProxy != null) {
                                 SecondaryButton(
                                     text = stringResource(R.string.reconnect_button),
-                                    onClick = onReconnect
+                                    onClick = actions.onReconnect
                                 )
                             }
                         }
@@ -421,18 +377,18 @@ private fun LandscapeMainScreen(
                         CONNECTED -> {
                             PrimaryButton(
                                 text = stringResource(R.string.disconnect_button),
-                                onClick = onDisconnect
+                                onClick = actions.onDisconnect
                             )
                             SecondaryButton(
                                 text = stringResource(R.string.test_button),
-                                onClick = onTestInterception
+                                onClick = actions.onTestInterception
                             )
                         }
 
                         FAILED -> {
                             PrimaryButton(
                                 text = stringResource(R.string.try_again_button),
-                                onClick = onRecoverAfterFailure
+                                onClick = actions.onRecoverAfterFailure
                             )
                         }
 
@@ -442,7 +398,7 @@ private fun LandscapeMainScreen(
                     // Docs button always shown
                     SecondaryButton(
                         text = stringResource(R.string.docs_button),
-                        onClick = onOpenDocs
+                        onClick = actions.onOpenDocs
                     )
                 }
             }

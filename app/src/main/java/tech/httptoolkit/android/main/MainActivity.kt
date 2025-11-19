@@ -50,7 +50,7 @@ const val START_VPN_REQUEST = 123
 const val INSTALL_CERT_REQUEST = 456
 const val ENABLE_NOTIFICATIONS_REQUEST = 101
 
-enum class MainState {
+enum class ConnectionState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
@@ -71,17 +71,17 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == VPN_STARTED_BROADCAST) {
-                mainState = MainState.CONNECTED
+                mainState = ConnectionState.CONNECTED
                 currentProxyConfig = intent.getParcelableExtra(IntentExtras.PROXY_CONFIG_EXTRA)
                 updateAppCounts()
             } else if (intent.action == VPN_STOPPED_BROADCAST) {
-                mainState = MainState.DISCONNECTED
+                mainState = ConnectionState.DISCONNECTED
                 currentProxyConfig = null
             }
         }
     }
 
-    private var mainState: MainState by mutableStateOf(if (isVpnActive()) MainState.CONNECTED else MainState.DISCONNECTED)
+    private var mainState: ConnectionState by mutableStateOf(if (isVpnActive()) ConnectionState.CONNECTED else ConnectionState.DISCONNECTED)
 
     // If connected/late-stage connecting, the proxy we're connected/trying to connect to. Otherwise null.
     private var currentProxyConfig: ProxyConfig? by mutableStateOf(activeVpnConfig())
@@ -179,21 +179,25 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
         setContent {
             HttpToolkitTheme {
                 MainScreen(
-                    state = mainState,
-                    proxyConfig = currentProxyConfig,
-                    hasCamera = packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY),
-                    lastProxy = app.lastProxy,
-                    totalAppCount = totalAppCount,
-                    interceptedAppCount = interceptedAppCount,
-                    interceptedPorts = interceptedPorts,
-                    onScanQRCode = { checkCameraPermission() },
-                    onReconnect = { reconnect() },
-                    onDisconnect = { disconnect() },
-                    onRecoverAfterFailure = { recoverAfterFailure() },
-                    onTestInterception = { testInterception() },
-                    onOpenDocs = { openDocs() },
-                    onChooseApps = { chooseApps() },
-                    onChoosePorts = { choosePorts() }
+                    screenState = MainScreenState(
+                        connectionState = mainState,
+                        proxyConfig = currentProxyConfig,
+                        hasCamera = packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY),
+                        lastProxy = app.lastProxy,
+                        totalAppCount = totalAppCount,
+                        interceptedAppCount = interceptedAppCount,
+                        interceptedPorts = interceptedPorts
+                    ),
+                    actions = MainScreenActions(
+                        onScanQRCode = { checkCameraPermission() },
+                        onReconnect = { reconnect() },
+                        onDisconnect = { disconnect() },
+                        onRecoverAfterFailure = { recoverAfterFailure() },
+                        onTestInterception = { testInterception() },
+                        onOpenDocs = { openDocs() },
+                        onChooseApps = { chooseApps() },
+                        onChoosePorts = { choosePorts() }
+                    )
                 )
             }
         }
@@ -359,7 +363,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
         Log.i(TAG, "Connect to VPN")
 
         this.currentProxyConfig = config
-        this.mainState = MainState.CONNECTING
+        this.mainState = ConnectionState.CONNECTING
 
         val vpnIntent = VpnService.prepare(this)
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
@@ -377,7 +381,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
 
     private fun disconnect() {
         currentProxyConfig = null
-        mainState = MainState.DISCONNECTING
+        mainState = ConnectionState.DISCONNECTING
 
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = STOP_VPN_ACTION
@@ -385,7 +389,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
     }
 
     private suspend fun reconnect(lastProxy: ProxyConfig) {
-        mainState = MainState.CONNECTING
+        mainState = ConnectionState.CONNECTING
 
         try {
             // Revalidates the config, to ensure the server is available (and drop retries if not)
@@ -404,7 +408,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
             Log.e(TAG, e.toString())
             e.printStackTrace()
 
-            mainState = MainState.FAILED
+            mainState = ConnectionState.FAILED
 
             // We report errors only that aren't simple connection failures
             if (e !is SocketTimeoutException && e !is ConnectException) {
@@ -415,7 +419,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
 
     private fun recoverAfterFailure() {
         currentProxyConfig = null
-        mainState = MainState.DISCONNECTED
+        mainState = ConnectionState.DISCONNECTED
     }
 
     private fun openDocs() {
@@ -517,7 +521,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
             showActiveVpnFailureAlert()
 
             // Then go back to the disconnected state:
-            mainState = MainState.DISCONNECTED
+            mainState = ConnectionState.DISCONNECTED
         } else if (
             requestCode == INSTALL_CERT_REQUEST &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q // Required for promptToManuallyInstallCert
@@ -538,14 +542,14 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
             requestNotificationPermission(true)
         } else {
             Sentry.captureMessage("Non-OK result $resultCode for requestCode $requestCode")
-            mainState = MainState.FAILED
+            mainState = ConnectionState.FAILED
         }
     }
 
     private fun startVpn() {
         Log.i(TAG, "Starting VPN")
 
-        mainState = MainState.CONNECTING
+        mainState = ConnectionState.CONNECTING
 
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = START_VPN_ACTION
@@ -562,11 +566,11 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
     private suspend fun connectToVpnFromUrl(uri: Uri) {
         Log.i(TAG, "Connecting to VPN from URL: $uri")
         if (
-            mainState != MainState.DISCONNECTED &&
-            mainState != MainState.FAILED
+            mainState != ConnectionState.DISCONNECTED &&
+            mainState != ConnectionState.FAILED
         ) return
 
-        mainState = MainState.CONNECTING
+        mainState = ConnectionState.CONNECTING
 
         withContext(Dispatchers.IO) {
             try {
@@ -576,7 +580,7 @@ class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
                 Log.e(TAG, e.toString())
                 e.printStackTrace()
 
-                mainState = MainState.FAILED
+                mainState = ConnectionState.FAILED
 
                 // We report errors only that aren't simple connection failures
                 if (e !is SocketTimeoutException && e !is ConnectException) {
