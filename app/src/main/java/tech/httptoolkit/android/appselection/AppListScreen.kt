@@ -109,7 +109,7 @@ fun AppListScreen(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options"
+                            contentDescription = stringResource(R.string.cd_more_options)
                         )
                     }
 
@@ -240,7 +240,7 @@ fun AppListItem(
             // App icon
             Image(
                 painter = rememberDrawablePainter(drawable = appIcon),
-                contentDescription = "App icon for $appLabel",
+                contentDescription = stringResource(R.string.cd_app_icon, appLabel),
                 modifier = Modifier
                     .size(72.dp)
                     .padding(vertical = 8.dp)

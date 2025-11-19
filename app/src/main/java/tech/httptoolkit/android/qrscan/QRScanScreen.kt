@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.ResultPoint
@@ -11,19 +12,26 @@ import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import com.journeyapps.barcodescanner.DefaultDecoderFactory
+import tech.httptoolkit.android.Constants
+import tech.httptoolkit.android.R
+
+private const val TAG = "QRScanScreen"
 
 @Composable
 fun QRScanScreen(
     onQRCodeScanned: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
     AndroidView(
-        factory = { context ->
+        factory = { ctx ->
             var lastScannedText: String? = null
 
-            DecoratedBarcodeView(context).apply {
+            DecoratedBarcodeView(ctx).apply {
                 barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
-                setStatusText("Scan HTTP Toolkit QR code to connect")
+                setStatusText(context.getString(R.string.qr_scan_prompt))
+                contentDescription = context.getString(R.string.cd_camera_view)
 
                 // Add extra padding to the status text to ensure it's well clear of the nav bar
                 statusView?.setPadding(0, 0, 0, 48)
@@ -37,9 +45,9 @@ fun QRScanScreen(
                         }
 
                         lastScannedText = resultText
-                        Log.i("QRScanScreen", "Scanned: $resultText")
+                        Log.i(TAG, "Scanned: $resultText")
 
-                        if (resultText.startsWith("https://android.httptoolkit.tech/connect/")) {
+                        if (resultText.startsWith(Constants.QR_CODE_URL_PREFIX)) {
                             onQRCodeScanned(resultText)
                         }
                     }

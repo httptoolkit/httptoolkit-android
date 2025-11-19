@@ -44,7 +44,7 @@ fun PortListScreen(
 
     val isValidInput = remember(inputText, ports) {
         inputText.toIntOrNull()?.let { port ->
-            port in 1..65535 && !ports.contains(port)
+            port in MIN_PORT..MAX_PORT && !ports.contains(port)
         } ?: false
     }
 
@@ -115,7 +115,7 @@ fun PortListScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Add port"
+                        contentDescription = stringResource(R.string.cd_add_port)
                     )
                 }
 
@@ -123,7 +123,7 @@ fun PortListScreen(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options"
+                            contentDescription = stringResource(R.string.cd_more_options)
                         )
                     }
 
@@ -132,7 +132,7 @@ fun PortListScreen(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Reset to defaults") },
+                            text = { Text(stringResource(R.string.menu_reset_to_defaults)) },
                             onClick = {
                                 showMenu = false
                                 ports = defaultPorts
@@ -203,7 +203,7 @@ fun PortItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete port $port"
+                    contentDescription = stringResource(R.string.cd_delete_port, port)
                 )
             }
         }

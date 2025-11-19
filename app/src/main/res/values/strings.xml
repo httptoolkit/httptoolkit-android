@@ -36,6 +36,8 @@
     <string name="docs_button">Read the docs</string>
     <string name="try_again_button">Try again</string>
     <string name="test_button">Test interception</string>
+
+    <string name="qr_scan_prompt">Scan HTTP Toolkit QR code to connect</string>
     <string name="app_drawable">App Drawable</string>
     <string name="applications">Applications</string>
     <string name="all_applications">All applications</string>
@@ -57,4 +59,12 @@
     <string name="cancel">Cancel</string>
     <string name="proceed">Proceed</string>
     <string name="open_settings">Open Settings</string>
+
+    <string name="cd_more_options">More options</string>
+    <string name="cd_add_port">Add port</string>
+    <string name="cd_delete_port">Delete port %d</string>
+    <string name="cd_app_icon">App icon for %s</string>
+    <string name="cd_camera_view">Camera view for scanning QR codes</string>
+
+    <string name="menu_reset_to_defaults">Reset to defaults</string>
 </resources>
