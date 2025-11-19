@@ -1,4 +1,4 @@
-package tech.httptoolkit.android
+package tech.httptoolkit.android.appselection
 
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager

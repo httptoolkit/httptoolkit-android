@@ -8,3 +8,7 @@ object IntentExtras {
     const val UNINTERCEPTED_APPS_EXTRA = "tech.httptoolkit.android.UNINTERCEPTED_APPS"
     const val INTERCEPTED_PORTS_EXTRA = "tech.httptoolkit.android.INTERCEPTED_PORTS"
 }
+
+object Constants {
+    const val QR_CODE_URL_PREFIX = "https://android.httptoolkit.tech/connect/"
+}

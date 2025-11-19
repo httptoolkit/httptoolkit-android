@@ -53,7 +53,7 @@
         </service>
 
         <activity
-                android:name=".MainActivity"
+                android:name=".main.MainActivity"
                 android:launchMode="singleTask"
                 android:exported="true">
             <intent-filter>
@@ -84,7 +84,7 @@
         -->
         <activity-alias
                 android:name=".RemoteControlMainActivity"
-                android:targetActivity=".MainActivity"
+                android:targetActivity=".main.MainActivity"
                 android:permission="android.permission.INJECT_EVENTS"
                 android:exported="true">
             <intent-filter>
@@ -101,14 +101,14 @@
             </intent-filter>
         </activity-alias>
 
-        <activity android:name=".QRScanActivity" android:parentActivityName=".MainActivity">
+        <activity android:name=".qrscan.QRScanActivity" android:parentActivityName=".main.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".MainActivity" />
+                android:value=".main.MainActivity" />
         </activity>
 
-        <activity android:name=".ApplicationListActivity" />
-        <activity android:name=".PortListActivity" />
+        <activity android:name=".appselection.ApplicationListActivity" />
+        <activity android:name=".portfilter.PortListActivity" />
 
         <meta-data android:name="search-engine" android:resource="@xml/noindex" />
 
