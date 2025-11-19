@@ -25,6 +25,9 @@ fun QRScanScreen(
                 barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
                 setStatusText("Scan HTTP Toolkit QR code to connect")
 
+                // Add extra padding to the status text to ensure it's well clear of the nav bar
+                statusView?.setPadding(0, 0, 0, 48)
+
                 val callback = object : BarcodeCallback {
                     override fun barcodeResult(result: BarcodeResult) {
                         val resultText = result.text
@@ -50,7 +53,9 @@ fun QRScanScreen(
                 resume()
             }
         },
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars),
         onRelease = { barcodeView ->
             barcodeView.pause()
         }
