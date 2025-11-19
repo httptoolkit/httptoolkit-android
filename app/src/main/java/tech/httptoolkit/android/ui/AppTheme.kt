@@ -4,6 +4,15 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import tech.httptoolkit.android.R
+
+val DmSansFontFamily = FontFamily(
+    Font(R.font.dmsans, FontWeight.Normal),
+    Font(R.font.dmsans_bold, FontWeight.Bold)
+)
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF2D4CBD),

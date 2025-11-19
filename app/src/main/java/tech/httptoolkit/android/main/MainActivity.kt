@@ -1,4 +1,4 @@
-package tech.httptoolkit.android
+package tech.httptoolkit.android.main
 
 import android.Manifest
 import android.app.NotificationManager
@@ -18,16 +18,15 @@ import android.security.KeyChain.EXTRA_CERTIFICATE
 import android.security.KeyChain.EXTRA_NAME
 import android.text.Html
 import android.util.Log
-import android.view.View
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
-import androidx.annotation.StringRes
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.view.ContextThemeWrapper
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -39,11 +38,12 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.security.cert.Certificate
 import java.security.cert.X509Certificate
-import androidx.core.view.isVisible
 import androidx.core.net.toUri
+import tech.httptoolkit.android.*
 import tech.httptoolkit.android.appselection.ApplicationListActivity
 import tech.httptoolkit.android.portfilter.PortListActivity
 import tech.httptoolkit.android.qrscan.QRScanActivity
+import tech.httptoolkit.android.ui.HttpToolkitTheme
 
 
 const val START_VPN_REQUEST = 123
@@ -63,7 +63,7 @@ private const val DEACTIVATE_INTENT = "tech.httptoolkit.android.DEACTIVATE"
 
 private val PROMPTED_CERT_SETUP_SUPPORTED = Build.VERSION.SDK_INT < Build.VERSION_CODES.R;
 
-class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
+class MainActivity : ComponentActivity(), CoroutineScope by MainScope() {
 
     private lateinit var app: HttpToolkitApplication
 
@@ -73,19 +73,22 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             if (intent.action == VPN_STARTED_BROADCAST) {
                 mainState = MainState.CONNECTED
                 currentProxyConfig = intent.getParcelableExtra(IntentExtras.PROXY_CONFIG_EXTRA)
-                updateUi()
+                updateAppCounts()
             } else if (intent.action == VPN_STOPPED_BROADCAST) {
                 mainState = MainState.DISCONNECTED
                 currentProxyConfig = null
-                updateUi()
             }
         }
     }
 
-    private var mainState: MainState = if (isVpnActive()) MainState.CONNECTED else MainState.DISCONNECTED
+    private var mainState: MainState by mutableStateOf(if (isVpnActive()) MainState.CONNECTED else MainState.DISCONNECTED)
 
     // If connected/late-stage connecting, the proxy we're connected/trying to connect to. Otherwise null.
-    private var currentProxyConfig: ProxyConfig? = activeVpnConfig()
+    private var currentProxyConfig: ProxyConfig? by mutableStateOf(activeVpnConfig())
+
+    private var totalAppCount: Int by mutableIntStateOf(0)
+    private var interceptedAppCount: Int by mutableIntStateOf(0)
+    private var interceptedPorts: Set<Int> by mutableStateOf(emptySet())
 
     // Used to track extremely fast VPN setup failures, indicating setup issues (rather than
     // manual user cancellation). Doesn't matter that it's not properly persistent.
@@ -99,6 +102,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 app.uninterceptedApps = unselectedApps
                 if (isVpnActive()) startVpn()
             }
+            updateAppCounts()
         } else {
             Log.i(TAG, "Pick apps result: ${result.resultCode}")
         }
@@ -112,6 +116,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 app.interceptedPorts = selectedPorts
                 if (isVpnActive()) startVpn()
             }
+            updateAppCounts()
         } else {
             Log.i(TAG, "Pick ports result: ${result.resultCode}")
         }
@@ -170,8 +175,31 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         })
 
         app = this.application as HttpToolkitApplication
-        setContentView(R.layout.main_layout)
-        updateUi()
+
+        setContent {
+            HttpToolkitTheme {
+                MainScreen(
+                    state = mainState,
+                    proxyConfig = currentProxyConfig,
+                    hasCamera = packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY),
+                    lastProxy = app.lastProxy,
+                    totalAppCount = totalAppCount,
+                    interceptedAppCount = interceptedAppCount,
+                    interceptedPorts = interceptedPorts,
+                    onScanQRCode = { checkCameraPermission() },
+                    onReconnect = { reconnect() },
+                    onDisconnect = { disconnect() },
+                    onRecoverAfterFailure = { recoverAfterFailure() },
+                    onTestInterception = { testInterception() },
+                    onOpenDocs = { openDocs() },
+                    onChooseApps = { chooseApps() },
+                    onChoosePorts = { choosePorts() }
+                )
+            }
+        }
+
+        // Initialize app counts
+        updateAppCounts()
 
         Log.i(TAG, "Main activity created")
 
@@ -297,112 +325,23 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
+    private fun reconnect() {
+        val lastProxy = app.lastProxy
+        if (lastProxy != null) {
+            launch { reconnect(lastProxy) }
+        }
+    }
+
+    private fun updateAppCounts() {
+        val allPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+            .map { pkg -> pkg.packageName }
+            .toSet()
+        totalAppCount = allPackages.size
+        interceptedAppCount = totalAppCount - app.uninterceptedApps.size
+        interceptedPorts = app.interceptedPorts
+    }
+
     @MainThread
-    private fun updateUi() {
-        val statusText = findViewById<TextView>(R.id.statusText)
-
-        val buttonContainer = findViewById<LinearLayout>(R.id.buttonLayoutContainer)
-        buttonContainer.removeAllViews()
-
-        val detailContainer = findViewById<LinearLayout>(R.id.statusDetailContainer)
-        detailContainer.removeAllViews()
-
-        when (mainState) {
-            MainState.DISCONNECTED -> {
-                statusText.setText(R.string.disconnected_status)
-                buttonContainer.visibility = View.VISIBLE
-
-                val hasCamera = this.packageManager
-                    .hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
-
-                if (hasCamera) {
-                    detailContainer.addView(detailText(R.string.disconnected_details))
-                    val scanQrButton = primaryButton(R.string.scan_button, ::checkCameraPermission)
-                    buttonContainer.addView(scanQrButton)
-                } else {
-                    detailContainer.addView(detailText(R.string.disconnected_no_camera_details))
-                }
-
-                val lastProxy = app.lastProxy
-                if (lastProxy != null) {
-                    buttonContainer.addView(secondaryButton(R.string.reconnect_button) {
-                        launch { reconnect(lastProxy) }
-                    })
-                }
-            }
-
-            MainState.CONNECTING -> {
-                statusText.setText(R.string.connecting_status)
-                buttonContainer.visibility = View.GONE
-            }
-
-            MainState.CONNECTED -> {
-                val proxyConfig = this.currentProxyConfig!!
-                val totalAppCount = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
-                    .map { app -> app.packageName }
-                    .toSet()
-                    .size
-                val interceptedAppsCount = totalAppCount - app.uninterceptedApps.size
-
-                statusText.setText(R.string.connected_status)
-
-                detailContainer.addView(
-                    ConnectionStatusView(
-                        this,
-                        proxyConfig,
-                        totalAppCount,
-                        interceptedAppsCount,
-                        ::chooseApps,
-                        app.interceptedPorts,
-                        ::choosePorts
-                    )
-                )
-
-                buttonContainer.visibility = View.VISIBLE
-                buttonContainer.addView(primaryButton(R.string.disconnect_button, ::disconnect))
-                buttonContainer.addView(secondaryButton(R.string.test_button, ::testInterception))
-            }
-
-            MainState.DISCONNECTING -> {
-                statusText.setText(R.string.disconnecting_status)
-                buttonContainer.visibility = View.GONE
-            }
-
-            MainState.FAILED -> {
-                statusText.setText(R.string.failed_status)
-
-                detailContainer.addView(detailText(R.string.failed_details))
-
-                buttonContainer.visibility = View.VISIBLE
-                buttonContainer.addView(primaryButton(R.string.try_again_button, ::resetAfterFailure))
-            }
-        }
-
-        if (buttonContainer.isVisible) {
-            buttonContainer.addView(secondaryButton(R.string.docs_button, ::openDocs))
-        }
-    }
-
-    private fun primaryButton(@StringRes contentId: Int, clickHandler: () -> Unit): Button {
-        val button = layoutInflater.inflate(R.layout.primary_button, null) as Button
-        button.setText(contentId)
-        button.setOnClickListener { clickHandler() }
-        return button
-    }
-
-    private fun secondaryButton(@StringRes contentId: Int, clickHandler: () -> Unit): Button {
-        val button = layoutInflater.inflate(R.layout.secondary_button, null) as Button
-        button.setText(contentId)
-        button.setOnClickListener { clickHandler() }
-        return button
-    }
-
-    private fun detailText(@StringRes resId: Int): TextView {
-        val text = TextView(ContextThemeWrapper(this, R.style.DetailText))
-        text.text = getString(resId)
-        return text
-    }
-
     private fun checkCameraPermission() {
         val canUseCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
         if (canUseCamera == PERMISSION_GRANTED) {
@@ -422,8 +361,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         this.currentProxyConfig = config
         this.mainState = MainState.CONNECTING
 
-        withContext(Dispatchers.Main) { updateUi() }
-
         val vpnIntent = VpnService.prepare(this)
         Log.i(TAG, if (vpnIntent != null) "got intent" else "no intent")
         val vpnNotConfigured = vpnIntent != null
@@ -441,7 +378,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private fun disconnect() {
         currentProxyConfig = null
         mainState = MainState.DISCONNECTING
-        updateUi()
 
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = STOP_VPN_ACTION
@@ -449,10 +385,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
 
     private suspend fun reconnect(lastProxy: ProxyConfig) {
-        withContext(Dispatchers.Main) {
-            mainState = MainState.CONNECTING
-            updateUi()
-        }
+        mainState = MainState.CONNECTING
 
         try {
             // Revalidates the config, to ensure the server is available (and drop retries if not)
@@ -471,10 +404,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             Log.e(TAG, e.toString())
             e.printStackTrace()
 
-            withContext(Dispatchers.Main) {
-                mainState = MainState.FAILED
-                updateUi()
-            }
+            mainState = MainState.FAILED
 
             // We report errors only that aren't simple connection failures
             if (e !is SocketTimeoutException && e !is ConnectException) {
@@ -483,10 +413,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         }
     }
 
-    private fun resetAfterFailure() {
+    private fun recoverAfterFailure() {
         currentProxyConfig = null
         mainState = MainState.DISCONNECTED
-        updateUi()
     }
 
     private fun openDocs() {
@@ -589,7 +518,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 
             // Then go back to the disconnected state:
             mainState = MainState.DISCONNECTED
-            updateUi()
         } else if (
             requestCode == INSTALL_CERT_REQUEST &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q // Required for promptToManuallyInstallCert
@@ -611,19 +539,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         } else {
             Sentry.captureMessage("Non-OK result $resultCode for requestCode $requestCode")
             mainState = MainState.FAILED
-            updateUi()
         }
     }
 
     private fun startVpn() {
         Log.i(TAG, "Starting VPN")
 
-        launch {
-            withContext(Dispatchers.Main) {
-                mainState = MainState.CONNECTING
-                updateUi()
-            }
-        }
+        mainState = MainState.CONNECTING
 
         startService(Intent(this, ProxyVpnService::class.java).apply {
             action = START_VPN_ACTION
@@ -644,10 +566,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             mainState != MainState.FAILED
         ) return
 
-        withContext(Dispatchers.Main) {
-            mainState = MainState.CONNECTING
-            updateUi()
-        }
+        mainState = MainState.CONNECTING
 
         withContext(Dispatchers.IO) {
             try {
@@ -657,10 +576,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                 Log.e(TAG, e.toString())
                 e.printStackTrace()
 
-                withContext(Dispatchers.Main) {
-                    mainState = MainState.FAILED
-                    updateUi()
-                }
+                mainState = MainState.FAILED
 
                 // We report errors only that aren't simple connection failures
                 if (e !is SocketTimeoutException && e !is ConnectException) {

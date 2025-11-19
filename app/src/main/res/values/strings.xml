@@ -18,14 +18,14 @@
     <string name="connected_tunnel_details">via ADB tunnel</string>
     <string name="failed_details">We couldn\'t connect to HTTP Toolkit.\n\nIs it running, and connected to the same network as this device?</string>
 
-    <string name="disabled_connection_status_heading">HTTPS interception disabled</string>
+    <string name="disabled_connection_status_heading">No certificate trust configured</string>
     <string name="user_connection_status_enabled_heading">User trust enabled</string>
     <string name="system_connection_status_disabled_heading">System trust disabled</string>
     <string name="system_connection_status_enabled_heading">System trust enabled</string>
     <string name="pre_v7_connection_status_enabled_heading">Certificate trusted</string>
 
     <string name="none_connection_status_details">Your HTTP Toolkit certificate is not trusted on this device, so HTTPS traffic will only be available from apps that individually include and trust it.\n\nDisconnect and reconnect to rerun HTTPS certificate setup.</string>
-    <string name="user_connection_status_details">HTTPS interception will only be available for apps that are configured to trust user-installed certificates (<a href="https://httptoolkit.com/docs/guides/android#intercepting-traffic-from-your-own-android-app">How?</a>)</string>
+    <string name="user_connection_status_details">HTTPS interception will only be available for apps that are configured to trust user-installed certificates.</string>
     <string name="system_connection_status_details">Traffic from all intercepted applications will be available, except those using explicit certificate pinning.</string>
     <string name="pre_v7_connection_status_details">Traffic from all intercepted applications will be available, except those using explicit certificate pinning.</string>
 
