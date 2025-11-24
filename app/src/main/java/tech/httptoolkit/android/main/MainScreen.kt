@@ -23,7 +23,27 @@ import tech.httptoolkit.android.ProxyConfig
 import tech.httptoolkit.android.R
 import tech.httptoolkit.android.connection.ConnectionStatusScreen
 import tech.httptoolkit.android.main.ConnectionState.*
+import tech.httptoolkit.android.ui.AppConstants
 import tech.httptoolkit.android.ui.DmSansFontFamily
+
+// MainScreen-specific layout constants
+private const val SCREEN_HEIGHT_SMALL = 680
+private const val SCREEN_HEIGHT_TINY = 380
+private val POST_STATUS_SPACER = 50.dp
+private val BACKGROUND_IMAGE_PADDING = 120.dp
+private const val BACKGROUND_IMAGE_ALPHA = 0.1f
+private val LETTER_SPACING_TIGHT = (-0.05).sp
+
+private fun getLogoGuidelinePercent(screenHeightDp: Int): Float = when {
+    screenHeightDp >= SCREEN_HEIGHT_SMALL -> 0.16f
+    screenHeightDp >= SCREEN_HEIGHT_TINY -> 0.08f
+    else -> 0.18f
+}
+
+private fun getStatusGuidelinePercent(screenHeightDp: Int, smallScreen: Boolean): Float {
+    val basePercent = getLogoGuidelinePercent(screenHeightDp)
+    return if (!smallScreen) 0.32f else basePercent + 0.08f
+}
 
 data class MainScreenState(
     val connectionState: ConnectionState,
@@ -80,14 +100,9 @@ private fun PortraitMainScreen(
     val screenHeightDp = configuration.screenHeightDp
 
     // Determine layout mode based on screen height
-    val smallScreen = screenHeightDp < 680
-    val guidelinePercent = when {
-        screenHeightDp >= 680 -> 0.16f
-        screenHeightDp >= 380 -> 0.08f
-        else -> 0.18f
-    }
-    val statusGuidelinePercent = if (!smallScreen) 0.32f else guidelinePercent + 0.08f
-    val postStatusSpacer = 50.dp
+    val smallScreen = screenHeightDp < SCREEN_HEIGHT_SMALL
+    val guidelinePercent = getLogoGuidelinePercent(screenHeightDp)
+    val statusGuidelinePercent = getStatusGuidelinePercent(screenHeightDp, smallScreen)
 
     Box(modifier = modifier.fillMaxSize()) {
         if (smallScreen) { // On small screens, we move the logo to the background
@@ -96,15 +111,15 @@ private fun PortraitMainScreen(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 120.dp),
-                alpha = 0.1f
+                    .padding(bottom = BACKGROUND_IMAGE_PADDING),
+                alpha = BACKGROUND_IMAGE_ALPHA
             )
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Reserve space for the logo and status text positioned absolutely
-                Spacer(modifier = Modifier.height((screenHeightDp * statusGuidelinePercent).dp + postStatusSpacer))
+                Spacer(modifier = Modifier.height((screenHeightDp * statusGuidelinePercent).dp + POST_STATUS_SPACER))
 
                 // Scrollable detail container
                 Box(
@@ -122,19 +137,19 @@ private fun PortraitMainScreen(
                                 if (screenState.hasCamera) {
                                     DetailText(
                                         text = stringResource(R.string.disconnected_details),
-                                        modifier = Modifier.padding(top = 16.dp)
+                                        modifier = Modifier.padding(top = AppConstants.spacingLarge)
                                     )
                                 } else {
                                     DetailText(
                                         text = stringResource(R.string.disconnected_no_camera_details),
-                                        modifier = Modifier.padding(top = 16.dp)
+                                        modifier = Modifier.padding(top = AppConstants.spacingLarge)
                                     )
                                 }
                             }
 
                             CONNECTED -> {
                                 if (screenState.proxyConfig != null) {
-                                    Column(modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 4.dp)) {
+                                    Column(modifier = Modifier.padding(start = AppConstants.spacingNormal, end = AppConstants.spacingNormal, bottom = AppConstants.spacingTiny)) {
                                         ConnectionStatusScreen(
                                             proxyConfig = screenState.proxyConfig,
                                             totalAppCount = screenState.totalAppCount,
@@ -150,7 +165,7 @@ private fun PortraitMainScreen(
                             FAILED -> {
                                 DetailText(
                                     text = stringResource(R.string.failed_details),
-                                    modifier = Modifier.padding(top = 16.dp)
+                                    modifier = Modifier.padding(top = AppConstants.spacingLarge)
                                 )
                             }
 
@@ -233,16 +248,16 @@ private fun PortraitMainScreen(
                         FAILED -> R.string.failed_status
                     }
                 ),
-                fontSize = 40.sp,
+                fontSize = AppConstants.textSizeHeading,
                 fontFamily = DmSansFontFamily,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.05).sp,
+                letterSpacing = LETTER_SPACING_TIGHT,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(y = (screenHeightDp * statusGuidelinePercent).dp)
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = AppConstants.spacingSmall)
             )
         }
     }
@@ -277,13 +292,13 @@ private fun LandscapeMainScreen(
                         FAILED -> R.string.failed_status
                     }
                 ),
-                fontSize = 40.sp,
+                fontSize = AppConstants.textSizeHeading,
                 fontFamily = DmSansFontFamily,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.05).sp,
+                letterSpacing = LETTER_SPACING_TIGHT,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                modifier = Modifier.padding(horizontal = AppConstants.spacingSmall)
             )
 
             // Detail container
@@ -297,19 +312,19 @@ private fun LandscapeMainScreen(
                         if (screenState.hasCamera) {
                             DetailText(
                                 text = stringResource(R.string.disconnected_details),
-                                modifier = Modifier.padding(top = 16.dp)
+                                modifier = Modifier.padding(top = AppConstants.spacingLarge)
                             )
                         } else {
                             DetailText(
                                 text = stringResource(R.string.disconnected_no_camera_details),
-                                modifier = Modifier.padding(top = 16.dp)
+                                modifier = Modifier.padding(top = AppConstants.spacingLarge)
                             )
                         }
                     }
 
                     CONNECTED -> {
                         if (screenState.proxyConfig != null) {
-                            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)) {
+                            Column(modifier = Modifier.padding(start = AppConstants.spacingLarge, end = AppConstants.spacingLarge, bottom = AppConstants.spacingTiny)) {
                                 ConnectionStatusScreen(
                                     proxyConfig = screenState.proxyConfig,
                                     totalAppCount = screenState.totalAppCount,
@@ -325,7 +340,7 @@ private fun LandscapeMainScreen(
                     FAILED -> {
                         DetailText(
                             text = stringResource(R.string.failed_details),
-                            modifier = Modifier.padding(top = 16.dp)
+                            modifier = Modifier.padding(top = AppConstants.spacingLarge)
                         )
                     }
 
@@ -350,7 +365,7 @@ private fun LandscapeMainScreen(
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .wrapContentSize()
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = AppConstants.spacingLarge)
             )
 
             if (screenState.connectionState != CONNECTING && screenState.connectionState != DISCONNECTING) {
@@ -413,14 +428,14 @@ private fun DetailText(
 ) {
     Text(
         text = text,
-        fontSize = 20.sp,
+        fontSize = AppConstants.textSizeBodyLarge,
         fontFamily = DmSansFontFamily,
         fontWeight = FontWeight.Normal,
         color = MaterialTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 0.dp)
+            .padding(horizontal = AppConstants.spacingLarge, vertical = 0.dp)
     )
 }
 
@@ -436,31 +451,36 @@ private fun ButtonCard(
     if (isLandscape) {
         // Landscape: rounded corners all around, with margins
         shape = MaterialTheme.shapes.small
-        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)
+        contentPadding = PaddingValues(
+            start = AppConstants.spacingNormal,
+            end = AppConstants.spacingNormal,
+            top = AppConstants.spacingNormal,
+            bottom = AppConstants.spacingNormal
+        )
     } else {
         // Portrait: rounded top corners only, extends to screen edges
         shape = RoundedCornerShape(
-            topStart = 16.dp,
-            topEnd = 16.dp,
+            topStart = AppConstants.spacingLarge,
+            topEnd = AppConstants.spacingLarge,
             bottomEnd = 0.dp,
             bottomStart = 0.dp
         )
         // Content padding includes bottom inset padding, card extends to edge
         contentPadding = PaddingValues(
-            start = 12.dp,
-            end = 12.dp,
-            top = 12.dp,
-            bottom = 8.dp
+            start = AppConstants.spacingMedium,
+            end = AppConstants.spacingMedium,
+            top = AppConstants.spacingMedium,
+            bottom = AppConstants.spacingSmall
         )
     }
 
     Card(
-        modifier = modifier.padding(horizontal = 12.dp),
+        modifier = modifier.padding(horizontal = AppConstants.spacingMedium),
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = AppConstants.elevationDefault)
     ) {
         Column(
             modifier = Modifier
@@ -473,7 +493,7 @@ private fun ButtonCard(
                     }
                 )
                 .padding(contentPadding),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(AppConstants.spacingSmall),
             content = content
         )
     }
@@ -489,7 +509,7 @@ private fun PrimaryButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .height(AppConstants.buttonHeight),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -498,10 +518,10 @@ private fun PrimaryButton(
     ) {
         Text(
             text = text,
-            fontSize = 20.sp,
+            fontSize = AppConstants.textSizeBodyLarge,
             fontFamily = DmSansFontFamily,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.sp
+            letterSpacing = AppConstants.letterSpacingNone
         )
     }
 }
@@ -516,7 +536,7 @@ private fun SecondaryButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .height(AppConstants.buttonHeight),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = MaterialTheme.colorScheme.onBackground
         ),
@@ -525,10 +545,10 @@ private fun SecondaryButton(
     ) {
         Text(
             text = text,
-            fontSize = 20.sp,
+            fontSize = AppConstants.textSizeBodyLarge,
             fontFamily = DmSansFontFamily,
             fontWeight = FontWeight.Normal,
-            letterSpacing = 0.sp
+            letterSpacing = AppConstants.letterSpacingNone
         )
     }
 }

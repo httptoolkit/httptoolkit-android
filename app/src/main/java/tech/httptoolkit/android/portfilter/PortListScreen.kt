@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import tech.httptoolkit.android.R
+import tech.httptoolkit.android.ui.AppConstants
 
 @Composable
 fun PortListScreen(
@@ -60,7 +61,7 @@ fun PortListScreen(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = AppConstants.spacingLarge)
             .background(MaterialTheme.colorScheme.background),
     ) {
         // Explanation text
@@ -68,22 +69,22 @@ fun PortListScreen(
             text = stringResource(R.string.port_config_explanation),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(vertical = AppConstants.spacingSmall)
         )
 
         // Input card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = AppConstants.spacingSmall)
                 .zIndex(1f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = AppConstants.elevationDefault),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = AppConstants.spacingLarge),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextField(
@@ -99,7 +100,7 @@ fun PortListScreen(
                     ),
                     modifier = Modifier
                         .weight(1f)
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = AppConstants.spacingSmall),
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -147,7 +148,7 @@ fun PortListScreen(
         // Port list
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp)
+            contentPadding = PaddingValues(vertical = AppConstants.spacingSmall)
         ) {
             items(
                 items = sortedPorts,
@@ -175,13 +176,13 @@ fun PortItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 8.dp),
+            .padding(vertical = AppConstants.spacingTiny, horizontal = AppConstants.spacingSmall),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(AppConstants.spacingLarge),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

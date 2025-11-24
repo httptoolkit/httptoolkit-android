@@ -14,11 +14,17 @@ val DmSansFontFamily = FontFamily(
     Font(R.font.dmsans_bold, FontWeight.Bold)
 )
 
+// Semantic color names for clearer usage
+val ColorScheme.success: Color
+    get() = tertiary
+
 private val LightColors = lightColorScheme(
     primary = Color(0xFF2D4CBD),
     onPrimary = Color(0xFFFFFFFF),
     secondary = Color(0xFFE1421F),
     onSecondary = Color(0xFFFFFFFF),
+    tertiary = Color(0xFF4CAF7D), // Success green for positive states
+    onTertiary = Color(0xFFFFFFFF),
     background = Color(0xFFE4E8ED), // Background = 'container' in UI themes
     onBackground = Color(0xFF1E2028),
     surface = Color(0xFFFAFAFA), // Surface = 'main' in UI themes
@@ -33,6 +39,8 @@ private val DarkColors = darkColorScheme(
     onPrimary = Color(0xFFFFFFFF),
     secondary = Color(0xFFE1421F),
     onSecondary = Color(0xFFFFFFFF),
+    tertiary = Color(0xFF4CAF7D), // Success green for positive states
+    onTertiary = Color(0xFFFFFFFF),
     background = Color(0xFF1E2028),
     onBackground = Color(0xFFFFFFFF),
     surface = Color(0xFF32343B),

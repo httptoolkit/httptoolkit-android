@@ -23,6 +23,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tech.httptoolkit.android.R
+import tech.httptoolkit.android.ui.AppConstants
 
 @Composable
 fun AppListScreen(
@@ -72,21 +73,21 @@ fun AppListScreen(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = AppConstants.spacingLarge)
     ) {
         // Search and menu card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = AppConstants.spacingSmall)
                 .zIndex(1f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = AppConstants.elevationDefault),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = AppConstants.spacingLarge),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextField(
@@ -95,7 +96,7 @@ fun AppListScreen(
                     placeholder = { Text(stringResource(R.string.all_applications)) },
                     modifier = Modifier
                         .weight(1f)
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = AppConstants.spacingSmall),
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -145,7 +146,7 @@ fun AppListScreen(
                                         checked = showEnabledOnly,
                                         onCheckedChange = null
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(AppConstants.spacingSmall))
                                     Text(stringResource(R.string.show_enabled))
                                 }
                             },
@@ -161,7 +162,7 @@ fun AppListScreen(
                                         checked = showSystem,
                                         onCheckedChange = null
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(AppConstants.spacingSmall))
                                     Text(stringResource(R.string.show_system))
                                 }
                             },
@@ -185,7 +186,7 @@ fun AppListScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                contentPadding = PaddingValues(vertical = AppConstants.spacingSmall)
             ) {
                 items(
                     items = filteredApps,
@@ -228,13 +229,13 @@ fun AppListItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 8.dp),
+            .padding(vertical = AppConstants.spacingTiny, horizontal = AppConstants.spacingSmall),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 16.dp),
+                .padding(vertical = AppConstants.spacingSmall, horizontal = AppConstants.spacingLarge),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // App icon
@@ -243,14 +244,14 @@ fun AppListItem(
                 contentDescription = stringResource(R.string.cd_app_icon, appLabel),
                 modifier = Modifier
                     .size(72.dp)
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = AppConstants.spacingSmall)
             )
 
             // App name and package
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = AppConstants.spacingSmall)
             ) {
                 Text(
                     text = appLabel,
@@ -271,7 +272,7 @@ fun AppListItem(
                 checked = isEnabled,
                 onCheckedChange = onEnabledChange,
                 modifier = Modifier
-                    .padding(end = 8.dp)
+                    .padding(end = AppConstants.spacingSmall)
             )
         }
     }

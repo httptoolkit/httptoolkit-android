@@ -21,7 +21,9 @@ import tech.httptoolkit.android.ProxyConfig
 import tech.httptoolkit.android.R
 import tech.httptoolkit.android.portfilter.DEFAULT_PORTS
 import tech.httptoolkit.android.whereIsCertTrusted
+import tech.httptoolkit.android.ui.AppConstants
 import tech.httptoolkit.android.ui.DmSansFontFamily
+import tech.httptoolkit.android.ui.success
 
 @Composable
 fun ConnectionStatusScreen(
@@ -38,7 +40,7 @@ fun ConnectionStatusScreen(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = AppConstants.spacingLarge, vertical = AppConstants.spacingTiny)
     ) {
         // Connected to text
         Text(
@@ -57,7 +59,7 @@ fun ConnectionStatusScreen(
                 .padding(bottom = 24.dp)
         )
 
-        val successColor = Color(0xFF4CAF7D)
+        val successColor = MaterialTheme.colorScheme.success
         when (certTrustStatus) {
             "user" -> {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
@@ -113,7 +115,7 @@ fun ConnectionStatusScreen(
         // App and Port interception buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppConstants.spacingNormal)
         ) {
             InterceptionButton(
                 icon = R.drawable.ic_apps_24,
@@ -144,15 +146,15 @@ private fun CertificateStatusCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp),
+            .padding(bottom = AppConstants.spacingNormal),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = AppConstants.elevationNone)
     ) {
         Column(
-            modifier = Modifier.padding(10.dp)
+            modifier = Modifier.padding(AppConstants.spacingNormal)
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(AppConstants.spacingNormal),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -162,7 +164,7 @@ private fun CertificateStatusCard(
                 )
                 Text(
                     text = heading.uppercase(),
-                    fontSize = 14.sp,
+                    fontSize = AppConstants.textSizeCaption,
                     fontFamily = DmSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.outline
@@ -170,10 +172,10 @@ private fun CertificateStatusCard(
             }
 
             if (details != null) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(AppConstants.spacingTiny))
                 Text(
                     text = details,
-                    fontSize = 14.sp,
+                    fontSize = AppConstants.textSizeCaption,
                     lineHeight = 18.sp,
                     fontFamily = DmSansFontFamily,
                     fontWeight = FontWeight.Normal,
@@ -202,7 +204,7 @@ private fun InterceptionButton(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppConstants.spacingSmall)
         ) {
             Icon(
                 painter = painterResource(id = icon),
@@ -211,7 +213,7 @@ private fun InterceptionButton(
             )
             Text(
                 text = text,
-                fontSize = 14.sp,
+                fontSize = AppConstants.textSizeCaption,
                 fontFamily = DmSansFontFamily,
                 color = MaterialTheme.colorScheme.onSurface
             )

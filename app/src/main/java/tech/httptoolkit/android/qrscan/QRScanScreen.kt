@@ -16,6 +16,7 @@ import tech.httptoolkit.android.Constants
 import tech.httptoolkit.android.R
 
 private const val TAG = "QRScanScreen"
+private const val STATUS_VIEW_BOTTOM_PADDING = 48
 
 @Composable
 fun QRScanScreen(
@@ -34,7 +35,7 @@ fun QRScanScreen(
                 contentDescription = context.getString(R.string.cd_camera_view)
 
                 // Add extra padding to the status text to ensure it's well clear of the nav bar
-                statusView?.setPadding(0, 0, 0, 48)
+                statusView?.setPadding(0, 0, 0, STATUS_VIEW_BOTTOM_PADDING)
 
                 val callback = object : BarcodeCallback {
                     override fun barcodeResult(result: BarcodeResult) {
