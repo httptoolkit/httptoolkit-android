@@ -131,48 +131,13 @@ private fun PortraitMainScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
+                            .padding(start = AppConstants.spacingNormal, end = AppConstants.spacingNormal, bottom = AppConstants.spacingTiny)
                     ) {
-                        when (screenState.connectionState) {
-                            DISCONNECTED -> {
-                                if (screenState.hasCamera) {
-                                    DetailText(
-                                        text = stringResource(R.string.disconnected_details),
-                                        modifier = Modifier.padding(top = AppConstants.spacingLarge)
-                                    )
-                                } else {
-                                    DetailText(
-                                        text = stringResource(R.string.disconnected_no_camera_details),
-                                        modifier = Modifier.padding(top = AppConstants.spacingLarge)
-                                    )
-                                }
-                            }
-
-                            CONNECTED -> {
-                                if (screenState.proxyConfig != null) {
-                                    Column(modifier = Modifier.padding(start = AppConstants.spacingNormal, end = AppConstants.spacingNormal, bottom = AppConstants.spacingTiny)) {
-                                        ConnectionStatusScreen(
-                                            proxyConfig = screenState.proxyConfig,
-                                            totalAppCount = screenState.totalAppCount,
-                                            interceptedAppCount = screenState.interceptedAppCount,
-                                            onChangeApps = actions.onChooseApps,
-                                            interceptedPorts = screenState.interceptedPorts,
-                                            onChangePorts = actions.onChoosePorts
-                                        )
-                                    }
-                                }
-                            }
-
-                            FAILED -> {
-                                DetailText(
-                                    text = stringResource(R.string.failed_details),
-                                    modifier = Modifier.padding(top = AppConstants.spacingLarge)
-                                )
-                            }
-
-                            CONNECTING, DISCONNECTING -> {
-                                // No details shown during these states
-                            }
-                        }
+                        DetailContent(
+                            screenState = screenState,
+                            onChooseApps = actions.onChooseApps,
+                            onChoosePorts = actions.onChoosePorts
+                        )
                     }
                 }
 
@@ -182,48 +147,7 @@ private fun PortraitMainScreen(
                         isLandscape = false,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        when (screenState.connectionState) {
-                            DISCONNECTED -> {
-                                if (screenState.hasCamera) {
-                                    PrimaryButton(
-                                        text = stringResource(R.string.scan_button),
-                                        onClick = actions.onScanQRCode
-                                    )
-                                }
-                                if (screenState.lastProxy != null) {
-                                    SecondaryButton(
-                                        text = stringResource(R.string.reconnect_button),
-                                        onClick = actions.onReconnect
-                                    )
-                                }
-                            }
-
-                            CONNECTED -> {
-                                PrimaryButton(
-                                    text = stringResource(R.string.disconnect_button),
-                                    onClick = actions.onDisconnect
-                                )
-                                SecondaryButton(
-                                    text = stringResource(R.string.test_button),
-                                    onClick = actions.onTestInterception
-                                )
-                            }
-
-                            FAILED -> {
-                                PrimaryButton(
-                                    text = stringResource(R.string.try_again_button),
-                                    onClick = actions.onRecoverAfterFailure
-                                )
-                            }
-
-                            else -> {}
-                        }
-
-                        // Docs button always shown
-                        SecondaryButton(
-                            text = stringResource(R.string.docs_button),
-                            onClick = actions.onOpenDocs
-                        )
+                        ActionButtons(screenState = screenState, actions = actions)
                     }
                 }
             }
@@ -238,26 +162,11 @@ private fun PortraitMainScreen(
                 )
             }
 
-            Text(
-                text = stringResource(
-                    when (screenState.connectionState) {
-                        DISCONNECTED -> R.string.disconnected_status
-                        CONNECTING -> R.string.connecting_status
-                        CONNECTED -> R.string.connected_status
-                        DISCONNECTING -> R.string.disconnecting_status
-                        FAILED -> R.string.failed_status
-                    }
-                ),
-                fontSize = AppConstants.textSizeHeading,
-                fontFamily = DmSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = LETTER_SPACING_TIGHT,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
+            StatusText(
+                connectionState = screenState.connectionState,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(y = (screenHeightDp * statusGuidelinePercent).dp)
-                    .padding(horizontal = AppConstants.spacingSmall)
             )
         }
     }
@@ -282,72 +191,20 @@ private fun LandscapeMainScreen(
             verticalArrangement = Arrangement.Center
         ) {
             // Status text
-            Text(
-                text = stringResource(
-                    when (screenState.connectionState) {
-                        DISCONNECTED -> R.string.disconnected_status
-                        CONNECTING -> R.string.connecting_status
-                        CONNECTED -> R.string.connected_status
-                        DISCONNECTING -> R.string.disconnecting_status
-                        FAILED -> R.string.failed_status
-                    }
-                ),
-                fontSize = AppConstants.textSizeHeading,
-                fontFamily = DmSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = LETTER_SPACING_TIGHT,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = AppConstants.spacingSmall)
-            )
+            StatusText(connectionState = screenState.connectionState)
 
             // Detail container
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
+                    .padding(start = AppConstants.spacingLarge, end = AppConstants.spacingLarge, bottom = AppConstants.spacingTiny)
             ) {
-                when (screenState.connectionState) {
-                    DISCONNECTED -> {
-                        if (screenState.hasCamera) {
-                            DetailText(
-                                text = stringResource(R.string.disconnected_details),
-                                modifier = Modifier.padding(top = AppConstants.spacingLarge)
-                            )
-                        } else {
-                            DetailText(
-                                text = stringResource(R.string.disconnected_no_camera_details),
-                                modifier = Modifier.padding(top = AppConstants.spacingLarge)
-                            )
-                        }
-                    }
-
-                    CONNECTED -> {
-                        if (screenState.proxyConfig != null) {
-                            Column(modifier = Modifier.padding(start = AppConstants.spacingLarge, end = AppConstants.spacingLarge, bottom = AppConstants.spacingTiny)) {
-                                ConnectionStatusScreen(
-                                    proxyConfig = screenState.proxyConfig,
-                                    totalAppCount = screenState.totalAppCount,
-                                    interceptedAppCount = screenState.interceptedAppCount,
-                                    onChangeApps = actions.onChooseApps,
-                                    interceptedPorts = screenState.interceptedPorts,
-                                    onChangePorts = actions.onChoosePorts
-                                )
-                            }
-                        }
-                    }
-
-                    FAILED -> {
-                        DetailText(
-                            text = stringResource(R.string.failed_details),
-                            modifier = Modifier.padding(top = AppConstants.spacingLarge)
-                        )
-                    }
-
-                    CONNECTING, DISCONNECTING -> {
-                        // No details shown during these states
-                    }
-                }
+                DetailContent(
+                    screenState = screenState,
+                    onChooseApps = actions.onChooseApps,
+                    onChoosePorts = actions.onChoosePorts
+                )
             }
         }
 
@@ -373,52 +230,134 @@ private fun LandscapeMainScreen(
                     isLandscape = true,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    when (screenState.connectionState) {
-                        DISCONNECTED -> {
-                            if (screenState.hasCamera) {
-                                PrimaryButton(
-                                    text = stringResource(R.string.scan_button),
-                                    onClick = actions.onScanQRCode
-                                )
-                            }
-                            if (screenState.lastProxy != null) {
-                                SecondaryButton(
-                                    text = stringResource(R.string.reconnect_button),
-                                    onClick = actions.onReconnect
-                                )
-                            }
-                        }
-
-                        CONNECTED -> {
-                            PrimaryButton(
-                                text = stringResource(R.string.disconnect_button),
-                                onClick = actions.onDisconnect
-                            )
-                            SecondaryButton(
-                                text = stringResource(R.string.test_button),
-                                onClick = actions.onTestInterception
-                            )
-                        }
-
-                        FAILED -> {
-                            PrimaryButton(
-                                text = stringResource(R.string.try_again_button),
-                                onClick = actions.onRecoverAfterFailure
-                            )
-                        }
-
-                        else -> {}
-                    }
-
-                    // Docs button always shown
-                    SecondaryButton(
-                        text = stringResource(R.string.docs_button),
-                        onClick = actions.onOpenDocs
-                    )
+                    ActionButtons(screenState = screenState, actions = actions)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun StatusText(
+    connectionState: ConnectionState,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = stringResource(
+            when (connectionState) {
+                DISCONNECTED -> R.string.disconnected_status
+                CONNECTING -> R.string.connecting_status
+                CONNECTED -> R.string.connected_status
+                DISCONNECTING -> R.string.disconnecting_status
+                FAILED -> R.string.failed_status
+            }
+        ),
+        fontSize = AppConstants.textSizeHeading,
+        fontFamily = DmSansFontFamily,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = LETTER_SPACING_TIGHT,
+        color = MaterialTheme.colorScheme.onBackground,
+        textAlign = TextAlign.Center,
+        modifier = modifier.padding(horizontal = AppConstants.spacingSmall)
+    )
+}
+
+@Composable
+private fun DetailContent(
+    screenState: MainScreenState,
+    onChooseApps: () -> Unit,
+    onChoosePorts: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when (screenState.connectionState) {
+        DISCONNECTED -> {
+            if (screenState.hasCamera) {
+                DetailText(
+                    text = stringResource(R.string.disconnected_details),
+                    modifier = modifier.padding(top = AppConstants.spacingLarge)
+                )
+            } else {
+                DetailText(
+                    text = stringResource(R.string.disconnected_no_camera_details),
+                    modifier = modifier.padding(top = AppConstants.spacingLarge)
+                )
+            }
+        }
+
+        CONNECTED -> {
+            if (screenState.proxyConfig != null) {
+                ConnectionStatusScreen(
+                    proxyConfig = screenState.proxyConfig,
+                    totalAppCount = screenState.totalAppCount,
+                    interceptedAppCount = screenState.interceptedAppCount,
+                    onChangeApps = onChooseApps,
+                    interceptedPorts = screenState.interceptedPorts,
+                    onChangePorts = onChoosePorts,
+                    modifier = modifier
+                )
+            }
+        }
+
+        FAILED -> {
+            DetailText(
+                text = stringResource(R.string.failed_details),
+                modifier = modifier.padding(top = AppConstants.spacingLarge)
+            )
+        }
+
+        CONNECTING, DISCONNECTING -> {
+            // No details shown during these states
+        }
+    }
+}
+
+@Composable
+private fun ActionButtons(
+    screenState: MainScreenState,
+    actions: MainScreenActions
+) {
+    when (screenState.connectionState) {
+        DISCONNECTED -> {
+            if (screenState.hasCamera) {
+                PrimaryButton(
+                    text = stringResource(R.string.scan_button),
+                    onClick = actions.onScanQRCode
+                )
+            }
+            if (screenState.lastProxy != null) {
+                SecondaryButton(
+                    text = stringResource(R.string.reconnect_button),
+                    onClick = actions.onReconnect
+                )
+            }
+        }
+
+        CONNECTED -> {
+            PrimaryButton(
+                text = stringResource(R.string.disconnect_button),
+                onClick = actions.onDisconnect
+            )
+            SecondaryButton(
+                text = stringResource(R.string.test_button),
+                onClick = actions.onTestInterception
+            )
+        }
+
+        FAILED -> {
+            PrimaryButton(
+                text = stringResource(R.string.try_again_button),
+                onClick = actions.onRecoverAfterFailure
+            )
+        }
+
+        else -> {}
+    }
+
+    // Docs button always shown
+    SecondaryButton(
+        text = stringResource(R.string.docs_button),
+        onClick = actions.onOpenDocs
+    )
 }
 
 @Composable

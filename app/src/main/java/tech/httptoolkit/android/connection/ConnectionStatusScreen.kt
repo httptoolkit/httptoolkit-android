@@ -59,57 +59,10 @@ fun ConnectionStatusScreen(
                 .padding(bottom = 24.dp)
         )
 
-        val successColor = MaterialTheme.colorScheme.success
         when (certTrustStatus) {
-            "user" -> {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-                    // Pre-Android 7: User trust is sufficient
-                    CertificateStatusCard(
-                        icon = Icons.Default.Check,
-                        iconTint = successColor,
-                        heading = stringResource(R.string.pre_v7_connection_status_enabled_heading),
-                        details = stringResource(R.string.pre_v7_connection_status_details)
-                    )
-                } else {
-                    // Android 7+: User trust is limited
-                    CertificateStatusCard(
-                        icon = Icons.Default.Check,
-                        iconTint = successColor,
-                        heading = stringResource(R.string.user_connection_status_enabled_heading)
-                    )
-
-                    CertificateStatusCard(
-                        icon = Icons.Default.Warning,
-                        iconTint = MaterialTheme.colorScheme.error,
-                        heading = stringResource(R.string.system_connection_status_disabled_heading),
-                        details = stringResource(R.string.user_connection_status_details)
-                    )
-                }
-            }
-            "system" -> {
-                // System trust: show BOTH user and system cards
-                CertificateStatusCard(
-                    icon = Icons.Default.Check,
-                    iconTint = successColor,
-                    heading = stringResource(R.string.user_connection_status_enabled_heading)
-                )
-
-                CertificateStatusCard(
-                    icon = Icons.Default.Check,
-                    iconTint = successColor,
-                    heading = stringResource(R.string.system_connection_status_enabled_heading),
-                    details = stringResource(R.string.system_connection_status_details)
-                )
-            }
-            else -> {
-                // No certificate trust
-                CertificateStatusCard(
-                    icon = Icons.Default.Warning,
-                    iconTint = MaterialTheme.colorScheme.error,
-                    heading = stringResource(R.string.disabled_connection_status_heading),
-                    details = stringResource(R.string.none_connection_status_details)
-                )
-            }
+            "user" -> UserCertificateTrustCards()
+            "system" -> SystemCertificateTrustCards()
+            else -> NoCertificateTrustCard()
         }
 
         // App and Port interception buttons
@@ -185,6 +138,65 @@ private fun CertificateStatusCard(
             }
         }
     }
+}
+
+@Composable
+private fun UserCertificateTrustCards() {
+    val successColor = MaterialTheme.colorScheme.success
+
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+        // Pre-Android 7: User trust is sufficient
+        CertificateStatusCard(
+            icon = Icons.Default.Check,
+            iconTint = successColor,
+            heading = stringResource(R.string.pre_v7_connection_status_enabled_heading),
+            details = stringResource(R.string.pre_v7_connection_status_details)
+        )
+    } else {
+        // Android 7+: User trust is limited
+        CertificateStatusCard(
+            icon = Icons.Default.Check,
+            iconTint = successColor,
+            heading = stringResource(R.string.user_connection_status_enabled_heading)
+        )
+
+        CertificateStatusCard(
+            icon = Icons.Default.Warning,
+            iconTint = MaterialTheme.colorScheme.error,
+            heading = stringResource(R.string.system_connection_status_disabled_heading),
+            details = stringResource(R.string.user_connection_status_details)
+        )
+    }
+}
+
+@Composable
+private fun SystemCertificateTrustCards() {
+    val successColor = MaterialTheme.colorScheme.success
+
+    // System trust: show BOTH user and system cards
+    CertificateStatusCard(
+        icon = Icons.Default.Check,
+        iconTint = successColor,
+        heading = stringResource(R.string.user_connection_status_enabled_heading)
+    )
+
+    CertificateStatusCard(
+        icon = Icons.Default.Check,
+        iconTint = successColor,
+        heading = stringResource(R.string.system_connection_status_enabled_heading),
+        details = stringResource(R.string.system_connection_status_details)
+    )
+}
+
+@Composable
+private fun NoCertificateTrustCard() {
+    // No certificate trust
+    CertificateStatusCard(
+        icon = Icons.Default.Warning,
+        iconTint = MaterialTheme.colorScheme.error,
+        heading = stringResource(R.string.disabled_connection_status_heading),
+        details = stringResource(R.string.none_connection_status_details)
+    )
 }
 
 @Composable
