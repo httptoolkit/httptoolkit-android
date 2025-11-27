@@ -63,7 +63,7 @@ jobs:
           echo Latest build tool version is: $BUILD_TOOL_VERSION
 
       - name: Sign the APK & AAB
-        uses: r0adkll/sign-android-release@v1
+        uses: r0adkll/sign-android-release@349ebdef58775b1e0d8099458af0816dc79b6407
         id: sign_app
         with:
           releaseDirectory: .
@@ -83,7 +83,7 @@ jobs:
           mv ./app-release.aab ./httptoolkit.aab
 
       - name: Publish the APK & AAB to GitHub Releases
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@6b7fa9f267e90b50a19fef07b3596790bb941741
         with:
           prerelease: true
           file: ./httptoolkit{.apk,.aab}
@@ -92,7 +92,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish the AAB to Google Play
-        uses: r0adkll/upload-google-play@v1.0.15
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: tech.httptoolkit.android.v1
