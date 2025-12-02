@@ -182,16 +182,19 @@ public class SessionManager implements ICloseSession {
 		if (existingSession != null) return existingSession;
 
 		String ips = PacketUtil.intToIPAddress(ip);
-		boolean shouldCapture = captureController.shouldCapture(ips, port);
-		SocketAddress socketAddress = shouldCapture
-				? captureController.getProxyAddress()
-				: new InetSocketAddress(ips, port);
+		InetSocketAddress originalDestinationAddress = new InetSocketAddress(ips, port);
+		boolean shouldCapture = captureController.shouldCapture(originalDestinationAddress);
 
-		ProxyProtocolHandler proxyHandler = shouldCapture
-				? captureController.getProxyHandler(ips, port)
-				: null;
+		SocketAddress sessionAddress;
+		Session session;
 
-		Session session = new Session(SessionProtocol.TCP, srcIp, srcPort, ip, port, this, proxyHandler);
+		if (shouldCapture) {
+			sessionAddress = captureController.getProxyAddress();
+			session = new Session(SessionProtocol.TCP, srcIp, srcPort, ip, port, this, captureController.getProxyHandler(ips, port));
+		} else {
+			sessionAddress = originalDestinationAddress;
+			session = new Session(SessionProtocol.TCP, srcIp, srcPort, ip, port, this, null);
+		}
 
 		SocketChannel channel;
 		channel = SocketChannel.open();
@@ -209,8 +212,8 @@ public class SessionManager implements ICloseSession {
 		session.setChannel(channel);
 
 		// Initiate connection straight away, to reduce latency
-		Log.d(TAG,"Initiate connecting to remote tcp server: " + socketAddress.toString());
-		boolean connected = channel.connect(socketAddress);
+		Log.d(TAG,"Initiate connecting to remote tcp server: " + sessionAddress.toString());
+		boolean connected = channel.connect(sessionAddress);
 		session.setConnected(connected);
 
 		table.put(key, session);

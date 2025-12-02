@@ -84,6 +84,7 @@ public class SOCKS5Handler extends ProxyProtocolHandler {
                 } else {
                     Log.e(TAG, "SOCKS5 auth failed");
                     state = State.FAILED;
+                    throw new RuntimeException("SOCKS5 authentication failed");
                 }
                 return;
                 
@@ -95,11 +96,13 @@ public class SOCKS5Handler extends ProxyProtocolHandler {
                 } else {
                     Log.e(TAG, "SOCKS5 connect failed");
                     state = State.FAILED;
+                    throw new RuntimeException("SOCKS5 connection request failed");
                 }
                 return;
                 
             default:
                 Log.w(TAG, "Unexpected data in SOCKS5 state: " + socksState);
+                throw new RuntimeException("Unexpected data in SOCKS5 state: " + socksState);
         }
     }
 }
