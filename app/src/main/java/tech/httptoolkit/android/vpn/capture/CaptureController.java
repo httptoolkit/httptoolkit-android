@@ -1,20 +1,11 @@
 package tech.httptoolkit.android.vpn.capture;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.List;
 
 import tech.httptoolkit.android.ProxyConfig;
 import tech.httptoolkit.android.ProxyCaptureProtocol;
-
-/*
-Reader: in SocketChannelReader, we get data from the server and then push it to the client.
-    This needs to somehow push to the protocol handler instead until it's done.
-    Could be in session, but feels like that's doing too much already.
-
-Writer: NIO calls SocketChannelWriter.write, IFF session have data available (need to override that check somehow)
-    SCW.write writes client data to upstream server connection
-    Should instead write directly into protocol handler
- */
 
 public class CaptureController {
 
@@ -40,11 +31,9 @@ public class CaptureController {
         return proxyAddress;
     }
 
-    public boolean shouldCapture(
-            String destIp,
-            int destPort
-    ) {
-        return this.portsToCapture.contains(destPort);
+    public boolean shouldCapture(InetSocketAddress destAddress) {
+        return !destAddress.equals(proxyAddress) &&
+                this.portsToCapture.contains(destAddress.getPort());
     }
 
     public ProxyProtocolHandler getProxyHandler(

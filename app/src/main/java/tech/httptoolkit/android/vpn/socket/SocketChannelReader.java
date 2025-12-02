@@ -102,7 +102,6 @@ class SocketChannelReader {
 					readBuffer.limit(len);
 					readBuffer.flip();
 					sendToRequester(readBuffer, session);
-					readBuffer.clear();
 				} else if (len == -1) {
 					Log.d(TAG,"End of data from remote server, will send FIN to client");
 					Log.d(TAG,"send FIN to: " + session);
@@ -225,7 +224,6 @@ class SocketChannelReader {
 					//create UDP packet
 					byte[] packetData = UDPPacketFactory.createResponsePacket(
 							session.getLastIpHeader(), session.getLastUdpHeader(), readBuffer);
-					readBuffer.clear();
 
 					//write to client
 					writer.write(packetData);

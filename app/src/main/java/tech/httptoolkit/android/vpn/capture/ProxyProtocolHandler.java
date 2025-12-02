@@ -64,16 +64,4 @@ public abstract class ProxyProtocolHandler {
     public boolean hasFailed() {
         return state == State.FAILED;
     }
-    
-    public State getState() {
-        return state;
-    }
-    
-    public String getOriginalDestIp() {
-        return originalDestIp;
-    }
-    
-    public int getOriginalDestPort() {
-        return originalDestPort;
-    }
 }

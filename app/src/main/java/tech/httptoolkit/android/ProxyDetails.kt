@@ -87,6 +87,7 @@ data class ProxyConfig(
      * Preferred capture protocol for this proxy. If null, only the default RAW
      * HTTP redirect behavior is supported.
      */
+    @Json(serializeNull = false)
     val captureProtocol: ProxyCaptureProtocol?
 ) : Parcelable
 

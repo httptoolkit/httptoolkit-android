@@ -17,4 +17,6 @@ Some quick notes on how this all hangs together:
 * SessionManager allows opening and closing upstream sessions and their channels (TCP/UDP connections), registering each channel with `SocketNIODataService`.
 * SocketNIODataService runs on a single thread, using NIO to write VPN-received data from the session to the upstream channel when the channel is available, and to read data from upstream channels when it's received.
 * Data is sent back into the VPN (by both SessionHandler and the NIO thread) via ClientPacketWriter, which runs on its own thread, looping on a blocking queue to do each requested write.
-* SessionManager can be configured with traffic redirections, to redirect traffic on certain ports to different destinations (e.g. all outgoing traffic on 80/443 to a transparent proxy server).
+* SessionManager takes a CaptureController, which defines which traffic to modify and how.
+* CaptureController uses the destination address and the port capture configuration of the app to decide which packets to capture.
+* To capture them, SessionManager attaches a ProxyProtocolHandler (build by CaptureController) which captures the traffic according to the configured proxy protocol (e.g. raw redirection, SOCKS, etc).
