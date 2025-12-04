@@ -30,7 +30,9 @@ import tech.httptoolkit.android.vpn.util.PacketUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
 
 /**
@@ -379,7 +381,28 @@ public class Session {
 		}
 	}
 
-	public void closeSession() {
+	// Cleanly close a session - stopping all events, closing the upstream connection, and unregistering
+	// from the session manager
+	public void shutdown() {
+		AbstractSelectableChannel channel = this.getChannel();
+		this.cancelKey();
+
+		try {
+			if (channel instanceof SocketChannel) {
+				SocketChannel socketChannel = (SocketChannel) channel;
+				if (socketChannel.isConnected()) {
+					socketChannel.close();
+				}
+			} else {
+				DatagramChannel datagramChannel = (DatagramChannel) channel;
+				if (datagramChannel.isConnected()) {
+					datagramChannel.close();
+				}
+			}
+		} catch (IOException e) {
+			Log.e(TAG, e.toString());
+		}
+
 		this.sessionCloser.closeSession(this);
 	}
 

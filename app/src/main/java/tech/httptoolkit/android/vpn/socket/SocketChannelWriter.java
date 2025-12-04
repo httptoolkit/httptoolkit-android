@@ -48,6 +48,12 @@ public class SocketChannelWriter {
 	}
 
 	public void write(@NonNull Session session) {
+		if (session.isAbortingConnection()) {
+			Log.d(TAG,"shutting down aborted connection on write -> "+ session);
+			session.shutdown();
+			return;
+		}
+
 		AbstractSelectableChannel channel = session.getChannel();
 		if (channel instanceof SocketChannel) {
 			writeTCP(session);
@@ -56,33 +62,6 @@ public class SocketChannelWriter {
 		} else {
 			// We only ever create TCP & UDP channels, so this should never happen
 			throw new IllegalArgumentException("Unexpected channel type: " + channel);
-		}
-
-		if (session.isAbortingConnection()) {
-			Log.d(TAG,"removing aborted connection -> " + session);
-			session.cancelKey();
-
-			if (channel instanceof SocketChannel) {
-				try {
-					SocketChannel socketChannel = (SocketChannel) channel;
-					if (socketChannel.isConnected()) {
-						socketChannel.close();
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			} else if (channel instanceof DatagramChannel) {
-				try {
-					DatagramChannel datagramChannel = (DatagramChannel) channel;
-					if (datagramChannel.isConnected()) {
-						datagramChannel.close();
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-
-			session.closeSession();
 		}
 	}
 
@@ -102,8 +81,6 @@ public class SocketChannelWriter {
 	}
 	
 	private void writeTCP(Session session) {
-		if (!this.isReadyToWrite(session)) return;
-
 		try {
 			ProxyProtocolHandler setupHandler = session.getProxySetupHandler();
 

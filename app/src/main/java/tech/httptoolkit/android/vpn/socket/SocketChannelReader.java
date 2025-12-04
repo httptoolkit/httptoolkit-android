@@ -48,11 +48,16 @@ class SocketChannelReader {
 	}
 
 	public void read(Session session) {
-		AbstractSelectableChannel channel = session.getChannel();
+		if (session.isAbortingConnection()) {
+			Log.d(TAG,"shutting down aborted connection on read -> "+ session);
+			session.shutdown();
+			return;
+		}
 
-		if(channel instanceof SocketChannel) {
+		AbstractSelectableChannel channel = session.getChannel();
+		if (channel instanceof SocketChannel) {
 			readTCP(session);
-		} else if(channel instanceof DatagramChannel){
+		} else if (channel instanceof DatagramChannel) {
 			readUDP(session);
 		} else {
 			return;
@@ -60,38 +65,9 @@ class SocketChannelReader {
 
 		// Resubscribe to reads, so that we're triggered again if more data arrives later.
 		session.subscribeKey(SelectionKey.OP_READ);
-
-		if (session.isAbortingConnection()) {
-			Log.d(TAG,"removing aborted connection -> "+ session);
-			session.cancelKey();
-			if (channel instanceof SocketChannel){
-				try {
-					SocketChannel socketChannel = (SocketChannel) channel;
-					if (socketChannel.isConnected()) {
-						socketChannel.close();
-					}
-				} catch (IOException e) {
-					Log.e(TAG, e.toString());
-				}
-			} else {
-				try {
-					DatagramChannel datagramChannel = (DatagramChannel) channel;
-					if (datagramChannel.isConnected()) {
-						datagramChannel.close();
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-			session.closeSession();
-		}
 	}
 	
 	private void readTCP(@NonNull Session session) {
-		if (session.isAbortingConnection()) {
-			return;
-		}
-
 		SocketChannel channel = (SocketChannel) session.getChannel();
 		int len;
 
@@ -211,11 +187,7 @@ class SocketChannelReader {
 		int len;
 
 		try {
-			do{
-				if (session.isAbortingConnection()) {
-					break;
-				}
-
+			do {
 				len = channel.read(readBuffer);
 				if (len > 0) {
 					readBuffer.limit(len);
@@ -232,7 +204,7 @@ class SocketChannelReader {
 							+ packetData.length);
 				}
 			} while(len > 0);
-		}catch(NotYetConnectedException ex){
+		} catch(NotYetConnectedException ex){
 			Log.e(TAG,"failed to read from unconnected UDP socket");
 		} catch (IOException e) {
 			Log.e(TAG,"Failed to read from UDP socket, aborting connection");
