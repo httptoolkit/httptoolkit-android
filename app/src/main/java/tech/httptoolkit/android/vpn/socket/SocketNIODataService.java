@@ -233,7 +233,7 @@ public class SocketNIODataService implements Runnable {
 
 	private void processPendingWrite(SelectionKey selectionKey, Session session) {
 		// Nothing to write? Skip this entirely, and make sure we're not subscribed
-		if (!writer.isReadyToWrite(session)) {
+		if (!session.isReadyToWrite()) {
 			session.unsubscribeKey(SelectionKey.OP_WRITE);
 			return;
 		}

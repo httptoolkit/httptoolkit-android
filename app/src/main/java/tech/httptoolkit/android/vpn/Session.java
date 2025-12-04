@@ -321,6 +321,17 @@ public class Session {
 	public void setDataForSendingReady(boolean isDataForSendingReady) {
 		this.isDataForSendingReady = isDataForSendingReady;
 	}
+
+	public boolean isReadyToWrite() {
+		ProxyProtocolHandler handler = this.getProxySetupHandler();
+
+		if (handler != null) {
+			return handler.hasHandshakeDataToSend();
+		} else {
+			return this.hasDataToSend() && this.isDataForSendingReady();
+		}
+	}
+
 	public void setUnackData(byte[] unackData) {
 		this.unackData = unackData;
 	}

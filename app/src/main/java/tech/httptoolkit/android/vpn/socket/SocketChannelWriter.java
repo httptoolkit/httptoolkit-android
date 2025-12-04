@@ -37,16 +37,6 @@ public class SocketChannelWriter {
 		this.writer = writer;
 	}
 
-	public boolean isReadyToWrite(@NonNull Session session) {
-		ProxyProtocolHandler handler = session.getProxySetupHandler();
-
-		if (handler != null) {
-			return handler.hasHandshakeDataToSend();
-		} else {
-			return session.hasDataToSend() && session.isDataForSendingReady();
-		}
-	}
-
 	public void write(@NonNull Session session) {
 		if (session.isAbortingConnection()) {
 			Log.d(TAG,"shutting down aborted connection on write -> "+ session);
@@ -166,7 +156,7 @@ public class SocketChannelWriter {
 
 		proxyProtocolHandler.confirmHandshakeDataWritten();
 
-		if (this.isReadyToWrite(session)) {
+		if (session.isReadyToWrite()) {
 			// It's possible that this finishes the proxy protocol, and the session is now ready to write.
 			// If so, we make sure to resubscribe, so this will fire again shortly:
 			session.subscribeKey(SelectionKey.OP_WRITE);
