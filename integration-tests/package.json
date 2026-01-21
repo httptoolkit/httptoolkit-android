@@ -4,6 +4,7 @@
   "description": "Integration tests for HTTP Toolkit Android app",
   "type": "module",
   "scripts": {
+    "setup": "./setup.sh",
     "test": "mocha"
   },
   "devDependencies": {

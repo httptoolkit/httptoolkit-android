@@ -16,11 +16,20 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
       - name: Build release APK
         run: ./gradlew assembleRelease
 
       - name: Build release AAB
         run: ./gradlew bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debug-app.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
@@ -33,6 +42,88 @@ jobs:
           name: unsigned-app.aab
           path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+  integration-test:
+    name: Integration Tests (API ${{ matrix.api-level }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [30, 33]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: integration-tests/package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci
+        working-directory: integration-tests
+
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: debug-app.apk
+          path: app/build/outputs/apk/debug
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+
+      - name: Create AVD and cache snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 2048M
+          heap-size: 512M
+          disk-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: echo "AVD snapshot created for caching"
+
+      - name: Run integration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 2048M
+          heap-size: 512M
+          disk-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: cd integration-tests && ./setup.sh && npm test
+
+      - name: Upload test screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots-api-${{ matrix.api-level }}
+          path: integration-tests/screenshots/
+          if-no-files-found: ignore
 
   deploy:
     name: Deploy to GitHub Releases & Google Play
