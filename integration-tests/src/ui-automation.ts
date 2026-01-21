@@ -250,8 +250,11 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
                 const button = findTextInXml(xml, buttonText, true);
                 if (button) {
                     await tap(button.x, button.y);
-                    await delay(1000);
-                    return true;
+                    await delay(2000);
+                    if (await checkVpnActive()) {
+                        return true;
+                    }
+                    continue;
                 }
             }
 
@@ -267,8 +270,11 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
                 if (match) {
                     const [, x1, y1, x2, y2] = match.map(Number);
                     await tap(Math.round((x1 + x2) / 2), Math.round((y1 + y2) / 2));
-                    await delay(1000);
-                    return true;
+                    await delay(2000);
+                    if (await checkVpnActive()) {
+                        return true;
+                    }
+                    continue;
                 }
             }
         }
@@ -295,6 +301,9 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
         await delay(500);
     }
 
+    const finalXml = await dumpUiHierarchy();
+    const textElements = finalXml.match(/text="[^"]+"/g) || [];
+    console.log('VPN dialog timeout. UI texts:', textElements.slice(0, 15).join(', '));
     return false;
 }
 
