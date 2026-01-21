@@ -15,9 +15,33 @@ async function getScreenSize(): Promise<{ width: number; height: number }> {
     return { width: 1080, height: 1920 };
 }
 
+async function isScreenOnAndUnlocked(): Promise<boolean> {
+    try {
+        const powerState = await adbShell('dumpsys power | grep -E "mWakefulness|mHoldingDisplaySuspendBlocker"');
+        const isAwake = powerState.includes('Awake') || powerState.includes('mHoldingDisplaySuspendBlocker=true');
+
+        if (!isAwake) return false;
+
+        const windowState = await adbShell('dumpsys window | grep -E "mDreamingLockscreen|mShowingLockscreen"');
+        const isLocked = windowState.includes('mDreamingLockscreen=true') || windowState.includes('mShowingLockscreen=true');
+
+        return !isLocked;
+    } catch {
+        return false;
+    }
+}
+
 export async function wakeScreen(): Promise<void> {
+    if (await isScreenOnAndUnlocked()) {
+        return;
+    }
+
     await adb(['shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
-    await delay(500);
+    await delay(300);
+
+    if (await isScreenOnAndUnlocked()) {
+        return;
+    }
 
     const { width, height } = await getScreenSize();
     const centerX = Math.round(width / 2);
@@ -29,9 +53,6 @@ export async function wakeScreen(): Promise<void> {
         String(centerX), String(swipeEndY),
         '300'
     ]);
-    await delay(500);
-
-    await adb(['shell', 'input', 'keyevent', 'KEYCODE_MENU']);
     await delay(300);
 }
 

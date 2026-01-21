@@ -22,9 +22,7 @@ export async function dumpUiHierarchy(): Promise<string> {
     }
 }
 
-export async function findElementByText(text: string, exactMatch: boolean = false): Promise<{ x: number; y: number } | null> {
-    const xml = await dumpUiHierarchy();
-
+function findTextInXml(xml: string, text: string, exactMatch: boolean = false): { x: number; y: number } | null {
     const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const pattern = exactMatch
         ? new RegExp(`text="${escapedText}"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`)
@@ -47,6 +45,11 @@ export async function findElementByText(text: string, exactMatch: boolean = fals
     }
 
     return null;
+}
+
+export async function findElementByText(text: string, exactMatch: boolean = false): Promise<{ x: number; y: number } | null> {
+    const xml = await dumpUiHierarchy();
+    return findTextInXml(xml, text, exactMatch);
 }
 
 export async function findElementByResourceId(resourceId: string): Promise<{ x: number; y: number } | null> {
@@ -100,15 +103,12 @@ export async function pressBack(): Promise<void> {
 
 async function setupScreenLockViaUi(pin: string = '1234'): Promise<boolean> {
     try {
-        console.log('  Attempting to set up screen lock via UI...');
-
         let tapped = await tapText('Set screen lock', true);
         if (!tapped) {
             tapped = await tapText('Set a screen lock', false);
         }
 
         if (!tapped) {
-            console.log('  Could not find "Set screen lock" button');
             return false;
         }
 
@@ -120,7 +120,6 @@ async function setupScreenLockViaUi(pin: string = '1234'): Promise<boolean> {
         }
 
         if (!tapped) {
-            console.log('  Could not find PIN option');
             await pressBack();
             return false;
         }
@@ -153,10 +152,8 @@ async function setupScreenLockViaUi(pin: string = '1234'): Promise<boolean> {
             await delay(500);
         }
 
-        console.log('  Screen lock setup via UI complete');
         return true;
-    } catch (e) {
-        console.log('  Error setting up screen lock via UI:', e);
+    } catch {
         return false;
     }
 }
@@ -167,7 +164,6 @@ async function setupScreenLockViaUi(pin: string = '1234'): Promise<boolean> {
  */
 export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Promise<boolean> {
     const startTime = Date.now();
-    let lastXml = '';
 
     while (Date.now() - startTime < timeoutMs) {
         if (await checkVpnActive()) {
@@ -175,7 +171,6 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
         }
 
         const xml = await dumpUiHierarchy();
-        lastXml = xml;
 
         if (xml.toLowerCase().includes('connected') &&
             xml.toLowerCase().includes('disconnect') &&
@@ -191,9 +186,9 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
 
         if (xml.toLowerCase().includes('send you notifications') ||
             (xml.toLowerCase().includes('notification') && xml.toLowerCase().includes('allow'))) {
-            console.log('  Found notification permission dialog, tapping Allow...');
-            if (await tapText('Allow', true)) {
-                console.log('  Tapped Allow on notification dialog');
+            const allowButton = findTextInXml(xml, 'Allow', true);
+            if (allowButton) {
+                await tap(allowButton.x, allowButton.y);
                 await delay(1000);
                 continue;
             }
@@ -222,41 +217,39 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
             xml.toLowerCase().includes('set up vpn');
 
         if (xml.toLowerCase().includes('manual setup required')) {
-            console.log('  Found "Manual setup required" dialog from app');
-
-            if (await tapText('Skip', true)) {
-                console.log('  Tapped Skip on manual setup dialog');
+            const skipButton = findTextInXml(xml, 'Skip', true);
+            if (skipButton) {
+                await tap(skipButton.x, skipButton.y);
                 await delay(2000);
+
+                if (await checkVpnActive()) {
+                    return true;
+                }
 
                 const afterSkipXml = await dumpUiHierarchy();
                 if (afterSkipXml.toLowerCase().includes('connection request') ||
                     afterSkipXml.toLowerCase().includes('set up vpn')) {
-                    console.log('  VPN dialog appeared after skip, continuing...');
                     continue;
                 }
 
-                if (afterSkipXml.toLowerCase().includes('disconnected')) {
-                    console.log('  App returned to disconnected state after skip');
+                await delay(1000);
+                if (await checkVpnActive()) {
+                    return true;
                 }
                 continue;
             }
 
-            if (await tapText('Cancel', true)) {
-                console.log('  Tapped Cancel on manual setup dialog');
-                await delay(1000);
-                return false;
-            }
+            await delay(500);
+            continue;
         }
 
         if (isVpnDialog) {
-            console.log(`  Found VPN dialog (package: ${currentPackage}), looking for button...`);
-
             const positiveButtons = ['OK', 'ALLOW', 'Allow', 'Connect', 'CONNECT', 'Yes', 'YES', 'I trust this app'];
 
             for (const buttonText of positiveButtons) {
-                const tapped = await tapText(buttonText, true);
-                if (tapped) {
-                    console.log(`  Tapped "${buttonText}" button`);
+                const button = findTextInXml(xml, buttonText, true);
+                if (button) {
+                    await tap(button.x, button.y);
                     await delay(1000);
                     return true;
                 }
@@ -269,32 +262,26 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
             ];
 
             for (const buttonId of buttonIds) {
-                const tapped = await tapResourceId(buttonId);
-                if (tapped) {
-                    console.log(`  Tapped button with ID ${buttonId}`);
+                const pattern = new RegExp(`resource-id="${buttonId}"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`);
+                const match = xml.match(pattern);
+                if (match) {
+                    const [, x1, y1, x2, y2] = match.map(Number);
+                    await tap(Math.round((x1 + x2) / 2), Math.round((y1 + y2) / 2));
                     await delay(1000);
                     return true;
                 }
             }
-
-            console.log('  Could not find button to tap. UI contains:');
-            const buttonMatches = xml.match(/text="[^"]+"/g) || [];
-            console.log('  Text elements:', buttonMatches.slice(0, 10).join(', '));
         }
 
         if (xml.toLowerCase().includes('set a screen lock') ||
             xml.toLowerCase().includes('set screen lock') ||
             (xml.toLowerCase().includes('screen lock') && xml.toLowerCase().includes('security'))) {
-            console.log('  Found "Set screen lock" dialog - need to set up screen lock via UI');
-
             const lockSetUp = await setupScreenLockViaUi();
             if (lockSetUp) {
-                console.log('  Screen lock set up, retrying VPN permission...');
                 await pressBack();
                 await delay(1000);
                 continue;
             } else {
-                console.log('  Could not set up screen lock via UI');
                 await pressBack();
                 await delay(500);
                 return false;
@@ -302,16 +289,11 @@ export async function handleVpnPermissionDialog(timeoutMs: number = 15000): Prom
         }
 
         if (xml.toLowerCase().includes('oh no') || xml.toLowerCase().includes("couldn't connect")) {
-            console.log('  App showing error state');
             return false;
         }
 
         await delay(500);
     }
-
-    console.log('  VPN dialog timeout. Last UI state had texts:');
-    const textMatches = lastXml.match(/text="[^"]+"/g) || [];
-    console.log('  ', textMatches.slice(0, 15).join(', '));
 
     return false;
 }

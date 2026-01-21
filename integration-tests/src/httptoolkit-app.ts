@@ -29,22 +29,19 @@ export async function activateVpn(connectUrl: string, options: {
         '-d', connectUrl
     ]);
 
-    await delay(1000);
+    await delay(500);
 
     if (handleDialogs) {
-        const dialogHandled = await handleVpnPermissionDialog(timeout);
+        await handleVpnPermissionDialog(timeout);
 
-        if (!dialogHandled) {
-            const vpnActive = await isVpnActive();
-            if (!vpnActive) {
-                console.warn('VPN permission dialog may not have been handled');
-            }
+        if (await isVpnActive()) {
+            handleNotificationPermissionDialog(2000).catch(() => {});
+            return true;
         }
 
-        await handleNotificationPermissionDialog(5000);
+        await handleNotificationPermissionDialog(2000);
     }
 
-    await delay(2000);
     return await isVpnActive();
 }
 

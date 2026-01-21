@@ -16,7 +16,7 @@ import {
     stopApp,
     captureDebugScreenshot
 } from '../src/httptoolkit-app.js';
-import { adbShell, wakeScreen } from '../src/adb.js';
+import { adbShell } from '../src/adb.js';
 
 async function httpRequest(host: string, port: number, method: string, path: string, options: {
     headers?: Record<string, string>;
@@ -124,7 +124,6 @@ describe('HTTP Toolkit Android Integration Tests', function() {
     });
 
     beforeEach(async function() {
-        await wakeScreen();
         await resetTestState();
         ctx = await createTestContext(8080);
     });
@@ -148,8 +147,6 @@ describe('HTTP Toolkit Android Integration Tests', function() {
         it('should activate VPN via intent', async function() {
             const proxyInfo = ctx.proxy.getProxyInfo();
             const connectUrl = buildConnectUrl(proxyInfo);
-
-            console.log('Testing activation with URL:', connectUrl);
 
             const activated = await activateVpn(connectUrl, { timeout: 45000 });
             expect(activated, 'VPN should be activated').to.be.true;
@@ -262,15 +259,10 @@ describe('HTTP Toolkit Android Integration Tests', function() {
         });
 
         it('should handle UDP packets (DNS query)', async function() {
-            try {
-                await sendUdp('8.8.8.8', 53, 'test', {
-                    timeout: 5000,
-                    waitForResponse: false
-                });
-                expect(true).to.be.true;
-            } catch (e) {
-                console.log('UDP test note:', e);
-            }
+            await sendUdp('8.8.8.8', 53, 'test', {
+                timeout: 5000,
+                waitForResponse: false
+            });
         });
 
         it('should not crash VPN when receiving UDP traffic', async function() {
@@ -297,7 +289,6 @@ describe('HTTP Toolkit Android Integration Tests', function() {
 
         it('should handle ICMP ping through VPN', async function() {
             const result = await ping('8.8.8.8', 3, 10000);
-            console.log('Ping output:', result.output);
             expect(result.transmitted).to.equal(3);
         });
 
@@ -370,8 +361,7 @@ describe('HTTP Toolkit Android Integration Tests', function() {
                 handleDialogs: true
             });
 
-            const vpnActive = await isVpnActive();
-            console.log('Unreachable proxy result:', { activated, vpnActive });
+            expect(activated).to.be.false;
         });
 
         it('should handle invalid connect URL', async function() {

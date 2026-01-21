@@ -69,9 +69,5 @@ export async function resetTestState(): Promise<void> {
 export const mochaHooks = {
     async beforeAll() {
         await globalSetup();
-    },
-
-    async afterEach() {
-        await new Promise(resolve => setTimeout(resolve, 500));
     }
 };
