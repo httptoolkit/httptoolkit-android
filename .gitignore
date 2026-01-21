@@ -66,3 +66,9 @@ fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
 fastlane/readme.md
+
+# Integration tests
+integration-tests/node_modules/
+integration-tests/dist/
+integration-tests/screenshots/
+integration-tests/*.apk
